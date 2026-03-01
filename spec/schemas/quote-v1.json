@@ -1,0 +1,1 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://caip.dev/schemas/quote-v1.json", "title": "CAIP quote-v1", "description": "Placeholder — supplier quote schema, not yet defined", "type": "object" }

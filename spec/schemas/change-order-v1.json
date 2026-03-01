@@ -1,0 +1,1 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://caip.dev/schemas/change-order-v1.json", "title": "CAIP change-order-v1", "description": "Placeholder — change order schema, not yet defined", "type": "object" }

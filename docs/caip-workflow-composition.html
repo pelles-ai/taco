@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAIP — Agent Composition Workflow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    look: 'classic',
+    themeVariables: {
+      primaryColor: isDark ? '#1e3a5f' : '#dbeafe',
+      primaryBorderColor: isDark ? '#60a5fa' : '#2563eb',
+      primaryTextColor: isDark ? '#e2e8f0' : '#1e293b',
+      secondaryColor: isDark ? '#1a332a' : '#dcfce7',
+      secondaryBorderColor: isDark ? '#4ade80' : '#16a34a',
+      secondaryTextColor: isDark ? '#e2e8f0' : '#1e293b',
+      tertiaryColor: isDark ? '#3b2010' : '#ffedd5',
+      tertiaryBorderColor: isDark ? '#fb923c' : '#ea580c',
+      tertiaryTextColor: isDark ? '#e2e8f0' : '#1e293b',
+      lineColor: isDark ? '#475569' : '#94a3b8',
+      fontSize: '15px',
+      fontFamily: "'Sora', system-ui, sans-serif",
+      noteBkgColor: isDark ? '#1e293b' : '#fefce8',
+      noteTextColor: isDark ? '#f1f5f9' : '#1e293b',
+      noteBorderColor: isDark ? '#fbbf24' : '#d97706',
+    }
+  });
+</script>
+<style>
+  :root {
+    --font-body: 'Sora', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #f8f9fb;
+    --surface: #ffffff;
+    --surface2: #f0f2f7;
+    --surface-elevated: #ffffff;
+    --border: rgba(0, 0, 0, 0.07);
+    --border-bright: rgba(0, 0, 0, 0.14);
+    --text: #1a1d2b;
+    --text-dim: #6b7280;
+    --text-bright: #0f172a;
+
+    --blue: #2563eb;
+    --blue-dim: rgba(37, 99, 235, 0.08);
+    --orange: #ea580c;
+    --orange-dim: rgba(234, 88, 12, 0.08);
+    --green: #059669;
+    --green-dim: rgba(5, 150, 105, 0.08);
+    --amber: #d97706;
+    --amber-dim: rgba(217, 119, 6, 0.08);
+    --red: #dc2626;
+    --red-dim: rgba(220, 38, 38, 0.08);
+    --teal: #0d9488;
+    --teal-dim: rgba(13, 148, 136, 0.08);
+    --purple: #7c3aed;
+    --purple-dim: rgba(124, 58, 237, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0e16;
+      --surface: #151821;
+      --surface2: #1c1f2e;
+      --surface-elevated: #20243a;
+      --border: rgba(255, 255, 255, 0.06);
+      --border-bright: rgba(255, 255, 255, 0.12);
+      --text: #e2e5ed;
+      --text-dim: #8b92a5;
+      --text-bright: #f1f5f9;
+
+      --blue: #60a5fa;
+      --blue-dim: rgba(96, 165, 250, 0.12);
+      --orange: #fb923c;
+      --orange-dim: rgba(251, 146, 60, 0.12);
+      --green: #34d399;
+      --green-dim: rgba(52, 211, 153, 0.1);
+      --amber: #fbbf24;
+      --amber-dim: rgba(251, 191, 36, 0.1);
+      --red: #f87171;
+      --red-dim: rgba(248, 113, 113, 0.1);
+      --teal: #5eead4;
+      --teal-dim: rgba(94, 234, 212, 0.1);
+      --purple: #a78bfa;
+      --purple-dim: rgba(167, 139, 250, 0.1);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 15% 10%, var(--blue-dim) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 80%, var(--green-dim) 0%, transparent 40%);
+    color: var(--text);
+    font-family: var(--font-body);
+    padding: 40px 24px;
+    min-height: 100vh;
+    overflow-wrap: break-word;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeScale {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .anim { animation: fadeUp 0.45s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+  .anim-scale { animation: fadeScale 0.35s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  .page { max-width: 1200px; margin: 0 auto; }
+
+  /* Header */
+  .header { margin-bottom: 40px; }
+  .header-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--blue);
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    text-wrap: balance;
+  }
+  .header-sub {
+    font-size: 15px;
+    color: var(--text-dim);
+    max-width: 750px;
+    line-height: 1.65;
+  }
+  .header-sub strong { color: var(--text); }
+
+  /* Pipeline visual */
+  .pipeline-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 32px;
+    margin-bottom: 28px;
+  }
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label .dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+
+  /* Main pipeline row */
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .pipeline::-webkit-scrollbar { height: 6px; }
+  .pipeline::-webkit-scrollbar-track { background: transparent; }
+  .pipeline::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .pipeline-step {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    min-width: 155px;
+    flex-shrink: 0;
+    background: var(--surface);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+  }
+  .pipeline-step:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  }
+
+  .step-phase {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 6px;
+  }
+  .step-agent {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+  }
+  .step-task {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 6px;
+  }
+  .step-io {
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .step-io code {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  /* Step color variants */
+  .step--blue { border-color: color-mix(in srgb, var(--blue) 25%, transparent); }
+  .step--blue .step-phase { color: var(--blue); }
+  .step--blue .step-task { background: var(--blue-dim); color: var(--blue); }
+
+  .step--green { border-color: color-mix(in srgb, var(--green) 25%, transparent); }
+  .step--green .step-phase { color: var(--green); }
+  .step--green .step-task { background: var(--green-dim); color: var(--green); }
+
+  .step--orange { border-color: color-mix(in srgb, var(--orange) 25%, transparent); }
+  .step--orange .step-phase { color: var(--orange); }
+  .step--orange .step-task { background: var(--orange-dim); color: var(--orange); }
+
+  .step--amber { border-color: color-mix(in srgb, var(--amber) 25%, transparent); }
+  .step--amber .step-phase { color: var(--amber); }
+  .step--amber .step-task { background: var(--amber-dim); color: var(--amber); }
+
+  .step--teal { border-color: color-mix(in srgb, var(--teal) 25%, transparent); }
+  .step--teal .step-phase { color: var(--teal); }
+  .step--teal .step-task { background: var(--teal-dim); color: var(--teal); }
+
+  .step--purple { border-color: color-mix(in srgb, var(--purple) 25%, transparent); }
+  .step--purple .step-phase { color: var(--purple); }
+  .step--purple .step-task { background: var(--purple-dim); color: var(--purple); }
+
+  .step--red { border-color: color-mix(in srgb, var(--red) 25%, transparent); }
+  .step--red .step-phase { color: var(--red); }
+  .step--red .step-task { background: var(--red-dim); color: var(--red); }
+
+  /* Pipeline arrows */
+  .pipe-arrow {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 6px;
+    flex-shrink: 0;
+    min-width: 48px;
+  }
+  .pipe-arrow-line {
+    font-size: 18px;
+    color: var(--border-bright);
+    letter-spacing: -2px;
+  }
+  .pipe-arrow-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    margin-top: 2px;
+    letter-spacing: 0.3px;
+  }
+
+  /* Branch out (RFI / Schedule parallel) */
+  .branch-container {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    margin-top: 20px;
+  }
+  .branch-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    min-width: 40px;
+  }
+  .branch-line {
+    width: 2px;
+    height: 20px;
+    background: var(--border-bright);
+    border-radius: 1px;
+  }
+  .branch-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    letter-spacing: 0.5px;
+    padding: 8px 0;
+  }
+
+  .branch-row {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+  }
+
+  /* Vertical flow arrow (between sections) */
+  .flow-arrow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 8px 0;
+  }
+  .flow-arrow svg {
+    width: 20px; height: 20px;
+    fill: none; stroke: var(--border-bright);
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  }
+
+  /* Schema detail cards */
+  .schema-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .schema-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .schema-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  .schema-card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .schema-card-header .badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 5px;
+  }
+  .badge--green { background: var(--green-dim); color: var(--green); }
+  .badge--amber { background: var(--amber-dim); color: var(--amber); }
+  .schema-card-header .status {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: auto;
+  }
+  .status--done { background: var(--green-dim); color: var(--green); }
+  .status--wip { background: var(--amber-dim); color: var(--amber); }
+
+  .schema-card-body {
+    padding: 14px 18px;
+  }
+  .schema-fields {
+    list-style: none;
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .schema-fields li {
+    padding-left: 14px;
+    position: relative;
+    color: var(--text-dim);
+  }
+  .schema-fields li::before {
+    content: '>';
+    font-family: var(--font-mono);
+    font-size: 10px;
+    position: absolute;
+    left: 0;
+    font-weight: 600;
+  }
+  .schema-fields code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+  }
+
+  .schema-fields li.f-green::before { color: var(--green); }
+  .schema-fields li.f-amber::before { color: var(--amber); }
+
+  /* Mermaid diagram section */
+  .mermaid-wrap {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 24px;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    margin-bottom: 28px;
+  }
+  .mermaid-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+  .mermaid-wrap::-webkit-scrollbar-track { background: transparent; }
+  .mermaid-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .mermaid-wrap .mermaid {
+    transition: transform 0.2s ease;
+    transform-origin: center center;
+  }
+
+  .mermaid .nodeLabel { color: var(--text) !important; }
+  .mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--bg) !important; }
+  .mermaid .edgeLabel rect { fill: var(--bg) !important; }
+
+  .zoom-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 2px;
+    z-index: 10;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+  }
+  .zoom-controls button {
+    width: 28px; height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .zoom-controls button:hover {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  .mermaid-wrap.is-zoomed { cursor: grab; }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+
+  /* Callouts */
+  .insight-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .insight {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    border-top: 3px solid var(--blue);
+  }
+  .insight--orange { border-top-color: var(--orange); }
+  .insight--green { border-top-color: var(--green); }
+  .insight-title {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+  }
+  .insight-text {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* Key callout */
+  .key-callout {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--orange);
+    border-radius: 0 12px 12px 0;
+    padding: 22px 26px;
+    margin-bottom: 28px;
+  }
+  .key-callout-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.3px;
+  }
+  .key-callout-text {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .key-callout-text strong { color: var(--text); }
+
+  .footer {
+    margin-top: 36px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .footer a { color: var(--blue); text-decoration: none; }
+
+  @media (max-width: 900px) {
+    .schema-details { grid-template-columns: 1fr; }
+    .insight-row { grid-template-columns: 1fr; }
+    .pipeline { flex-wrap: wrap; gap: 8px; }
+    .pipe-arrow { display: none; }
+    .branch-container { flex-wrap: wrap; gap: 8px; }
+    .branch-connector { display: none; }
+  }
+  @media (max-width: 520px) {
+    body { padding: 20px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="header anim" style="--i:0">
+    <div class="header-eyebrow">CAIP &mdash; Agent Composition</div>
+    <h1>End-to-End Construction Workflow</h1>
+    <p class="header-sub">
+      How <strong>independently-built AI agents</strong> from different companies compose
+      through CAIP's standardized schemas. Each agent's output is the next agent's input &mdash;
+      typed, validated, and interoperable.
+    </p>
+  </div>
+
+  <!-- Key insight -->
+  <div class="key-callout anim" style="--i:1">
+    <div class="key-callout-title">Every Agent is Opaque</div>
+    <div class="key-callout-text">
+      Agents don't expose internals. <strong>Proprietary logic, pricing models, and trade secrets stay private.</strong>
+      Only the interface matters: Agent Card (metadata) + typed schema I/O.
+      Any CAIP agent works with any other CAIP agent &mdash; built by different companies, using different AI models,
+      interoperating because they share a common construction vocabulary.
+    </div>
+  </div>
+
+  <!-- Main pipeline: happy path -->
+  <div class="pipeline-section anim" style="--i:3">
+    <div class="section-label" style="color: var(--blue);">
+      <span class="dot" style="background: var(--blue)"></span>
+      Primary Composition Pipeline
+    </div>
+
+    <div class="pipeline">
+      <div class="pipeline-step step--blue">
+        <div class="step-phase">Input</div>
+        <div class="step-agent">Plan Sheets</div>
+        <div class="step-io">PDF, DWG, RVT, IFC<br>mechanical drawings</div>
+      </div>
+
+      <div class="pipe-arrow">
+        <div class="pipe-arrow-line">&rarr;</div>
+      </div>
+
+      <div class="pipeline-step step--green">
+        <div class="step-phase">Phase 1</div>
+        <div class="step-agent">Takeoff Agent</div>
+        <div class="step-task">takeoff</div>
+        <div class="step-io">
+          in: plan sheets<br>
+          out: <code style="color:var(--green)">bom-v1</code>
+        </div>
+      </div>
+
+      <div class="pipe-arrow">
+        <div class="pipe-arrow-line">&rarr;</div>
+        <div class="pipe-arrow-label">bom-v1</div>
+      </div>
+
+      <div class="pipeline-step step--orange">
+        <div class="step-phase">Phase 2</div>
+        <div class="step-agent">Estimating Agent</div>
+        <div class="step-task">estimate</div>
+        <div class="step-io">
+          in: <code style="color:var(--green)">bom-v1</code><br>
+          out: <code style="color:var(--orange)">estimate-v1</code>
+        </div>
+      </div>
+
+      <div class="pipe-arrow">
+        <div class="pipe-arrow-line">&rarr;</div>
+        <div class="pipe-arrow-label">estimate-v1</div>
+      </div>
+
+      <div class="pipeline-step step--amber">
+        <div class="step-phase">Phase 3</div>
+        <div class="step-agent">Supplier Agent</div>
+        <div class="step-task">material-procurement</div>
+        <div class="step-io">
+          in: <code style="color:var(--orange)">estimate-v1</code><br>
+          out: <code style="color:var(--amber)">quote-v1</code>
+        </div>
+      </div>
+
+      <div class="pipe-arrow">
+        <div class="pipe-arrow-line">&rarr;</div>
+        <div class="pipe-arrow-label">quote-v1</div>
+      </div>
+
+      <div class="pipeline-step step--purple">
+        <div class="step-phase">Output</div>
+        <div class="step-agent">Bid Package</div>
+        <div class="step-io">
+          Complete priced bid<br>ready for submission
+        </div>
+      </div>
+    </div>
+
+    <!-- Branch: RFI + Schedule -->
+    <div class="branch-container">
+      <div class="branch-connector">
+        <div class="branch-line"></div>
+        <div class="branch-label">parallel</div>
+        <div class="branch-line"></div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;flex:1">
+        <div class="branch-row">
+          <div class="pipeline-step step--red" style="flex:1">
+            <div class="step-phase">Branch A &mdash; Document Review</div>
+            <div class="step-agent">RFI Agent</div>
+            <div class="step-task">rfi-generation</div>
+            <div class="step-io">
+              Detects design conflicts &rarr; produces <code style="color:var(--red)">rfi-v1</code><br>
+              Routes to Architect Agent (human-in-the-loop)
+            </div>
+          </div>
+
+          <div class="pipe-arrow">
+            <div class="pipe-arrow-line">&rarr;</div>
+            <div class="pipe-arrow-label">rfi-v1</div>
+          </div>
+
+          <div class="pipeline-step step--red" style="flex:1">
+            <div class="step-phase">Human Review</div>
+            <div class="step-agent">Architect Agent</div>
+            <div class="step-task">rfi-response</div>
+            <div class="step-io">
+              <code>input-required</code> state<br>
+              Pauses for review, resumes on response
+            </div>
+          </div>
+        </div>
+
+        <div class="branch-row">
+          <div class="pipeline-step step--teal" style="flex:1">
+            <div class="step-phase">Branch B &mdash; Coordination</div>
+            <div class="step-agent">Schedule Agent</div>
+            <div class="step-task">schedule-coordination</div>
+            <div class="step-io">
+              Consumes <code style="color:var(--green)">bom-v1</code> +
+              <code style="color:var(--orange)">estimate-v1</code><br>
+              Produces <code style="color:var(--teal)">schedule-v1</code>
+            </div>
+          </div>
+
+          <div class="pipe-arrow">
+            <div class="pipe-arrow-line">&rarr;</div>
+            <div class="pipe-arrow-label">schedule-v1</div>
+          </div>
+
+          <div class="pipeline-step step--teal" style="flex:1">
+            <div class="step-phase">Coordination</div>
+            <div class="step-agent">Change Order Agent</div>
+            <div class="step-task">change-order-analysis</div>
+            <div class="step-io">
+              Analyzes impacts across<br>
+              all schemas when changes occur
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mermaid: Orchestrator flow -->
+  <div class="anim" style="--i:6">
+    <div class="section-label" style="color: var(--blue); padding-left: 4px; margin-bottom: 12px;">
+      <span class="dot" style="background: var(--blue)"></span>
+      GC Orchestrator Discovery Flow
+    </div>
+
+    <div class="mermaid-wrap">
+      <div class="zoom-controls">
+        <button onclick="zoomDiagram(this, 1.2)" title="Zoom in">+</button>
+        <button onclick="zoomDiagram(this, 0.8)" title="Zoom out">&minus;</button>
+        <button onclick="resetZoom(this)" title="Reset zoom">&#8634;</button>
+      </div>
+      <pre class="mermaid">
+sequenceDiagram
+  participant GC as GC Orchestrator
+  participant R as Agent Registry
+  participant T as Takeoff Agent
+  participant E as Estimating Agent
+  participant S as Supplier Agent
+
+  GC->>R: Find agents: trade=mechanical, skill=takeoff
+  R-->>GC: Agent Cards with x-construction metadata
+
+  GC->>T: POST task: takeoff with plan sheets
+  Note right of T: Reads PDF/DWG plans
+  T-->>GC: bom-v1 JSON artifact
+
+  GC->>R: Find agents: skill=estimate
+  R-->>GC: Matching estimating agents
+
+  GC->>E: POST task: estimate with bom-v1
+  Note right of E: Prices each line item
+  E-->>GC: estimate-v1 JSON artifact
+
+  GC->>S: POST task: material-procurement with estimate-v1
+  Note right of S: Queries supplier APIs
+  S-->>GC: quote-v1 JSON artifact
+
+  Note over GC: Assembles complete bid package
+      </pre>
+    </div>
+  </div>
+
+  <!-- Schema details -->
+  <div class="section-label anim" style="color: var(--green); padding-left: 4px; margin-bottom: 12px; --i:8">
+    <span class="dot" style="background: var(--green)"></span>
+    Standardized Data Schemas
+  </div>
+
+  <div class="schema-details anim" style="--i:9">
+    <div class="schema-card">
+      <div class="schema-card-header">
+        <span class="badge badge--green">bom-v1</span>
+        <span>Bill of Materials</span>
+        <span class="status status--done">Complete</span>
+      </div>
+      <div class="schema-card-body">
+        <ul class="schema-fields">
+          <li class="f-green"><code>projectId</code>, <code>trade</code>, <code>csiDivision</code></li>
+          <li class="f-green"><code>lineItems[]</code> &mdash; qty, unit, material, spec section</li>
+          <li class="f-green"><code>alternates[]</code> &mdash; manufacturer, part numbers</li>
+          <li class="f-green"><code>metadata</code> &mdash; confidence score, source docs</li>
+          <li class="f-green">Units: EA, LF, SF, CF, CY, TON, LB, GAL, LS</li>
+        </ul>
+      </div>
+    </div>
+    <div class="schema-card">
+      <div class="schema-card-header">
+        <span class="badge badge--green">rfi-v1</span>
+        <span>Request for Information</span>
+        <span class="status status--done">Complete</span>
+      </div>
+      <div class="schema-card-body">
+        <ul class="schema-fields">
+          <li class="f-green"><code>subject</code>, <code>question</code>, <code>category</code></li>
+          <li class="f-green"><code>priority</code> &mdash; low, medium, high, critical</li>
+          <li class="f-green"><code>references[]</code> &mdash; sheets, grid coords, markup</li>
+          <li class="f-green"><code>suggestedResolution</code>, <code>relatedBOMItems</code></li>
+          <li class="f-green"><code>assignedTo</code> &mdash; role, company, contact</li>
+        </ul>
+      </div>
+    </div>
+    <div class="schema-card">
+      <div class="schema-card-header">
+        <span class="badge badge--amber">estimate-v1</span>
+        <span>Cost Estimation</span>
+        <span class="status status--wip">In Progress</span>
+      </div>
+      <div class="schema-card-body">
+        <ul class="schema-fields">
+          <li class="f-amber">Cost data from BOM line items</li>
+          <li class="f-amber">Labor, material, equipment breakdowns</li>
+          <li class="f-amber">Markup and contingency factors</li>
+          <li class="f-amber">Schema definition pending</li>
+        </ul>
+      </div>
+    </div>
+    <div class="schema-card">
+      <div class="schema-card-header">
+        <span class="badge badge--amber">schedule-v1</span>
+        <span>Project Schedule</span>
+        <span class="status status--wip">In Progress</span>
+      </div>
+      <div class="schema-card-body">
+        <ul class="schema-fields">
+          <li class="f-amber">Activities tied to BOM + estimate</li>
+          <li class="f-amber">Dependencies and sequencing</li>
+          <li class="f-amber">Trade coordination windows</li>
+          <li class="f-amber">Schema definition pending</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insights -->
+  <div class="insight-row anim" style="--i:12">
+    <div class="insight">
+      <div class="insight-title">Composable by Design</div>
+      <div class="insight-text">
+        Any CAIP agent works with any other. A takeoff vendor's output flows to an estimating vendor's input.
+        Different companies, different AI models, same typed schemas.
+      </div>
+    </div>
+    <div class="insight insight--orange">
+      <div class="insight-title">Human-in-the-Loop</div>
+      <div class="insight-text">
+        Agents can pause for human review via A2A's input-required state.
+        RFIs route to architects, design decisions wait for approval, then pipelines resume.
+      </div>
+    </div>
+    <div class="insight insight--green">
+      <div class="insight-title">Discoverable at Scale</div>
+      <div class="insight-text">
+        GC orchestrators query the Agent Registry by trade, CSI division, project type, and platform integration.
+        Find the right agent for each phase automatically.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer anim" style="--i:14">
+    CAIP &mdash; Initiated by Pelles AI &mdash; Apache 2.0 &mdash;
+    <a href="https://github.com/pelles-ai/caip">github.com/pelles-ai/caip</a>
+  </div>
+
+</div>
+
+<script>
+function updateZoomState(wrap) {
+  var target = wrap.querySelector('.mermaid');
+  var zoom = parseFloat(target.dataset.zoom || '1');
+  wrap.classList.toggle('is-zoomed', zoom > 1);
+}
+function zoomDiagram(btn, factor) {
+  var wrap = btn.closest('.mermaid-wrap');
+  var target = wrap.querySelector('.mermaid');
+  var current = parseFloat(target.dataset.zoom || '1');
+  var next = Math.min(Math.max(current * factor, 0.3), 5);
+  target.dataset.zoom = next;
+  target.style.transform = 'scale(' + next + ')';
+  updateZoomState(wrap);
+}
+function resetZoom(btn) {
+  var wrap = btn.closest('.mermaid-wrap');
+  var target = wrap.querySelector('.mermaid');
+  target.dataset.zoom = '1';
+  target.style.transform = 'scale(1)';
+  updateZoomState(wrap);
+}
+document.querySelectorAll('.mermaid-wrap').forEach(function(wrap) {
+  wrap.addEventListener('wheel', function(e) {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    var target = wrap.querySelector('.mermaid');
+    var current = parseFloat(target.dataset.zoom || '1');
+    var factor = e.deltaY < 0 ? 1.1 : 0.9;
+    var next = Math.min(Math.max(current * factor, 0.3), 5);
+    target.dataset.zoom = next;
+    target.style.transform = 'scale(' + next + ')';
+    updateZoomState(wrap);
+  }, { passive: false });
+
+  var startX, startY, scrollL, scrollT;
+  wrap.addEventListener('mousedown', function(e) {
+    if (e.target.closest('.zoom-controls')) return;
+    var target = wrap.querySelector('.mermaid');
+    if (parseFloat(target.dataset.zoom || '1') <= 1) return;
+    wrap.classList.add('is-panning');
+    startX = e.clientX; startY = e.clientY;
+    scrollL = wrap.scrollLeft; scrollT = wrap.scrollTop;
+  });
+  window.addEventListener('mousemove', function(e) {
+    if (!wrap.classList.contains('is-panning')) return;
+    wrap.scrollLeft = scrollL - (e.clientX - startX);
+    wrap.scrollTop = scrollT - (e.clientY - startY);
+  });
+  window.addEventListener('mouseup', function() {
+    wrap.classList.remove('is-panning');
+  });
+});
+</script>
+
+</body>
+</html>

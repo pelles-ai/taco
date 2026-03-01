@@ -1,0 +1,1 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://caip.dev/schemas/estimate-v1.json", "title": "CAIP estimate-v1", "description": "Placeholder — cost estimate schema, not yet defined", "type": "object" }

@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAIP Architecture — Construction Agent Interoperability Protocol</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-body: 'DM Sans', system-ui, sans-serif;
+    --font-mono: 'Fira Code', 'SF Mono', Consolas, monospace;
+
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface2: #eef0f4;
+    --surface-elevated: #ffffff;
+    --border: rgba(0, 0, 0, 0.07);
+    --border-bright: rgba(0, 0, 0, 0.14);
+    --text: #1a1d26;
+    --text-dim: #6b7280;
+
+    /* Construction palette */
+    --steel: #2563eb;
+    --steel-dim: rgba(37, 99, 235, 0.08);
+    --orange: #ea580c;
+    --orange-dim: rgba(234, 88, 12, 0.08);
+    --concrete: #64748b;
+    --concrete-dim: rgba(100, 116, 139, 0.08);
+    --green: #059669;
+    --green-dim: rgba(5, 150, 105, 0.08);
+    --amber: #d97706;
+    --amber-dim: rgba(217, 119, 6, 0.08);
+    --plum: #7c3aed;
+    --plum-dim: rgba(124, 58, 237, 0.08);
+    --teal: #0d9488;
+    --teal-dim: rgba(13, 148, 136, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1118;
+      --surface: #181b25;
+      --surface2: #1e222e;
+      --surface-elevated: #222738;
+      --border: rgba(255, 255, 255, 0.06);
+      --border-bright: rgba(255, 255, 255, 0.12);
+      --text: #e2e5ed;
+      --text-dim: #8b92a5;
+
+      --steel: #60a5fa;
+      --steel-dim: rgba(96, 165, 250, 0.12);
+      --orange: #fb923c;
+      --orange-dim: rgba(251, 146, 60, 0.12);
+      --concrete: #94a3b8;
+      --concrete-dim: rgba(148, 163, 184, 0.1);
+      --green: #34d399;
+      --green-dim: rgba(52, 211, 153, 0.1);
+      --amber: #fbbf24;
+      --amber-dim: rgba(251, 191, 36, 0.1);
+      --plum: #a78bfa;
+      --plum-dim: rgba(167, 139, 250, 0.1);
+      --teal: #5eead4;
+      --teal-dim: rgba(94, 234, 212, 0.1);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 30% 0%, var(--steel-dim) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 100%, var(--orange-dim) 0%, transparent 40%);
+    color: var(--text);
+    font-family: var(--font-body);
+    padding: 40px 24px;
+    min-height: 100vh;
+    overflow-wrap: break-word;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeScale {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .anim { animation: fadeUp 0.45s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+  .anim-scale { animation: fadeScale 0.35s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  .page { max-width: 1200px; margin: 0 auto; }
+
+  /* Header */
+  .header { margin-bottom: 48px; }
+  .header-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--orange);
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-size: clamp(32px, 5vw, 46px);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1.1;
+    margin-bottom: 12px;
+    text-wrap: balance;
+  }
+  .header-sub {
+    font-size: 16px;
+    color: var(--text-dim);
+    max-width: 700px;
+    line-height: 1.6;
+  }
+  .header-sub strong { color: var(--text); }
+
+  /* Principles row */
+  .principles {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  .principle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    border-top: 3px solid var(--steel);
+  }
+  .principle-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--steel);
+    margin-bottom: 6px;
+  }
+  .principle-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* Main layout: stack + sidebar */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  /* Stack layers */
+  .stack { display: flex; flex-direction: column; gap: 0; }
+
+  .layer {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px 28px;
+    position: relative;
+  }
+  .layer:first-child { border-radius: 12px 12px 0 0; }
+  .layer:last-child { border-radius: 0 0 12px 12px; }
+  .layer + .layer { border-top: none; }
+
+  .layer-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .layer-label .dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+
+  .layer--caip { border-color: var(--orange-dim); }
+  .layer--caip .layer-label { color: var(--orange); }
+  .layer--caip .layer-label .dot { background: var(--orange); }
+
+  .layer--a2a { border-color: var(--steel-dim); }
+  .layer--a2a .layer-label { color: var(--steel); }
+  .layer--a2a .layer-label .dot { background: var(--steel); }
+
+  .layer--transport { border-color: var(--concrete-dim); background: var(--surface2); }
+  .layer--transport .layer-label { color: var(--concrete); }
+  .layer--transport .layer-label .dot { background: var(--concrete); }
+
+  /* Sub-sections inside layers */
+  .layer-sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+  .layer-section {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .layer-section-title {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .layer-section-title .icon {
+    width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+    background: var(--orange-dim); border-radius: 4px; font-size: 10px;
+  }
+
+  .schema-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+  }
+  .schema-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--orange-dim);
+    color: var(--orange);
+    white-space: nowrap;
+  }
+  .schema-tag--steel { background: var(--steel-dim); color: var(--steel); }
+  .schema-tag--green { background: var(--green-dim); color: var(--green); }
+  .schema-tag--concrete { background: var(--concrete-dim); color: var(--concrete); }
+
+  .mini-list {
+    list-style: none;
+    font-size: 11px;
+    line-height: 1.9;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+  .mini-list li {
+    padding-left: 12px;
+    position: relative;
+  }
+  .mini-list li::before {
+    content: '>';
+    font-family: var(--font-mono);
+    font-size: 9px;
+    position: absolute;
+    left: 0;
+    color: var(--orange);
+    font-weight: 600;
+  }
+  .mini-list code {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text);
+  }
+
+  /* A2A layer inner */
+  .a2a-items {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .a2a-item {
+    background: var(--steel-dim);
+    border: 1px solid color-mix(in srgb, var(--steel) 20%, transparent);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .a2a-item-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--steel);
+    margin-bottom: 2px;
+  }
+
+  /* Transport layer inner */
+  .transport-items {
+    display: flex;
+    gap: 32px;
+  }
+  .transport-item {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--concrete);
+  }
+
+  /* Flow arrows between layers */
+  .layer-arrow {
+    display: flex;
+    justify-content: center;
+    padding: 2px 0;
+    position: relative;
+    z-index: 1;
+  }
+  .layer-arrow svg {
+    width: 24px; height: 16px;
+    fill: none; stroke: var(--border-bright); stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+
+  /* -------- RIGHT SIDEBAR: Task Types -------- */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+  .task-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .task-group:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .task-group-header {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .task-group-header .dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+
+  .task-group--precon .task-group-header { color: var(--green); }
+  .task-group--precon .task-group-header .dot { background: var(--green); }
+  .task-group--precon { border-left: 3px solid var(--green); }
+
+  .task-group--docs .task-group-header { color: var(--amber); }
+  .task-group--docs .task-group-header .dot { background: var(--amber); }
+  .task-group--docs { border-left: 3px solid var(--amber); }
+
+  .task-group--field .task-group-header { color: var(--teal); }
+  .task-group--field .task-group-header .dot { background: var(--teal); }
+  .task-group--field { border-left: 3px solid var(--teal); }
+
+  .task-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+  }
+  .task-item {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Bottom: Discovery + Agent Card */
+  .bottom-section {
+    margin-top: 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .card-example {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card-example-header {
+    background: var(--surface2);
+    padding: 12px 20px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-example-header .dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+  .card-example-body {
+    padding: 16px 20px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-dim);
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .card-example-body .key { color: var(--steel); }
+  .card-example-body .str { color: var(--green); }
+  .card-example-body .comment { color: var(--text-dim); font-style: italic; opacity: 0.7; }
+
+  /* Paradigm callout */
+  .paradigm {
+    margin-top: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--orange);
+    border-radius: 0 12px 12px 0;
+    padding: 24px 28px;
+  }
+  .paradigm-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    letter-spacing: -0.5px;
+  }
+  .paradigm-text {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.7;
+    max-width: 900px;
+  }
+  .paradigm-text strong { color: var(--text); }
+
+  /* Footer */
+  .footer {
+    margin-top: 40px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+  .footer a { color: var(--steel); text-decoration: none; }
+
+  @media (max-width: 900px) {
+    .main-layout { grid-template-columns: 1fr; }
+    .principles { grid-template-columns: 1fr 1fr; }
+    .layer-sections { grid-template-columns: 1fr; }
+    .bottom-section { grid-template-columns: 1fr; }
+    .task-list { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    body { padding: 20px 14px; }
+    .principles { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="header anim" style="--i:0">
+    <div class="header-eyebrow">Construction Agent Interoperability Protocol</div>
+    <h1>CAIP Architecture</h1>
+    <p class="header-sub">
+      A construction-specific <strong>ontology layer</strong> built on top of the
+      <strong>A2A protocol</strong> (Linux Foundation). Standardized task types,
+      data schemas, and agent discovery &mdash; enabling AI agents across the
+      construction industry to interoperate seamlessly.
+    </p>
+  </div>
+
+  <!-- Design Principles -->
+  <div class="principles">
+    <div class="principle anim-scale" style="--i:1">
+      <div class="principle-title">Ontology, Not Protocol</div>
+      <div class="principle-desc">Adds vocabulary on top of A2A &mdash; doesn't fork it. Pure extension via native A2A extension points.</div>
+    </div>
+    <div class="principle anim-scale" style="--i:2">
+      <div class="principle-title">Agents Are Opaque</div>
+      <div class="principle-desc">No requirement for specific AI model, framework, or platform. Only inputs/outputs matter.</div>
+    </div>
+    <div class="principle anim-scale" style="--i:3">
+      <div class="principle-title">Zero Lock-in</div>
+      <div class="principle-desc">Every CAIP agent IS a standard A2A agent. Generic A2A clients can ignore x-construction fields.</div>
+    </div>
+    <div class="principle anim-scale" style="--i:4">
+      <div class="principle-title">Open &amp; Composable</div>
+      <div class="principle-desc">Apache 2.0 licensed. Community-driven by construction tech companies, contractors, and platforms.</div>
+    </div>
+  </div>
+
+  <!-- Main: Stack + Task Types Sidebar -->
+  <div class="main-layout">
+
+    <!-- Left: Three-layer stack -->
+    <div class="stack anim" style="--i:5">
+
+      <!-- Layer 3: CAIP Ontology -->
+      <div class="layer layer--caip">
+        <div class="layer-label"><span class="dot"></span> CAIP Ontology Layer</div>
+        <div class="layer-sections">
+          <div class="layer-section">
+            <div class="layer-section-title">Task Types</div>
+            <p style="font-size:11px;color:var(--text-dim);line-height:1.5;margin-bottom:8px">
+              Typed vocabulary of 18 construction workflows
+            </p>
+            <div class="schema-tags">
+              <span class="schema-tag">takeoff</span>
+              <span class="schema-tag">estimate</span>
+              <span class="schema-tag">rfi-generation</span>
+              <span class="schema-tag">schedule</span>
+              <span class="schema-tag">+14 more</span>
+            </div>
+          </div>
+          <div class="layer-section">
+            <div class="layer-section-title">Data Schemas</div>
+            <p style="font-size:11px;color:var(--text-dim);line-height:1.5;margin-bottom:8px">
+              JSON schemas for construction artifacts
+            </p>
+            <div class="schema-tags">
+              <span class="schema-tag--green schema-tag">bom-v1</span>
+              <span class="schema-tag--green schema-tag">rfi-v1</span>
+              <span class="schema-tag--concrete schema-tag">estimate-v1</span>
+              <span class="schema-tag--concrete schema-tag">schedule-v1</span>
+              <span class="schema-tag--concrete schema-tag">quote-v1</span>
+            </div>
+          </div>
+          <div class="layer-section">
+            <div class="layer-section-title">Discovery Extensions</div>
+            <p style="font-size:11px;color:var(--text-dim);line-height:1.5;margin-bottom:8px">
+              x-construction fields on Agent Cards
+            </p>
+            <ul class="mini-list">
+              <li><code>trade</code> mechanical, electrical&hellip;</li>
+              <li><code>csiDivisions</code> MasterFormat</li>
+              <li><code>projectTypes</code> commercial&hellip;</li>
+              <li><code>integrations</code> procore, acc&hellip;</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="layer-arrow">
+        <svg viewBox="0 0 24 16"><path d="M12 2 L12 14 M7 10 L12 14 L17 10"/></svg>
+      </div>
+
+      <!-- Layer 2: A2A Protocol -->
+      <div class="layer layer--a2a">
+        <div class="layer-label"><span class="dot"></span> A2A Protocol <span style="font-weight:400;color:var(--text-dim);font-size:10px;letter-spacing:0.5px">&mdash; Linux Foundation Standard</span></div>
+        <div class="a2a-items">
+          <div class="a2a-item">
+            <div class="a2a-item-label">Identity</div>
+            Agent Cards
+          </div>
+          <div class="a2a-item">
+            <div class="a2a-item-label">Execution</div>
+            Tasks
+          </div>
+          <div class="a2a-item">
+            <div class="a2a-item-label">Communication</div>
+            Messages
+          </div>
+          <div class="a2a-item">
+            <div class="a2a-item-label">Output</div>
+            Artifacts
+          </div>
+          <div class="a2a-item">
+            <div class="a2a-item-label">Management</div>
+            Lifecycle
+          </div>
+        </div>
+      </div>
+
+      <div class="layer-arrow">
+        <svg viewBox="0 0 24 16"><path d="M12 2 L12 14 M7 10 L12 14 L17 10"/></svg>
+      </div>
+
+      <!-- Layer 1: Transport -->
+      <div class="layer layer--transport">
+        <div class="layer-label"><span class="dot"></span> Transport Layer <span style="font-weight:400;color:var(--text-dim);font-size:10px;letter-spacing:0.5px">&mdash; Standard Web Infrastructure</span></div>
+        <div class="transport-items">
+          <div class="transport-item">HTTP/HTTPS</div>
+          <div class="transport-item">JSON-RPC</div>
+          <div class="transport-item">SSE (Server-Sent Events)</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Task Types sidebar -->
+    <div class="sidebar">
+      <div class="task-group task-group--precon anim" style="--i:7">
+        <div class="task-group-header"><span class="dot"></span> Preconstruction</div>
+        <div class="task-list">
+          <div class="task-item">takeoff</div>
+          <div class="task-item">estimate</div>
+          <div class="task-item">bid-leveling</div>
+          <div class="task-item">value-engineering</div>
+          <div class="task-item">scope-review</div>
+          <div class="task-item">plan-comparison</div>
+        </div>
+      </div>
+      <div class="task-group task-group--docs anim" style="--i:9">
+        <div class="task-group-header"><span class="dot"></span> Document Management</div>
+        <div class="task-list">
+          <div class="task-item">rfi-generation</div>
+          <div class="task-item">rfi-response</div>
+          <div class="task-item">submittal-review</div>
+          <div class="task-item">spec-compliance</div>
+          <div class="task-item">change-order</div>
+          <div class="task-item">drawing-markup</div>
+        </div>
+      </div>
+      <div class="task-group task-group--field anim" style="--i:11">
+        <div class="task-group-header"><span class="dot"></span> Field + Coordination</div>
+        <div class="task-list">
+          <div class="task-item">schedule-coord</div>
+          <div class="task-item">procurement</div>
+          <div class="task-item">clash-detection</div>
+          <div class="task-item">safety-compliance</div>
+          <div class="task-item">progress-tracking</div>
+          <div class="task-item">punch-list</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom: Agent Card examples -->
+  <div class="bottom-section">
+    <div class="card-example anim" style="--i:13">
+      <div class="card-example-header">
+        <span class="dot" style="background:var(--orange)"></span>
+        Agent Card &mdash; x-construction extension
+      </div>
+      <div class="card-example-body">{
+  <span class="key">"name"</span>: <span class="str">"Mech Takeoff Agent"</span>,
+  <span class="key">"x-construction"</span>: {
+    <span class="key">"trade"</span>: <span class="str">"mechanical"</span>,
+    <span class="key">"csiDivisions"</span>: [<span class="str">"22"</span>, <span class="str">"23"</span>],
+    <span class="key">"projectTypes"</span>: [<span class="str">"commercial"</span>],
+    <span class="key">"certifications"</span>: [<span class="str">"SOC2"</span>],
+    <span class="key">"dataFormats"</span>: {
+      <span class="key">"input"</span>: [<span class="str">"pdf"</span>, <span class="str">"dwg"</span>, <span class="str">"rvt"</span>],
+      <span class="key">"output"</span>: [<span class="str">"bom-json"</span>, <span class="str">"csv"</span>]
+    },
+    <span class="key">"integrations"</span>: [<span class="str">"procore"</span>, <span class="str">"acc"</span>]
+  }
+}</div>
+    </div>
+    <div class="card-example anim" style="--i:14">
+      <div class="card-example-header">
+        <span class="dot" style="background:var(--steel)"></span>
+        Discovery Query &mdash; find agents by trade + skill
+      </div>
+      <div class="card-example-body"><span class="comment">// GC Orchestrator discovers subcontractor agents</span>
+
+GET /agents?<span class="key">trade</span>=<span class="str">mechanical</span>
+           &<span class="key">skill</span>=<span class="str">takeoff</span>
+           &<span class="key">projectType</span>=<span class="str">healthcare</span>
+           &<span class="key">integration</span>=<span class="str">procore</span>
+
+<span class="comment">// Returns matching CAIP agents with full cards</span>
+<span class="comment">// Any A2A client can call them &mdash; zero CAIP lock-in</span>
+
+<span class="comment">// Skill-level extension:</span>
+{
+  <span class="key">"skills"</span>: [{
+    <span class="key">"id"</span>: <span class="str">"generate-bom"</span>,
+    <span class="key">"x-construction"</span>: {
+      <span class="key">"taskType"</span>: <span class="str">"takeoff"</span>,
+      <span class="key">"outputSchema"</span>: <span class="str">"bom-v1"</span>
+    }
+  }]
+}</div>
+    </div>
+  </div>
+
+  <!-- Paradigm shift callout -->
+  <div class="paradigm anim" style="--i:16">
+    <div class="paradigm-title">The Paradigm Shift</div>
+    <div class="paradigm-text">
+      Construction projects involve dozens of companies using incompatible tools.
+      As AI agents enter this ecosystem, the same fragmentation is being replicated.
+      <strong>A takeoff agent can't hand its output to an estimating agent.</strong>
+      <strong>A GC's orchestrator can't discover a sub's agent.</strong>
+      CAIP solves this by giving every agent a shared construction vocabulary &mdash;
+      typed task types, standardized schemas, and trade-aware discovery &mdash;
+      so the output of one agent is valid, parseable input for the next.
+      <strong>The window is open. Standards are set by those who show up first.</strong>
+    </div>
+  </div>
+
+  <div class="footer anim" style="--i:18">
+    Initiated by Pelles AI &mdash; Apache 2.0 &mdash;
+    <a href="https://github.com/pelles-ai/caip">github.com/pelles-ai/caip</a>
+  </div>
+
+</div>
+
+</body>
+</html>

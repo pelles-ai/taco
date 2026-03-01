@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caip.dev/schemas/bom-v1.json",
+  "title": "CAIP Bill of Materials v1",
+  "description": "Standardized bill of materials for construction workflows",
+  "type": "object",
+  "required": ["projectId", "trade", "csiDivision", "lineItems", "metadata"],
+  "properties": {
+    "projectId": {
+      "type": "string",
+      "description": "Unique project identifier"
+    },
+    "revision": {
+      "type": "string",
+      "description": "Drawing revision this BOM was generated from"
+    },
+    "trade": {
+      "type": "string",
+      "description": "Trade this BOM covers",
+      "enum": ["mechanical", "electrical", "plumbing", "structural", "civil", "architectural", "fire-protection", "general", "multi-trade"]
+    },
+    "csiDivision": {
+      "type": "string",
+      "description": "Primary CSI MasterFormat division number"
+    },
+    "lineItems": {
+      "type": "array",
+      "description": "Individual material line items",
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "quantity", "unit"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique line item identifier"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable material description"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Measured quantity"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of measure",
+            "enum": ["EA", "LF", "SF", "CF", "CY", "TON", "LB", "GAL", "LS"]
+          },
+          "size": {
+            "type": "string",
+            "description": "Size specification (e.g., '4 inch', '3/4\"')"
+          },
+          "material": {
+            "type": "string",
+            "description": "Material type (e.g., 'copper', 'PVC', 'steel')"
+          },
+          "specSection": {
+            "type": "string",
+            "description": "Specification section reference (e.g., '23 21 13')"
+          },
+          "sourceSheet": {
+            "type": "string",
+            "description": "Drawing sheet this item was taken from (e.g., 'M-201')"
+          },
+          "location": {
+            "type": "string",
+            "description": "Location within the project (e.g., 'Level 2 Wing B')"
+          },
+          "alternates": {
+            "type": "array",
+            "description": "Acceptable alternate materials",
+            "items": {
+              "type": "object",
+              "properties": {
+                "description": { "type": "string" },
+                "manufacturer": { "type": "string" },
+                "partNumber": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["generatedBy", "generatedAt"],
+      "properties": {
+        "generatedBy": {
+          "type": "string",
+          "description": "Agent ID that generated this BOM"
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of generation"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall confidence score (0-1)"
+        },
+        "sourceDocuments": {
+          "type": "array",
+          "description": "List of source document references",
+          "items": {
+            "type": "object",
+            "properties": {
+              "filename": { "type": "string" },
+              "sheetId": { "type": "string" },
+              "revision": { "type": "string" }
+            }
+          }
+        },
+        "flaggedItems": {
+          "type": "array",
+          "description": "Items flagged for human review",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lineItemId": { "type": "string" },
+              "reason": { "type": "string" },
+              "severity": {
+                "type": "string",
+                "enum": ["info", "warning", "error"]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

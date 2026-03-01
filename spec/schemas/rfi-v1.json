@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caip.dev/schemas/rfi-v1.json",
+  "title": "CAIP Request for Information v1",
+  "description": "Standardized RFI output for construction document review agents",
+  "type": "object",
+  "required": ["projectId", "subject", "question", "category", "priority", "references", "metadata"],
+  "properties": {
+    "projectId": {
+      "type": "string",
+      "description": "Unique project identifier"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Brief subject line for the RFI"
+    },
+    "question": {
+      "type": "string",
+      "description": "The detailed question or clarification request"
+    },
+    "category": {
+      "type": "string",
+      "description": "RFI category",
+      "enum": ["design-conflict", "missing-information", "clarification", "substitution", "coordination", "code-compliance"]
+    },
+    "priority": {
+      "type": "string",
+      "description": "Urgency level",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "references": {
+      "type": "array",
+      "description": "Drawing/document references related to this RFI",
+      "items": {
+        "type": "object",
+        "required": ["sheetId"],
+        "properties": {
+          "sheetId": {
+            "type": "string",
+            "description": "Drawing sheet reference (e.g., 'M-201')"
+          },
+          "area": {
+            "type": "string",
+            "description": "Area on the sheet (e.g., 'grid D4-E6')"
+          },
+          "coordinates": {
+            "type": "object",
+            "description": "Bounding box coordinates on the sheet",
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "width": { "type": "number" },
+              "height": { "type": "number" }
+            }
+          },
+          "markup": {
+            "type": "string",
+            "description": "Base64-encoded markup image (PNG)"
+          }
+        }
+      }
+    },
+    "suggestedResolution": {
+      "type": "string",
+      "description": "Agent's suggested resolution, if any"
+    },
+    "relatedBomItems": {
+      "type": "array",
+      "description": "BOM line item IDs related to this RFI",
+      "items": { "type": "string" }
+    },
+    "dueDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Requested response date"
+    },
+    "assignedTo": {
+      "type": "object",
+      "description": "Intended recipient",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["architect", "engineer", "owner", "contractor", "subcontractor"]
+        },
+        "company": { "type": "string" },
+        "contact": { "type": "string" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["generatedBy", "generatedAt"],
+      "properties": {
+        "generatedBy": {
+          "type": "string",
+          "description": "Agent ID that generated this RFI"
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence that this is a legitimate issue (0-1)"
+        },
+        "relatedRfis": {
+          "type": "array",
+          "description": "IDs of related RFIs",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}
