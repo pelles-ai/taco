@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 
 class CAIPClient:
     """Client for sending tasks to a CAIP-compatible agent."""
@@ -9,5 +11,5 @@ class CAIPClient:
     def __init__(self, *, agent_url: str) -> None:
         self.agent_url = agent_url
 
-    async def run_task(self, *, task_type: str, input: object) -> object:
+    async def run_task(self, *, task_type: str, input_data: dict[str, Any]) -> dict[str, Any]:
         raise NotImplementedError("Task execution is not yet implemented")

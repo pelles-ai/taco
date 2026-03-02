@@ -1,7 +1,8 @@
 .PHONY: demo demo-docker demo-stop demo-install demo-env
 
 # ── Local demo ────────────────────────────────────────────────
-demo-install:                        ## Install Python dependencies for the demo
+demo-install:                        ## Install CAIP SDK + demo dependencies
+	pip install -e sdk[server]
 	pip install -r examples/requirements.txt
 
 demo-env:                            ## Create .env from template (won't overwrite existing)

@@ -17,7 +17,11 @@ Added to the root of the Agent Card.
       "input": ["pdf", "dwg", "rvt", "ifc"],
       "output": ["bom-json", "csv", "pdf"]
     },
-    "integrations": ["procore", "acc", "bluebeam"]
+    "integrations": ["procore", "acc", "bluebeam"],
+    "security": {
+      "trustTier": 0,
+      "scopesOffered": ["caip:trade:mechanical", "caip:task:takeoff"]
+    }
   }
 }
 ```
@@ -33,6 +37,7 @@ Added to the root of the Agent Card.
 | `dataFormats.input` | string[] | Yes | File formats the agent can accept as input |
 | `dataFormats.output` | string[] | Yes | File formats the agent can produce |
 | `integrations` | string[] | No | Platform integrations. Values: `procore`, `acc`, `bluebeam`, `plangrid`, `p6`, `ms-project`, `sage`, `viewpoint` |
+| `security` | object | No | CAIP security metadata. See [`security.md`](security.md) for the full field reference. |
 
 ## Skill-Level Extension: `x-construction`
 
@@ -72,3 +77,30 @@ GET /agents?trade=mechanical&taskType=schedule-coordination&projectType=healthca
 ```
 
 This returns all registered Agent Cards matching the filter criteria.
+
+## Security Extension: `x-construction.security`
+
+The `security` sub-object carries CAIP-specific security metadata. See [`security.md`](security.md) for the complete specification, including the scope taxonomy and registry trust model.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `trustTier` | integer | No | Registry trust tier: `0` unverified, `1` org-verified, `2` cert-attested. Assigned by the CAIP Registry. |
+| `scopesOffered` | string[] | No | CAIP OAuth scopes this agent will accept. See [`security.md` — Scope Taxonomy](security.md#caip-scope-taxonomy). |
+| `projectScoped` | boolean | No | If `true`, incoming requests must include a `caip:project:{id}` scope. |
+| `delegationSupported` | boolean | No | If `true`, the agent supports downstream Token Exchange ([RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)) sub-delegation. |
+| `extendedCardUrl` | string | No | URL of the extended Agent Card, revealed after initial authentication. |
+
+```json
+{
+  "x-construction": {
+    "trade": "mechanical",
+    "csiDivisions": ["23"],
+    "security": {
+      "trustTier": 1,
+      "scopesOffered": ["caip:trade:mechanical", "caip:task:estimate"],
+      "projectScoped": true,
+      "delegationSupported": false
+    }
+  }
+}
+```

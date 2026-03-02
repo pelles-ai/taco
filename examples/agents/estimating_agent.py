@@ -117,7 +117,7 @@ card = AgentCard(
     ),
 )
 
-server = A2AServer(card)
+server = A2AServer(card, enable_admin=True)
 
 
 def _make_handler(

@@ -90,7 +90,7 @@ card = AgentCard(
     ),
 )
 
-server = A2AServer(card)
+server = A2AServer(card, enable_admin=True)
 
 
 async def handle_rfi_generation(task: Task, input_data: dict) -> Artifact:

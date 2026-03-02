@@ -19,6 +19,7 @@ Every CAIP agent is a standard A2A agent. Zero lock-in.
 | **Task Types** | A typed vocabulary of construction workflows | `takeoff`, `estimate`, `rfi-generation`, `submittal-review`, `schedule-coordination` |
 | **Data Schemas** | Typed JSON schemas for construction artifacts | `bom-v1`, `rfi-v1`, `estimate-v1`, `schedule-v1`, `quote-v1` |
 | **Agent Discovery** | Construction extensions to A2A Agent Cards | Filter by trade, CSI division, project type, file format, platform integration |
+| **Security** | Scope taxonomy, trust tiers, token delegation | `caip:trade:mechanical`, `caip:task:estimate`, `caip:project:PRJ-0042:write` |
 
 ## How It Works
 
@@ -75,7 +76,13 @@ caip/
 ├── spec/
 │   ├── task-types.md                # Construction task type definitions
 │   ├── agent-card-extensions.md     # x-construction Agent Card fields
+│   ├── security.md                  # Auth model, scope taxonomy, trust tiers
 │   └── schemas/                     # JSON Schema definitions (bom-v1, rfi-v1, estimate-v1, ...)
+├── docs/
+│   ├── abstract.md                  # Position paper
+│   ├── caip-architecture-overview.html
+│   ├── caip-auth-flow.html          # Auth & delegation flow diagram
+│   └── caip-security-model.html     # Scopes, trust tiers, extension fields
 ├── sdk/                             # Reference SDK (Python)
 │   └── caip/                        # agent_card, schemas, registry, client
 └── examples/                        # Sandbox demo

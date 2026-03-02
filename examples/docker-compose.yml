@@ -1,6 +1,8 @@
 services:
   orchestrator:
-    build: .
+    build:
+      context: ..
+      dockerfile: examples/Dockerfile
     command: uvicorn orchestrator.app:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
@@ -17,7 +19,9 @@ services:
       - rfi-agent
 
   estimating-agent:
-    build: .
+    build:
+      context: ..
+      dockerfile: examples/Dockerfile
     command: uvicorn agents.estimating_agent:app --host 0.0.0.0 --port 8001 --reload
     ports:
       - "8001:8001"
@@ -29,7 +33,9 @@ services:
       - ./common:/app/common
 
   supplier-agent:
-    build: .
+    build:
+      context: ..
+      dockerfile: examples/Dockerfile
     command: uvicorn agents.supplier_quote_agent:app --host 0.0.0.0 --port 8002 --reload
     ports:
       - "8002:8002"
@@ -41,7 +47,9 @@ services:
       - ./common:/app/common
 
   rfi-agent:
-    build: .
+    build:
+      context: ..
+      dockerfile: examples/Dockerfile
     command: uvicorn agents.rfi_generation_agent:app --host 0.0.0.0 --port 8003 --reload
     ports:
       - "8003:8003"

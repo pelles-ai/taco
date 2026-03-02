@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAIP Security Model — Scopes, Trust Tiers, Agent Card Extensions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-body: 'DM Sans', system-ui, sans-serif;
+    --font-mono: 'Fira Code', 'SF Mono', Consolas, monospace;
+
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface2: #eef0f4;
+    --surface-elevated: #ffffff;
+    --border: rgba(0, 0, 0, 0.07);
+    --border-bright: rgba(0, 0, 0, 0.14);
+    --text: #1a1d26;
+    --text-dim: #6b7280;
+
+    --steel: #2563eb;
+    --steel-dim: rgba(37, 99, 235, 0.08);
+    --orange: #ea580c;
+    --orange-dim: rgba(234, 88, 12, 0.08);
+    --concrete: #64748b;
+    --concrete-dim: rgba(100, 116, 139, 0.08);
+    --green: #059669;
+    --green-dim: rgba(5, 150, 105, 0.08);
+    --amber: #d97706;
+    --amber-dim: rgba(217, 119, 6, 0.08);
+    --plum: #7c3aed;
+    --plum-dim: rgba(124, 58, 237, 0.08);
+    --teal: #0d9488;
+    --teal-dim: rgba(13, 148, 136, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1118;
+      --surface: #181b25;
+      --surface2: #1e222e;
+      --surface-elevated: #222738;
+      --border: rgba(255, 255, 255, 0.06);
+      --border-bright: rgba(255, 255, 255, 0.12);
+      --text: #e2e5ed;
+      --text-dim: #8b92a5;
+
+      --steel: #60a5fa;
+      --steel-dim: rgba(96, 165, 250, 0.12);
+      --orange: #fb923c;
+      --orange-dim: rgba(251, 146, 60, 0.12);
+      --concrete: #94a3b8;
+      --concrete-dim: rgba(148, 163, 184, 0.1);
+      --green: #34d399;
+      --green-dim: rgba(52, 211, 153, 0.1);
+      --amber: #fbbf24;
+      --amber-dim: rgba(251, 191, 36, 0.1);
+      --plum: #a78bfa;
+      --plum-dim: rgba(167, 139, 250, 0.1);
+      --teal: #5eead4;
+      --teal-dim: rgba(94, 234, 212, 0.1);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 20% 0%, var(--plum-dim) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, var(--green-dim) 0%, transparent 40%);
+    color: var(--text);
+    font-family: var(--font-body);
+    padding: 40px 24px;
+    min-height: 100vh;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .anim { animation: fadeUp 0.45s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; }
+
+  /* Header */
+  .header { margin-bottom: 44px; }
+  .header-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--plum);
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-bottom: 10px;
+  }
+  .header-sub {
+    font-size: 15px;
+    color: var(--text-dim);
+    max-width: 700px;
+    line-height: 1.6;
+  }
+
+  /* Section label */
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  /* Panel */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+  }
+
+  /* ============ PANEL 1: SCOPE TAXONOMY ============ */
+  .scope-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .scope-table th {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border-bright);
+  }
+
+  .scope-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    vertical-align: top;
+  }
+
+  .scope-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .scope-table .dim {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .scope-chip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin: 2px 4px 2px 0;
+    white-space: nowrap;
+  }
+
+  .scope-chip--green { background: var(--green-dim); color: var(--green); }
+  .scope-chip--amber { background: var(--amber-dim); color: var(--amber); }
+  .scope-chip--steel { background: var(--steel-dim); color: var(--steel); }
+  .scope-chip--plum { background: var(--plum-dim); color: var(--plum); }
+  .scope-chip--teal { background: var(--teal-dim); color: var(--teal); }
+  .scope-chip--orange { background: var(--orange-dim); color: var(--orange); }
+
+  .use-case {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .scope-format {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .scope-format .dim-part { color: var(--plum); font-weight: 600; }
+  .scope-format .val-part { color: var(--green); font-weight: 600; }
+  .scope-format .act-part { color: var(--amber); }
+  .scope-format .opt { color: var(--text-dim); }
+
+  /* ============ PANEL 2: TRUST TIERS ============ */
+  .tier-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    position: relative;
+  }
+
+  .tier-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    position: relative;
+  }
+
+  .tier-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .tier-name {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .tier-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+
+  .tier-how {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+
+  .tier-how strong {
+    color: var(--text);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Trust arrow */
+  .trust-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .trust-arrow .line {
+    height: 2px;
+    flex: 1;
+    background: linear-gradient(to right, var(--concrete-dim), var(--green));
+    border-radius: 1px;
+  }
+
+  .trust-arrow .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--green);
+    white-space: nowrap;
+  }
+
+  /* ============ PANEL 3: EXTENSION FIELDS ============ */
+  .ext-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .code-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.8;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .code-block .key { color: var(--plum); }
+  .code-block .str { color: var(--green); }
+  .code-block .val { color: var(--amber); }
+  .code-block .cmt { color: var(--text-dim); font-style: italic; }
+
+  .field-annotations {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .field-card {
+    border-left: 3px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 0 8px 8px 0;
+  }
+
+  .field-card .name {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .field-card .type {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .field-card .desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* Callout */
+  .callout {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--amber);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    margin-top: 16px;
+  }
+
+  .callout strong { color: var(--text); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  code.plum { background: var(--plum-dim); color: var(--plum); }
+  code.green { background: var(--green-dim); color: var(--green); }
+  code.amber { background: var(--amber-dim); color: var(--amber); }
+
+  /* Separator */
+  .sep {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .sep::before, .sep::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  @media (max-width: 768px) {
+    body { padding: 20px 16px; }
+    .tier-row { grid-template-columns: 1fr; }
+    .ext-layout { grid-template-columns: 1fr; }
+    .panel { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header anim" style="--i:0">
+    <div class="header-eyebrow">CAIP Security Model</div>
+    <h1>Scopes, Trust Tiers &amp; Agent Card Extensions</h1>
+    <p class="header-sub">The three constructs CAIP adds to A2A's authentication framework: a construction-specific scope taxonomy, a registry trust model, and security metadata in the Agent Card extension.</p>
+  </div>
+
+  <!-- ============ PANEL 1: SCOPE TAXONOMY ============ -->
+  <div class="panel anim" style="--i:2">
+    <div class="section-label" style="color:var(--plum)">
+      <span class="dot" style="background:var(--plum)"></span>
+      CAIP Scope Taxonomy
+    </div>
+
+    <div class="scope-format">
+      caip:<span class="dim-part">{dimension}</span>:<span class="val-part">{value}</span><span class="opt">[:<span class="act-part">{action}</span>]</span>
+    </div>
+
+    <table class="scope-table">
+      <thead>
+        <tr>
+          <th style="width:110px">Dimension</th>
+          <th>Example Scopes</th>
+          <th style="width:280px">Use Case</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="dim" style="color:var(--green)">trade</span></td>
+          <td>
+            <span class="scope-chip scope-chip--green">caip:trade:mechanical</span>
+            <span class="scope-chip scope-chip--green">caip:trade:electrical</span>
+            <span class="scope-chip scope-chip--green">caip:trade:plumbing</span>
+          </td>
+          <td class="use-case">Gate access by trade. A mechanical sub's agent rejects tokens without <code class="green">caip:trade:mechanical</code>.</td>
+        </tr>
+        <tr>
+          <td><span class="dim" style="color:var(--steel)">task</span></td>
+          <td>
+            <span class="scope-chip scope-chip--steel">caip:task:estimate</span>
+            <span class="scope-chip scope-chip--steel">caip:task:rfi-generation</span>
+            <span class="scope-chip scope-chip--steel">caip:task:material-procurement</span>
+          </td>
+          <td class="use-case">Limit what task types can be submitted. Token exchange narrows to just the needed task.</td>
+        </tr>
+        <tr>
+          <td><span class="dim" style="color:var(--orange)">csi</span></td>
+          <td>
+            <span class="scope-chip scope-chip--orange">caip:csi:22</span>
+            <span class="scope-chip scope-chip--orange">caip:csi:23</span>
+            <span class="scope-chip scope-chip--orange">caip:csi:26</span>
+          </td>
+          <td class="use-case">Scope to CSI MasterFormat divisions. Division 22 = plumbing, 23 = HVAC, 26 = electrical.</td>
+        </tr>
+        <tr>
+          <td><span class="dim" style="color:var(--plum)">project</span></td>
+          <td>
+            <span class="scope-chip scope-chip--plum">caip:project:PRJ-0042:read</span>
+            <span class="scope-chip scope-chip--plum">caip:project:PRJ-0042:write</span>
+          </td>
+          <td class="use-case">Bind tokens to a specific project. Ensures data from Project A can't leak to Project B workflows.</td>
+        </tr>
+        <tr>
+          <td><span class="dim" style="color:var(--teal)">registry</span></td>
+          <td>
+            <span class="scope-chip scope-chip--teal">caip:registry:read</span>
+            <span class="scope-chip scope-chip--teal">caip:registry:publish</span>
+          </td>
+          <td class="use-case">Control access to the CAIP Agent Registry. Read = discover agents. Publish = register/update Agent Cards.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout" style="border-left-color:var(--plum)">
+      <strong>Combination rules:</strong> Scopes are additive. <code class="green">caip:trade:mechanical</code> + <code class="steel">caip:task:estimate</code> = can only submit estimate tasks to mechanical agents. Project scopes require a task or trade scope to be meaningful.
+    </div>
+  </div>
+
+  <div class="sep anim" style="--i:4">Trust</div>
+
+  <!-- ============ PANEL 2: TRUST TIERS ============ -->
+  <div class="panel anim" style="--i:5">
+    <div class="section-label" style="color:var(--amber)">
+      <span class="dot" style="background:var(--amber)"></span>
+      Registry Trust Tiers
+    </div>
+
+    <div class="tier-row">
+      <div class="tier-card">
+        <div class="tier-badge" style="background:var(--concrete-dim);color:var(--concrete)">0</div>
+        <div class="tier-name">Unverified</div>
+        <div class="tier-desc">Agent Card is indexed by the registry. No claims are validated. Suitable for development, sandbox, and internal testing.</div>
+        <div class="tier-how">
+          <strong>How to achieve</strong>
+          Self-publish via caip:registry:publish scope. No verification required.
+        </div>
+      </div>
+      <div class="tier-card" style="border-color:rgba(37, 99, 235, 0.2)">
+        <div class="tier-badge" style="background:var(--steel-dim);color:var(--steel)">1</div>
+        <div class="tier-name">Org Verified</div>
+        <div class="tier-desc">The agent URL's domain belongs to a verified organization. Organization identity is trusted; certifications are still self-declared.</div>
+        <div class="tier-how">
+          <strong>How to achieve</strong>
+          Pass domain ownership verification: DNS TXT record or HTTPS challenge on the agent URL's domain.
+        </div>
+      </div>
+      <div class="tier-card" style="border-color:rgba(5, 150, 105, 0.2)">
+        <div class="tier-badge" style="background:var(--green-dim);color:var(--green)">2</div>
+        <div class="tier-name">Cert Attested</div>
+        <div class="tier-desc">Certification claims (SOC2, ISO27001, FedRAMP) have been verified by the registry against third-party audit reports.</div>
+        <div class="tier-how">
+          <strong>How to achieve</strong>
+          Upload audit report or connect attestation service. Registry confirms each certification.
+        </div>
+      </div>
+    </div>
+
+    <div class="trust-arrow">
+      <span class="label" style="color:var(--concrete)">Tier 0</span>
+      <div class="line"></div>
+      <span class="label">Higher Trust &rarr;</span>
+      <div class="line"></div>
+      <span class="label">Tier 2</span>
+    </div>
+
+    <div class="callout" style="border-left-color:var(--amber)">
+      <strong>Important distinction:</strong> The existing <code class="amber">certifications</code> field in <code class="amber">x-construction</code> is <em>self-declared</em> metadata. The <code class="amber">trustTier</code> field is <em>registry-assigned</em> after verification. An agent declaring <code class="amber">"certifications": ["SOC2"]</code> at Tier 0 means "we claim SOC2 but the registry hasn't confirmed it."
+    </div>
+  </div>
+
+  <div class="sep anim" style="--i:7">Agent Card Extension</div>
+
+  <!-- ============ PANEL 3: EXTENSION FIELDS ============ -->
+  <div class="panel anim" style="--i:8">
+    <div class="section-label" style="color:var(--teal)">
+      <span class="dot" style="background:var(--teal)"></span>
+      x-construction.security Fields
+    </div>
+
+    <div class="ext-layout">
+      <div class="code-block"><span class="cmt">// Agent Card excerpt</span>
+{
+  <span class="key">"x-construction"</span>: {
+    <span class="key">"trade"</span>: <span class="str">"mechanical"</span>,
+    <span class="key">"csiDivisions"</span>: [<span class="str">"22"</span>, <span class="str">"23"</span>],
+    <span class="key">"certifications"</span>: [<span class="str">"SOC2"</span>],
+    <span class="key">"security"</span>: {
+      <span class="key">"trustTier"</span>: <span class="val">1</span>,
+      <span class="key">"scopesOffered"</span>: [
+        <span class="str">"caip:trade:mechanical"</span>,
+        <span class="str">"caip:task:estimate"</span>,
+        <span class="str">"caip:task:value-engineering"</span>
+      ],
+      <span class="key">"projectScoped"</span>: <span class="val">true</span>,
+      <span class="key">"delegationSupported"</span>: <span class="val">true</span>,
+      <span class="key">"extendedCardUrl"</span>:
+        <span class="str">"https://api.buildright.io/</span>
+<span class="str">         a2a/agent-extended.json"</span>
+    }
+  }
+}</div>
+
+      <div class="field-annotations">
+        <div class="field-card" style="border-left-color:var(--amber)">
+          <div class="name" style="color:var(--amber)">trustTier</div>
+          <div class="type">integer &mdash; optional</div>
+          <div class="desc">Registry-assigned verification level (0/1/2). <strong>Not self-declared.</strong> Defaults to 0 for newly published agents.</div>
+        </div>
+        <div class="field-card" style="border-left-color:var(--plum)">
+          <div class="name" style="color:var(--plum)">scopesOffered</div>
+          <div class="type">string[] &mdash; optional</div>
+          <div class="desc">CAIP scopes this agent accepts. Enables registry filtering by scope without a full OAuth discovery flow.</div>
+        </div>
+        <div class="field-card" style="border-left-color:var(--green)">
+          <div class="name" style="color:var(--green)">projectScoped</div>
+          <div class="type">boolean &mdash; optional</div>
+          <div class="desc">If true, requests must include a <code class="plum">caip:project:{id}</code> scope. Tells orchestrators to acquire project-specific tokens.</div>
+        </div>
+        <div class="field-card" style="border-left-color:var(--steel)">
+          <div class="name" style="color:var(--steel)">delegationSupported</div>
+          <div class="type">boolean &mdash; optional</div>
+          <div class="desc">If true, the agent can participate in Token Exchange (RFC 8693) chains, enabling multi-hop delegation.</div>
+        </div>
+        <div class="field-card" style="border-left-color:var(--teal)">
+          <div class="name" style="color:var(--teal)">extendedCardUrl</div>
+          <div class="type">string &mdash; optional</div>
+          <div class="desc">URL to an extended Agent Card (per A2A spec) that reveals additional capabilities after initial authentication.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="border-left-color:var(--teal)">
+      <strong>scopesOffered is informational.</strong> It enables quick registry filtering. The authoritative scope declaration remains in the Agent Card's <code class="plum">securitySchemes</code> field. See <code class="plum">spec/security.md</code> for the full specification.
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
