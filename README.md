@@ -42,45 +42,53 @@ Every CAIP agent is a standard A2A agent. Zero lock-in.
 
 Different companies. Different AI models. One shared language.
 
+## Sandbox Demo
+
+The repo includes a fully functional demo with 3 LLM-powered agents, an orchestrator dashboard, and a live flow diagram.
+
+<p align="center">
+  <img src="assets/demo.gif" alt="CAIP Sandbox Demo" width="800">
+</p>
+
+**Run it yourself:**
+
+```bash
+# Clone and configure
+git clone https://github.com/pelles-ai/caip.git && cd caip
+cp examples/.env.example examples/.env
+# Edit examples/.env and add your API key (Anthropic or OpenAI)
+
+# Run with Docker (recommended)
+make demo-docker
+
+# Or run locally
+make demo-install && make demo
+```
+
+Then open [http://localhost:8000](http://localhost:8000), click **Discover Agents**, and send tasks to see typed schemas flow between independent agents in real time.
+
 ## Repository Structure
 
 ```
 caip/
-├── README.md
-├── CONTRIBUTING.md
-├── LICENSE                          # Apache 2.0
-├── assets/
-│   └── caip_logo.png
-├── docs/
-│   ├── abstract.md                  # Project abstract
-│   ├── DIAGRAM_PROMPT.md            # Prompt for generating architecture diagrams
-│   ├── caip-architecture-overview.html
-│   └── caip-workflow-composition.html
+├── Makefile                         # demo, demo-docker, demo-stop
 ├── spec/
 │   ├── task-types.md                # Construction task type definitions
 │   ├── agent-card-extensions.md     # x-construction Agent Card fields
-│   └── schemas/                     # JSON Schema definitions
-│       ├── bom-v1.json
-│       ├── rfi-v1.json
-│       ├── estimate-v1.json
-│       ├── schedule-v1.json
-│       ├── quote-v1.json
-│       └── change-order-v1.json
+│   └── schemas/                     # JSON Schema definitions (bom-v1, rfi-v1, estimate-v1, ...)
 ├── sdk/                             # Reference SDK (Python)
-│   ├── pyproject.toml
-│   └── caip/
-│       ├── __init__.py
-│       ├── agent_card.py
-│       ├── schemas.py
-│       ├── registry.py
-│       └── client.py
+│   └── caip/                        # agent_card, schemas, registry, client
 └── examples/                        # Sandbox demo
-    ├── README.md
-    ├── docker-compose.yml
-    ├── run_demo.py
-    ├── common/                      # Shared A2A + LLM infrastructure
+    ├── docker-compose.yml           # 4 services, hot-reload
+    ├── run_demo.py                  # Local launcher (all 4 processes)
+    ├── common/                      # Shared A2A server, models, LLM provider
     ├── agents/                      # 3 LLM-powered CAIP agents
-    └── orchestrator/                # Dashboard + agent discovery
+    │   ├── estimating_agent.py      # :8001 — estimate + value-engineering
+    │   ├── supplier_quote_agent.py  # :8002 — material-procurement
+    │   └── rfi_generation_agent.py  # :8003 — rfi-generation
+    └── orchestrator/                # :8000 — dashboard + agent discovery
+        ├── app.py
+        └── dashboard.html           # Single-file UI with live flow diagram
 ```
 
 ## Quick Start
