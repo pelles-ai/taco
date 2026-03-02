@@ -78,8 +78,7 @@ caip/
 │   ├── agent-card-extensions.md     # x-construction Agent Card fields
 │   ├── security.md                  # Auth model, scope taxonomy, trust tiers
 │   └── schemas/                     # JSON Schema definitions (bom-v1, rfi-v1, estimate-v1, ...)
-├── docs/
-│   ├── abstract.md                  # Position paper
+├── docs/                            # Visual references (live at pelles-ai.github.io/caip)
 │   ├── caip-architecture-overview.html
 │   ├── caip-auth-flow.html          # Auth & delegation flow diagram
 │   └── caip-security-model.html     # Scopes, trust tiers, extension fields
@@ -138,6 +137,14 @@ result = await agents[0].run_task(
 ```
 
 > **Note:** The Python SDK uses snake_case parameter names (e.g., `csi_divisions`, `task_type`) that map to the camelCase JSON fields defined in the spec (`csiDivisions`, `taskType`).
+
+## Documentation
+
+Visual references are hosted via GitHub Pages:
+
+- [Architecture Overview](https://pelles-ai.github.io/caip/caip-architecture-overview.html)
+- [Authentication Flow](https://pelles-ai.github.io/caip/caip-auth-flow.html)
+- [Security Model](https://pelles-ai.github.io/caip/caip-security-model.html)
 
 ## Principles
 
