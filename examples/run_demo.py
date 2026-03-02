@@ -13,10 +13,10 @@ import sys
 import time
 
 SERVICES = [
-    ("Estimating Agent  :8001", [sys.executable, "-m", "uvicorn", "agents.estimating_agent:app", "--host", "0.0.0.0", "--port", "8001"]),
-    ("Supplier Agent    :8002", [sys.executable, "-m", "uvicorn", "agents.supplier_quote_agent:app", "--host", "0.0.0.0", "--port", "8002"]),
-    ("RFI Agent         :8003", [sys.executable, "-m", "uvicorn", "agents.rfi_generation_agent:app", "--host", "0.0.0.0", "--port", "8003"]),
-    ("Orchestrator      :8000", [sys.executable, "-m", "uvicorn", "orchestrator.app:app", "--host", "0.0.0.0", "--port", "8000"]),
+    ("Estimating Agent  :8001", [sys.executable, "-m", "uvicorn", "agents.estimating_agent:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]),
+    ("Supplier Agent    :8002", [sys.executable, "-m", "uvicorn", "agents.supplier_quote_agent:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]),
+    ("RFI Agent         :8003", [sys.executable, "-m", "uvicorn", "agents.rfi_generation_agent:app", "--host", "0.0.0.0", "--port", "8003", "--reload"]),
+    ("Orchestrator      :8000", [sys.executable, "-m", "uvicorn", "orchestrator.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]),
 ]
 
 

@@ -241,13 +241,32 @@
 
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
   @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Flow diagram */
+  #flow-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  #flow-svg text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; }
+  .flow-node { cursor: pointer; }
+  .flow-node .node-bg { transition: stroke 0.2s, filter 0.2s; }
+  .flow-node:hover .node-bg { stroke: var(--accent); filter: drop-shadow(0 0 8px rgba(99,102,241,0.3)); }
+  .flow-node .status-dot { transition: fill 0.3s; }
+  .flow-edge .edge-path { transition: stroke 0.3s, stroke-dasharray 0.3s; }
+  .flow-node.state-sending .status-dot,
+  .flow-node.state-processing .status-dot { animation: pulse 0.8s ease-in-out infinite; }
 </style>
 </head>
 <body>
 <header>
-  <div>
-    <h1><span>CAIP</span> Sandbox Demo</h1>
-    <p>Construction A2A Interoperability Protocol — Agent Discovery + Typed Schema Flow</p>
+  <div style="display: flex; align-items: center; gap: 16px;">
+    <img src="/assets/caip_logo_nobkg.png" alt="CAIP" style="height: 40px;">
+    <div>
+      <h1><span>CAIP</span> Sandbox Demo</h1>
+      <p>Construction A2A Interoperability Protocol — Agent Discovery + Typed Schema Flow</p>
+    </div>
   </div>
   <div class="header-actions">
     <button class="secondary" onclick="addVESkill()">+ Add VE Skill to Estimator</button>
@@ -265,6 +284,14 @@
     <div class="add-agent-row">
       <input type="text" id="new-agent-url" placeholder="http://localhost:8004">
       <button class="secondary" onclick="addAgent()">Register Agent</button>
+    </div>
+  </section>
+
+  <!-- Live Flow Diagram -->
+  <section id="flow-panel">
+    <div class="section-title">Live Flow Diagram</div>
+    <div id="flow-container">
+      <svg id="flow-svg" width="100%" height="340" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
   </section>
 
@@ -295,21 +322,37 @@
 const API = '';
 let previousSkills = {};
 let resultCount = 0;
+let discoveredAgentsCache = {};
+
+// ── Flow Diagram State ──
+let flowNodeStates = {};
+let flowResetTimers = {};
+let flowSvg;
+const _cs = getComputedStyle(document.documentElement);
+const _cv = (v) => _cs.getPropertyValue(v).trim();
+const FLOW_COLORS = {
+  idle: _cv('--text-muted'), discovered: _cv('--blue'), sending: _cv('--warning'),
+  processing: _cv('--warning'), completed: _cv('--success'), failed: _cv('--error'),
+};
+
+// ══════════════════════════════════════════════════════════════
+// Agent Discovery + Cards
+// ══════════════════════════════════════════════════════════════
 
 async function discoverAgents() {
-  const btn = event.target;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Discovering...';
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Discovering...'; }
   try {
     const resp = await fetch(`${API}/api/discover`);
     const data = await resp.json();
+    discoveredAgentsCache = data.agents;
     renderAgents(data.agents);
+    flowRebuild(data.agents);
     await refreshLog();
   } catch (e) {
     alert('Failed to discover agents: ' + e.message);
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Discover Agents';
+    if (btn) { btn.disabled = false; btn.textContent = 'Discover Agents'; }
   }
 }
 
@@ -335,7 +378,6 @@ function createAgentCard(url, card) {
   const integrations = xc.integrations || [];
   const skills = card.skills || [];
 
-  // Detect new skills
   const prevSkillIds = previousSkills[url] || new Set();
   const currentSkillIds = new Set(skills.map(s => s.id));
   previousSkills[url] = currentSkillIds;
@@ -356,7 +398,7 @@ function createAgentCard(url, card) {
           <span class="task-type">${xcs.taskType || '—'}</span>
           <span class="schema">${xcs.inputSchema || '?'} → ${xcs.outputSchema || '?'}</span>
         </div>
-        <button onclick="sendTask('${url}', '${xcs.taskType || ''}')">Send Task</button>
+        <button onclick="sendTask('${url}', '${xcs.taskType || ''}', this)">Send Task</button>
       </div>`;
   }
 
@@ -369,20 +411,26 @@ function createAgentCard(url, card) {
   return div;
 }
 
-async function sendTask(agentUrl, taskType) {
-  const btn = event.target;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>';
+// ══════════════════════════════════════════════════════════════
+// Task Sending + Results
+// ══════════════════════════════════════════════════════════════
+
+async function sendTask(agentUrl, taskType, btnEl) {
+  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="spinner"></span>'; }
 
   let inputData;
   try {
     inputData = JSON.parse(document.getElementById('bom-editor').value);
   } catch (e) {
     alert('Invalid JSON in BOM editor');
-    btn.disabled = false;
-    btn.textContent = 'Send Task';
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Send Task'; }
     return;
   }
+
+  // Flow: sending animation
+  flowSetNodeState(agentUrl, 'sending');
+  const port = safePort(agentUrl);
+  flowAnimateEdge(`edge-in-${port}`, FLOW_COLORS.sending);
 
   try {
     const resp = await fetch(`${API}/api/send-task`, {
@@ -390,14 +438,15 @@ async function sendTask(agentUrl, taskType) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ agentUrl, taskType, inputData }),
     });
+    flowSetNodeState(agentUrl, 'processing');
     const data = await resp.json();
     renderResult(agentUrl, taskType, data);
     await refreshLog();
   } catch (e) {
+    flowSetNodeState(agentUrl, 'failed');
     alert('Task failed: ' + e.message);
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Send Task';
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Send Task'; }
   }
 }
 
@@ -410,6 +459,13 @@ function renderResult(agentUrl, taskType, data) {
   const artifacts = result?.artifacts || [];
   const schema = artifacts[0]?.metadata?.schema || taskType;
   const output = artifacts[0]?.parts?.[0]?.structuredData || result;
+
+  // Flow: completion animation
+  const flowState = (state === 'completed' || state === 'failed') ? state : 'processing';
+  flowSetNodeState(agentUrl, flowState);
+  if (flowState === 'completed' || flowState === 'failed') {
+    flowFlashEdges(agentUrl, FLOW_COLORS[flowState]);
+  }
 
   const id = `result-${resultCount++}`;
   const card = document.createElement('div');
@@ -427,6 +483,10 @@ function renderResult(agentUrl, taskType, data) {
     </div>`;
   container.prepend(card);
 }
+
+// ══════════════════════════════════════════════════════════════
+// Message Log
+// ══════════════════════════════════════════════════════════════
 
 async function refreshLog() {
   try {
@@ -467,6 +527,10 @@ function syntaxHighlight(json) {
     .replace(/: (true|false|null)/g, ': <span style="color:#ef4444">$1</span>');
 }
 
+// ══════════════════════════════════════════════════════════════
+// Agent Management
+// ══════════════════════════════════════════════════════════════
+
 async function addAgent() {
   const input = document.getElementById('new-agent-url');
   const url = input.value.trim();
@@ -483,12 +547,21 @@ async function addAgent() {
 async function addVESkill() {
   const btn = event.target;
   btn.disabled = true;
+  // Find the estimating agent URL from discovered agents (works in Docker + local)
+  const estimatorUrl = Object.keys(discoveredAgentsCache).find(url =>
+    discoveredAgentsCache[url]?.name?.toLowerCase().includes('estimat')
+  );
+  if (!estimatorUrl) {
+    alert('Discover agents first so we know the Estimating Agent URL.');
+    btn.disabled = false;
+    return;
+  }
   try {
     await fetch(`${API}/api/admin/add-skill`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        agentUrl: 'http://localhost:8001',
+        agentUrl: estimatorUrl,
         skill: {
           id: 'value-engineering',
           name: 'Value Engineering Analysis',
@@ -509,11 +582,270 @@ async function addVESkill() {
   }
 }
 
-// Load sample BOM on page load
+// ══════════════════════════════════════════════════════════════
+// Flow Diagram
+// ══════════════════════════════════════════════════════════════
+
+function safePort(url) {
+  try { return new URL(url).port || '80'; } catch { return url.replace(/[^a-z0-9]/gi, ''); }
+}
+
+function flowAppendDefs(svg) {
+  const defs = svgEl('defs');
+  defs.innerHTML = `
+    <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>`;
+  svg.appendChild(defs);
+}
+
+function uniqueSchemas(skills, field) {
+  return [...new Set(skills.map(s => (s['x-construction'] || {})[field]).filter(Boolean))].join(' | ') || '?';
+}
+
+function flowFlashEdges(agentUrl, color) {
+  const port = safePort(agentUrl);
+  flowAnimateEdge(`edge-out-${port}`, color);
+  flowHighlightEdge(`edge-in-${port}`, true, color);
+  flowHighlightEdge(`edge-out-${port}`, true, color);
+  setTimeout(() => {
+    flowHighlightEdge(`edge-in-${port}`, false);
+    flowHighlightEdge(`edge-out-${port}`, false);
+  }, 3000);
+}
+
+function flowInit() {
+  flowSvg.innerHTML = '';
+  const w = flowSvg.getBoundingClientRect().width || 800;
+
+  flowAppendDefs(flowSvg);
+  flowSvg.appendChild(flowCreateNode('orchestrator', w / 2, 45, 'Orchestrator', ':8000', _cv('--accent')));
+  flowSvg.appendChild(flowCreateNode('results', w / 2, 295, 'Results', '', _cv('--success')));
+
+  const hint = svgEl('text', { x: w / 2, y: 175, fill: FLOW_COLORS.idle, 'font-size': '13',
+    'text-anchor': 'middle', id: 'flow-hint' });
+  hint.textContent = 'Discover agents to see the flow';
+  flowSvg.appendChild(hint);
+}
+
+function flowRebuild(agents) {
+  const agentEntries = Object.entries(agents);
+  if (!agentEntries.length) { flowInit(); return; }
+
+  flowSvg.innerHTML = '';
+  const w = flowSvg.getBoundingClientRect().width || 800;
+  flowAppendDefs(flowSvg);
+
+  const orchY = 45, agentY = 170, resultY = 295;
+  const centerX = w / 2;
+  const count = agentEntries.length;
+
+  // Draw edges first (behind nodes)
+  const edgeGroup = svgEl('g', { id: 'flow-edges' });
+  flowSvg.appendChild(edgeGroup);
+
+  agentEntries.forEach(([url, card], i) => {
+    const ax = (w / (count + 1)) * (i + 1);
+    const skills = card.skills || [];
+
+    edgeGroup.appendChild(flowCreateEdge(`edge-in-${safePort(url)}`, centerX, orchY + 25, ax, agentY - 25, uniqueSchemas(skills, 'inputSchema')));
+    edgeGroup.appendChild(flowCreateEdge(`edge-out-${safePort(url)}`, ax, agentY + 25, centerX, resultY - 25, uniqueSchemas(skills, 'outputSchema')));
+  });
+
+  // Draw nodes
+  flowSvg.appendChild(flowCreateNode('orchestrator', centerX, orchY, 'Orchestrator', ':8000', _cv('--accent')));
+
+  agentEntries.forEach(([url, card], i) => {
+    const ax = (w / (count + 1)) * (i + 1);
+    const shortName = card.name.replace(/ Agent$/i, '');
+    const trade = (card['x-construction'] || {}).trade || '';
+    flowSvg.appendChild(flowCreateNode(url, ax, agentY, shortName, `:${safePort(url)}`, _cv('--border'), trade));
+    flowSetNodeState(url, 'discovered');
+  });
+
+  flowSvg.appendChild(flowCreateNode('results', centerX, resultY, 'Results', '', _cv('--success')));
+}
+
+function flowCreateNode(id, cx, cy, label, sublabel, strokeColor, badge) {
+  const g = svgEl('g', { class: 'flow-node', 'data-id': id, transform: `translate(${cx},${cy})` });
+
+  const nodeW = id === 'orchestrator' ? 150 : 130;
+  const nodeH = badge ? 56 : 48;
+
+  g.appendChild(svgEl('rect', {
+    x: -nodeW / 2, y: -nodeH / 2, width: nodeW, height: nodeH,
+    rx: 8, ry: 8, fill: _cv('--card'), stroke: strokeColor, 'stroke-width': 1.5,
+    class: 'node-bg',
+  }));
+
+  // Status dot
+  g.appendChild(svgEl('circle', {
+    cx: -nodeW / 2 + 14, cy: 0, r: 4, fill: FLOW_COLORS.idle, class: 'status-dot',
+  }));
+
+  // Label
+  const textY = badge ? -8 : -4;
+  const labelEl = svgEl('text', {
+    x: 4, y: textY, 'text-anchor': 'middle', fill: _cv('--text'), 'font-size': '12', 'font-weight': '600',
+  });
+  labelEl.textContent = label;
+  g.appendChild(labelEl);
+
+  // Sublabel (port)
+  if (sublabel) {
+    const subEl = svgEl('text', {
+      x: 4, y: textY + 14, 'text-anchor': 'middle', fill: FLOW_COLORS.idle, 'font-size': '10',
+      'font-family': "'SF Mono', monospace",
+    });
+    subEl.textContent = sublabel;
+    g.appendChild(subEl);
+  }
+
+  // Trade badge
+  if (badge) {
+    const badgeEl = svgEl('text', {
+      x: 4, y: textY + (sublabel ? 26 : 14), 'text-anchor': 'middle', fill: _cv('--accent'),
+      'font-size': '9', 'font-weight': '500',
+    });
+    badgeEl.textContent = badge;
+    g.appendChild(badgeEl);
+  }
+
+  // Click handler
+  g.addEventListener('click', (e) => { e.stopPropagation(); flowNodeClick(id); });
+  return g;
+}
+
+function flowCreateEdge(pathId, x1, y1, x2, y2, label) {
+  const g = svgEl('g', { class: 'flow-edge' });
+
+  const path = svgEl('path', {
+    id: pathId, d: `M${x1},${y1} L${x2},${y2}`, fill: 'none',
+    stroke: _cv('--border'), 'stroke-width': 1.5, 'stroke-dasharray': '6,4', class: 'edge-path',
+  });
+  g.appendChild(path);
+
+  // Schema label at midpoint
+  const labelEl = svgEl('text', {
+    x: (x1 + x2) / 2 + 8, y: (y1 + y2) / 2 - 6, fill: FLOW_COLORS.idle, 'font-size': '10',
+    'font-family': "'SF Mono', monospace", 'text-anchor': 'middle',
+  });
+  labelEl.textContent = label;
+  g.appendChild(labelEl);
+
+  // Particle for animation (hidden)
+  g.appendChild(svgEl('circle', {
+    r: 5, fill: _cv('--accent'), opacity: 0, class: 'edge-particle', filter: 'url(#glow)',
+  }));
+
+  return g;
+}
+
+function flowSetNodeState(nodeId, state) {
+  flowNodeStates[nodeId] = state;
+  const node = flowSvg.querySelector(`.flow-node[data-id="${CSS.escape(nodeId)}"]`);
+  if (!node) return;
+
+  const dot = node.querySelector('.status-dot');
+  if (dot) dot.setAttribute('fill', FLOW_COLORS[state] || FLOW_COLORS.idle);
+
+  // Update CSS class for pulse animation
+  node.className.baseVal = `flow-node state-${state}`;
+
+  // Border glow on active states
+  const bg = node.querySelector('.node-bg');
+  if (bg) {
+    const isActive = state === 'sending' || state === 'processing';
+    bg.setAttribute('stroke', FLOW_COLORS[state] || _cv('--border'));
+    bg.setAttribute('filter', isActive ? 'url(#glow)' : '');
+  }
+
+  // Auto-reset to discovered after completion/failure
+  if (state === 'completed' || state === 'failed') {
+    clearTimeout(flowResetTimers[nodeId]);
+    flowResetTimers[nodeId] = setTimeout(() => flowSetNodeState(nodeId, 'discovered'), 4000);
+  }
+}
+
+function flowAnimateEdge(pathId, color) {
+  const path = flowSvg.querySelector(`#${CSS.escape(pathId)}`);
+  if (!path) return;
+
+  const particle = path.parentElement.querySelector('.edge-particle');
+  if (!particle) return;
+
+  // Highlight edge
+  path.setAttribute('stroke', color);
+  path.setAttribute('stroke-dasharray', 'none');
+
+  const totalLength = path.getTotalLength();
+  const duration = 800;
+  let start = null;
+
+  particle.setAttribute('fill', color);
+  particle.setAttribute('opacity', '1');
+
+  function step(ts) {
+    if (!start) start = ts;
+    const progress = Math.min((ts - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+    const point = path.getPointAtLength(eased * totalLength);
+    particle.setAttribute('cx', point.x);
+    particle.setAttribute('cy', point.y);
+
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      particle.setAttribute('opacity', '0');
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function flowHighlightEdge(pathId, active, color) {
+  const path = flowSvg.querySelector(`#${CSS.escape(pathId)}`);
+  if (!path) return;
+  path.setAttribute('stroke', active ? (color || _cv('--accent')) : _cv('--border'));
+  path.setAttribute('stroke-dasharray', active ? 'none' : '6,4');
+}
+
+function flowNodeClick(nodeId) {
+  if (nodeId === 'orchestrator') { discoverAgents(); return; }
+  if (nodeId === 'results') {
+    document.getElementById('results-container').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  const card = discoveredAgentsCache[nodeId];
+  if (!card || !card.skills?.length) return;
+  const xcs = card.skills[0]['x-construction'] || {};
+  if (xcs.taskType) sendTask(nodeId, xcs.taskType, null);
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════════════════════
+
+// Load sample BOM
 fetch(`${API}/api/sample-bom`)
   .then(r => r.json())
   .then(bom => { document.getElementById('bom-editor').value = JSON.stringify(bom, null, 2); })
   .catch(() => { document.getElementById('bom-editor').value = '{"error": "Could not load sample BOM"}'; });
+
+// Init flow diagram
+flowSvg = document.getElementById('flow-svg');
+flowInit();
+
+// Responsive redraw
+new ResizeObserver(() => {
+  if (Object.keys(discoveredAgentsCache).length) flowRebuild(discoveredAgentsCache);
+  else flowInit();
+}).observe(document.getElementById('flow-container'));
 </script>
 </body>
 </html>

@@ -181,7 +181,7 @@ class A2AServer:
 
     async def _add_skill(self, request: Request) -> dict:
         data = await request.json()
-        skill = AgentSkill(**data)
+        skill = AgentSkill.model_validate(data)
         self.agent_card.skills.append(skill)
         return {"status": "ok", "skillId": skill.id}
 

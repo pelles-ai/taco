@@ -13,7 +13,7 @@ from pathlib import Path
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from common.sample_data import SAMPLE_BOM
 
@@ -57,6 +57,18 @@ def _log(direction: str, url: str, method: str, payload: dict, response: dict) -
 async def dashboard() -> HTMLResponse:
     html_path = Path(__file__).parent / "dashboard.html"
     return HTMLResponse(html_path.read_text())
+
+
+@app.get("/assets/{filename}")
+async def serve_asset(filename: str):
+    """Serve static assets (logo, etc.)."""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        return JSONResponse({"error": "Invalid filename"}, status_code=400)
+    for base in [Path(__file__).parents[2] / "assets", Path("/app/assets")]:
+        path = base / filename
+        if path.is_file():
+            return FileResponse(path)
+    return JSONResponse({"error": "Asset not found"}, status_code=404)
 
 
 # ------------------------------------------------------------------
