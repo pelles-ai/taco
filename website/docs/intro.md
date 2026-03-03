@@ -5,21 +5,21 @@ title: Introduction
 
 # TACO — The A2A Construction Open-standard
 
-An open standard for AI agent communication in the built environment.
+Every construction tool should be agent-compatible. TACO gives them a shared language.
 
 ## The Problem
 
-Construction is one of the most fragmented industries in the world. A single commercial project can involve dozens of companies — general contractors, mechanical subs, electrical subs, architects, engineers, suppliers — each using different software, different file formats, and different workflows.
+Construction projects succeed or fail based on communication. A superintendent coordinates across dozens of trades, tools, and companies every day — sharing status, resolving conflicts, pushing decisions forward. The software these teams use should be able to do the same.
 
-AI agents are entering this ecosystem fast. Agents that generate takeoffs from plan sheets. Agents that draft RFIs. Agents that coordinate schedules. Agents that source materials and compare supplier quotes.
+Today, most construction software operates in silos. Platforms don't share data, formats don't align, and when AI agents enter the picture — generating takeoffs, drafting RFIs, coordinating schedules — they're being built in isolation too. Different APIs, different schemas, no shared vocabulary.
 
-But they're being built in isolation. Every vendor defines their own API, their own data formats, their own vocabulary. The result is a new generation of silos — AI silos — layered on top of the existing ones.
+Every tool in the construction ecosystem needs to become agent-compatible. Whether it's a fully autonomous AI agent or an existing platform with an agent sidecar, every piece of software should be able to communicate its status, share generated content, and coordinate work across the project — just like the people operating it need to do to succeed.
 
 ## Why Now
 
 The [A2A protocol](https://a2a-protocol.org) (Linux Foundation) provides a universal standard for agent-to-agent communication: Agent Cards for discovery, JSON-RPC for messaging, task lifecycle management, and streaming. It solves the transport layer.
 
-But A2A is domain-agnostic. It doesn't know what a takeoff is, what a BOM looks like, or how to find an agent that handles mechanical estimating for healthcare projects. Construction needs a shared vocabulary on top of A2A.
+But A2A is domain-agnostic. It doesn't know what a takeoff is, what a BOM looks like, or how to find an agent that handles mechanical estimating for healthcare projects. Construction needs a shared vocabulary on top of A2A — one that makes it easy for any tool, whether natively agentic or wrapped with a sidecar, to participate in the ecosystem.
 
 ## What TACO Adds
 
@@ -39,7 +39,7 @@ Every TACO agent is a standard A2A agent. Zero lock-in.
 - **Replace A2A.** TACO uses A2A's native extension points. It does not fork or modify the protocol.
 - **Dictate implementation.** Agents are opaque. TACO defines what goes in and what comes out — not how agents work internally.
 - **Replace existing platforms.** TACO integrates with Procore, ACC, Bluebeam, and others. It connects the ecosystem; it doesn't replace it.
-- **Require AI.** While designed for AI agents, any software that speaks A2A and follows TACO schemas can participate — including traditional APIs, human-in-the-loop tools, and legacy system adapters.
+- **Require AI.** Any software that speaks A2A and follows TACO schemas can participate — fully agentic systems, existing platforms with agent sidecars, human-in-the-loop tools, and legacy system adapters. The goal is to make all construction software agent-compatible.
 
 ## Quick Example
 

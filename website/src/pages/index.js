@@ -16,8 +16,8 @@ function HeroSection() {
         </Heading>
         <p className="hero__subtitle">The A2A Construction Open-standard</p>
         <p className="hero__oneliner">
-          A shared language for AI agents in construction. Open spec. Open
-          schemas. Open SDK.
+          Every construction tool should be agent-compatible. TACO gives them a
+          shared language. Open spec. Open schemas. Open SDK.
         </p>
         <div className="hero__buttons">
           <Link
@@ -50,13 +50,22 @@ function ProblemSection() {
     <section className="section">
       <div className="container">
         <Heading as="h2" className="section__heading">
-          AI agents in construction can't talk to each other
+          Construction software needs to communicate like the people using it
         </Heading>
         <p className="problem-text">
-          Construction runs on fragmented systems. AI agents are now entering
-          this ecosystem — generating takeoffs, drafting RFIs, coordinating
-          schedules — but they're being built in isolation. Different formats,
-          different APIs, no shared vocabulary. TACO fixes this.
+          A project superintendent coordinates across dozens of trades,
+          tools, and companies every day. The software they use should be able
+          to do the same. Whether it's a fully autonomous AI agent or an
+          existing platform with an agent sidecar, every construction tool
+          needs to speak a common language — reporting status, sharing
+          generated content, and coordinating work across the project.
+        </p>
+        <p className="problem-text" style={{marginTop: '1rem'}}>
+          Today, AI agents are entering the construction ecosystem fast —
+          generating takeoffs, drafting RFIs, coordinating schedules — but
+          they're being built in isolation. Different formats, different APIs,
+          no shared vocabulary. TACO fixes this by giving every tool, agent,
+          and platform one standard way to interoperate.
         </p>
       </div>
     </section>
