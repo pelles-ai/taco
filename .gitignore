@@ -6,4 +6,5 @@ build/
 .venv/
 .DS_Store
 .playwright-mcp/
+.vscode/
 examples/.env

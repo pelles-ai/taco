@@ -11,6 +11,8 @@ Security in TACO builds on A2A's native authentication model and adds constructi
 This document defines the TACO security model. Implementation is optional for sandbox deployments and recommended for production multi-company deployments.
 :::
 
+**Visual references:** [Authentication Flow](pathname:///taco/taco-auth-flow.html) | [Security Model Diagram](pathname:///taco/taco-security-model.html)
+
 ## Overview
 
 TACO inherits the A2A protocol's authentication framework without modification. A2A defines five authentication scheme types (`apiKey`, `http`, `oauth2`, `openIdConnect`, `mutualTLS`), JWS-signed Agent Cards for tamper detection, and OAuth 2.0 Token Exchange ([RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)) as the recommended delegation mechanism.

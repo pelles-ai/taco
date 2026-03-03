@@ -85,7 +85,7 @@ The `security` sub-object carries TACO-specific security metadata. See [`securit
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `trustTier` | integer | No | Registry trust tier: `0` unverified, `1` org-verified, `2` cert-attested. Assigned by the TACO Registry. |
-| `scopesOffered` | string[] | No | TACO OAuth scopes this agent will accept. See [`security.md` — Scope Taxonomy](security.md#caip-scope-taxonomy). |
+| `scopesOffered` | string[] | No | TACO OAuth scopes this agent will accept. See [`security.md` — Scope Taxonomy](security.md#taco-scope-taxonomy). |
 | `projectScoped` | boolean | No | If `true`, incoming requests must include a `taco:project:{id}` scope. |
 | `delegationSupported` | boolean | No | If `true`, the agent supports downstream Token Exchange ([RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)) sub-delegation. |
 | `extendedCardUrl` | string | No | URL of the extended Agent Card, revealed after initial authentication. |

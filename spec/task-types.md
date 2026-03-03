@@ -1,6 +1,6 @@
-# CAIP Task Types
+# TACO Task Types
 
-Task types are the verbs of the CAIP ecosystem. Each task type defines a category of work that an agent can advertise and execute.
+Task types are the verbs of the TACO ecosystem. Each task type defines a category of work that an agent can advertise and execute.
 
 > **Schema status:** Fully defined schemas include `bom-v1`, `rfi-v1`, `estimate-v1`, and `quote-v1`. Placeholder schemas (structure not yet defined) include `schedule-v1` and `change-order-v1`. All other output schemas listed below are planned but do not yet have schema files. Contributions welcome.
 

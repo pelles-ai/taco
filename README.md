@@ -82,19 +82,19 @@ taco/
 │   └── taco/                        # models, schemas, server, agent_card, registry, client
 ├── website/                         # Docusaurus documentation site
 │   ├── docs/                        # Markdown documentation pages
-│   └── src/                         # Landing page and components
-├── examples/                        # Sandbox demo
-│   ├── docker-compose.yml           # 4 services, hot-reload
-│   ├── run_demo.py                  # Local launcher (all 4 processes)
-│   ├── common/                      # Shared A2A server, models, LLM provider
-│   ├── agents/                      # 3 LLM-powered TACO agents
-│   │   ├── estimating_agent.py      # :8001 — estimate + value-engineering
-│   │   ├── supplier_quote_agent.py  # :8002 — material-procurement
-│   │   └── rfi_generation_agent.py  # :8003 — rfi-generation
-│   └── orchestrator/                # :8000 — dashboard + agent discovery
-│       ├── app.py
-│       └── dashboard.html           # Single-file UI with live flow diagram
-└── docs/                            # Visual reference diagrams (HTML)
+│   ├── src/                         # Landing page and components
+│   └── static/                      # Visual reference diagrams (HTML)
+└── examples/                        # Sandbox demo
+    ├── docker-compose.yml           # 4 services, hot-reload
+    ├── run_demo.py                  # Local launcher (all 4 processes)
+    ├── common/                      # Shared A2A server, models, LLM provider
+    ├── agents/                      # 3 LLM-powered TACO agents
+    │   ├── estimating_agent.py      # :8001 — estimate + value-engineering
+    │   ├── supplier_quote_agent.py  # :8002 — material-procurement
+    │   └── rfi_generation_agent.py  # :8003 — rfi-generation
+    └── orchestrator/                # :8000 — dashboard + agent discovery
+        ├── app.py
+        └── dashboard.html           # Single-file UI with live flow diagram
 ```
 
 ## Quick Start

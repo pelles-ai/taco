@@ -21,6 +21,12 @@ The [A2A protocol](https://a2a-protocol.org) (Linux Foundation) provides a unive
 
 But A2A is domain-agnostic. It doesn't know what a takeoff is, what a BOM looks like, or how to find an agent that handles mechanical estimating for healthcare projects. Construction needs a shared vocabulary on top of A2A — one that makes it easy for any tool, whether natively agentic or wrapped with a sidecar, to participate in the ecosystem.
 
+## Visual References
+
+- [Architecture Overview](pathname:///taco/taco-architecture-overview.html) — Protocol layers, agent interactions, and data flow
+- [Authentication Flow](pathname:///taco/taco-auth-flow.html) — OAuth 2.0 flows for agent-to-agent communication
+- [Security Model](pathname:///taco/taco-security-model.html) — Scopes, trust tiers, and Agent Card security extensions
+
 ## What TACO Adds
 
 TACO is a construction-specific ontology layer built on A2A. It defines:
