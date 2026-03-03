@@ -19,12 +19,13 @@ A working demonstration of the Construction A2A Interoperability Protocol. Three
 │               │  │               │  │               │
 │ bom-v1 →      │  │ bom-v1 →      │  │ bom-v1 →      │
 │ estimate-v1   │  │ quote-v1      │  │ rfi-v1        │
+│ + VE analysis │  │               │  │               │
 └───────────────┘  └───────────────┘  └───────────────┘
 ```
 
 Each agent is a standard A2A endpoint:
 - `GET /.well-known/agent.json` — Agent Card with `x-construction` extensions
-- `POST /` — JSON-RPC 2.0 (`message/send`, `tasks/get`, `tasks/cancel`)
+- `POST /` — JSON-RPC 2.0 (`message/send`, `message/stream`, `tasks/get`, `tasks/cancel`)
 
 ## Quick Start
 
@@ -54,7 +55,8 @@ Navigate to **http://localhost:8000**
 
 1. Click **"Discover Agents"** — three agents appear with their trade, CSI divisions, and skills
 2. Click **"Send Task"** on any agent skill — the BOM is sent via JSON-RPC, the LLM processes it, and typed results appear
-3. Check the **message log** at the bottom to see the raw A2A JSON-RPC exchanges
+3. Click **"Run Full Pipeline"** — sends the BOM to all three agents in parallel and shows combined results
+4. Check the **message log** at the bottom to see the raw A2A JSON-RPC exchanges
 
 ## Docker Compose
 
@@ -90,6 +92,26 @@ curl -X POST http://localhost:8001/admin/skills \
     }
   }'
 ```
+
+## Demo: Full Pipeline
+
+Click **"Run Full Pipeline"** in the dashboard header to send the sample BOM to all three agents in parallel. The orchestrator calls `POST /api/run-pipeline`, which dispatches estimate, quote, and RFI tasks concurrently and returns combined results.
+
+You can also call it directly:
+
+```bash
+curl -X POST http://localhost:8000/api/run-pipeline
+```
+
+## Demo: Agent-to-Agent Communication
+
+The estimating agent can fetch real supplier pricing from the supplier quote agent before generating its estimate. Set the `SUPPLIER_AGENT_URL` environment variable:
+
+```bash
+export SUPPLIER_AGENT_URL=http://localhost:8002
+```
+
+When set, the estimating agent uses the CAIP SDK client to send a `quote` task to the supplier agent, then incorporates the real pricing into the LLM prompt. The artifact metadata includes `supplierDataUsed: true/false` to indicate whether supplier data was used.
 
 ## Verification
 
@@ -132,10 +154,10 @@ examples/
 │   ├── a2a_models.py          # A2A protocol Pydantic models
 │   ├── a2a_server.py          # Reusable A2A server base class
 │   ├── llm_provider.py        # Anthropic/OpenAI wrapper
-│   ├── schemas.py             # estimate-v1, quote-v1 Pydantic models
+│   ├── schemas.py             # bom-v1, rfi-v1, estimate-v1, quote-v1 Pydantic models
 │   └── sample_data.py         # Sample mechanical HVAC BOM
 ├── agents/
-│   ├── estimating_agent.py    # Port 8001 — estimate
+│   ├── estimating_agent.py    # Port 8001 — estimate + value-engineering
 │   ├── supplier_quote_agent.py # Port 8002 — material-procurement
 │   └── rfi_generation_agent.py # Port 8003 — rfi-generation
 └── orchestrator/

@@ -6,6 +6,7 @@ Port 8001 | Task type: estimate | bom-v1 → estimate-v1
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Any
 
@@ -23,7 +24,10 @@ from common.a2a_models import (
 from common.a2a_server import A2AServer
 from common.llm_provider import LLMProvider
 
+logger = logging.getLogger("estimating-agent")
 llm = LLMProvider()
+
+SUPPLIER_AGENT_URL = os.getenv("SUPPLIER_AGENT_URL")
 
 SYSTEM_PROMPT = """\
 You are a construction cost estimating expert. Given a Bill of Materials (BOM) \
@@ -120,17 +124,57 @@ card = AgentCard(
 server = A2AServer(card, enable_admin=True)
 
 
+async def _fetch_supplier_quotes(input_data: dict) -> dict | None:
+    """Attempt to fetch supplier quotes from a remote supplier agent."""
+    if not SUPPLIER_AGENT_URL:
+        return None
+    try:
+        from caip.client import CAIPClient
+    except ImportError:
+        logger.error("caip[client] not installed — cannot fetch supplier quotes")
+        return None
+    try:
+        async with CAIPClient(agent_url=SUPPLIER_AGENT_URL, timeout=30.0) as client:
+            task = await client.send_message("quote", input_data)
+            if task.artifacts and task.artifacts[0].parts:
+                return task.artifacts[0].parts[0].structured_data
+    except Exception as exc:
+        logger.warning(
+            "Failed to fetch supplier quotes from %s: %s: %s",
+            SUPPLIER_AGENT_URL, type(exc).__name__, exc,
+        )
+    return None
+
+
 def _make_handler(
     system_prompt: str, artifact_name: str, description: str, schema: str,
 ) -> Any:
     """Create a task handler that calls the LLM with the given prompt."""
     async def handler(task: Task, input_data: dict) -> Artifact:
-        result = await llm.generate_json(system_prompt, json.dumps(input_data, indent=2))
+        enriched_prompt = system_prompt
+        supplier_data_used = False
+        if schema == "estimate-v1" and SUPPLIER_AGENT_URL:
+            supplier_data = await _fetch_supplier_quotes(input_data)
+            if supplier_data:
+                supplier_data_used = True
+                enriched_prompt = (
+                    system_prompt
+                    + "\n\nIMPORTANT: Use the following real supplier pricing data "
+                    "to make your estimate more accurate:\n"
+                    + json.dumps(supplier_data, indent=2)
+                )
+
+        result = await llm.generate_json(enriched_prompt, json.dumps(input_data, indent=2))
+
+        metadata: dict[str, Any] = {"schema": schema}
+        if SUPPLIER_AGENT_URL:
+            metadata["supplierDataUsed"] = supplier_data_used
+
         return Artifact(
             name=artifact_name,
             description=description,
             parts=[Part(structured_data=result)],
-            metadata={"schema": schema},
+            metadata=metadata,
         )
     return handler
 

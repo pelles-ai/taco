@@ -270,6 +270,7 @@
   </div>
   <div class="header-actions">
     <button class="secondary" onclick="addVESkill()">+ Add VE Skill to Estimator</button>
+    <button class="secondary" onclick="runPipeline(this)">Run Full Pipeline</button>
     <button onclick="discoverAgents()">Discover Agents</button>
   </div>
 </header>
@@ -525,6 +526,99 @@ function syntaxHighlight(json) {
     .replace(/: "([^"]*)"/g, ': <span style="color:#22c55e">"$1"</span>')
     .replace(/: (\d+\.?\d*)/g, ': <span style="color:#f59e0b">$1</span>')
     .replace(/: (true|false|null)/g, ': <span style="color:#ef4444">$1</span>');
+}
+
+// ══════════════════════════════════════════════════════════════
+// Pipeline
+// ══════════════════════════════════════════════════════════════
+
+async function runPipeline(btnEl) {
+  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="spinner"></span>Running...'; }
+
+  let inputData;
+  try {
+    inputData = JSON.parse(document.getElementById('bom-editor').value);
+  } catch (e) {
+    alert('Invalid JSON in BOM editor');
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Run Full Pipeline'; }
+    return;
+  }
+
+  // Animate all discovered agents
+  for (const url of Object.keys(discoveredAgentsCache)) {
+    flowSetNodeState(url, 'sending');
+    flowAnimateEdge(`edge-in-${safePort(url)}`, FLOW_COLORS.sending);
+  }
+
+  try {
+    const resp = await fetch(`${API}/api/run-pipeline`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ inputData }),
+    });
+    const data = await resp.json();
+    renderPipelineResults(data.pipeline || []);
+    await refreshLog();
+  } catch (e) {
+    alert('Pipeline failed: ' + e.message);
+    for (const url of Object.keys(discoveredAgentsCache)) {
+      flowSetNodeState(url, 'failed');
+    }
+  } finally {
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Run Full Pipeline'; }
+  }
+}
+
+function renderPipelineResults(steps) {
+  const container = document.getElementById('results-container');
+  if (container.querySelector('.empty-state')) container.innerHTML = '';
+
+  // Add a pipeline summary card at top
+  const summaryCard = document.createElement('div');
+  summaryCard.className = 'result-card';
+  const completed = steps.filter(s => s.status === 'completed').length;
+  const total = steps.length;
+  const summaryId = `pipeline-${resultCount++}`;
+  summaryCard.innerHTML = `
+    <div class="result-header" onclick="document.getElementById('${summaryId}').style.display = document.getElementById('${summaryId}').style.display === 'none' ? 'block' : 'none'" style="border-left: 3px solid var(--accent);">
+      <div>
+        <span class="agent-name">Pipeline Run</span>
+        <span class="schema-badge">${completed}/${total} steps</span>
+      </div>
+      <span class="status-badge ${completed === total ? 'completed' : 'failed'}">${completed === total ? 'completed' : 'partial'}</span>
+    </div>
+    <div class="result-body" id="${summaryId}"></div>`;
+  container.prepend(summaryCard);
+
+  const body = document.getElementById(summaryId);
+  for (const step of steps) {
+    // Animate flow for each step
+    const agentUrl = Object.keys(discoveredAgentsCache).find(url => {
+      const card = discoveredAgentsCache[url];
+      return (card.skills || []).some(s => (s['x-construction'] || {}).taskType === step.step);
+    });
+    if (agentUrl) {
+      flowSetNodeState(agentUrl, step.status === 'completed' ? 'completed' : (step.status === 'failed' ? 'failed' : 'idle'));
+      if (step.status === 'completed' || step.status === 'failed') {
+        flowFlashEdges(agentUrl, FLOW_COLORS[step.status]);
+      }
+    }
+
+    const stepDiv = document.createElement('div');
+    stepDiv.style.cssText = 'margin-bottom: 12px; padding: 12px; background: var(--surface); border-radius: var(--radius);';
+    const statusColor = step.status === 'completed' ? 'var(--success)' : (step.status === 'failed' ? 'var(--error)' : 'var(--text-muted)');
+    const output = step.result?.result?.artifacts?.[0]?.parts?.[0]?.structuredData || step.result || step.error || step.reason || 'N/A';
+    const stepId = `step-${resultCount++}`;
+    stepDiv.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer;" onclick="document.getElementById('${stepId}').style.display = document.getElementById('${stepId}').style.display === 'none' ? 'block' : 'none'">
+        <strong style="text-transform: capitalize;">${step.step}</strong>
+        <span style="color: ${statusColor}; font-size: 12px; font-weight: 600;">${step.status}</span>
+      </div>
+      <div id="${stepId}" style="display: none;">
+        <pre style="font-family: 'SF Mono', monospace; font-size: 11px; line-height: 1.4; white-space: pre-wrap; word-break: break-word;">${syntaxHighlight(JSON.stringify(output, null, 2))}</pre>
+      </div>`;
+    body.appendChild(stepDiv);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════

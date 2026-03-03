@@ -8,7 +8,6 @@ the A2A JSON spec while keeping Pythonic snake_case internally.
 from __future__ import annotations
 
 import uuid
-from collections import OrderedDict
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
@@ -48,6 +47,17 @@ Integration = Literal[
 ]
 
 Availability = Literal["in-stock", "made-to-order", "backordered"]
+
+BOMUnit = Literal["EA", "LF", "SF", "CF", "CY", "TON", "LB", "GAL", "LS"]
+
+FlagSeverity = Literal["info", "warning", "error"]
+
+RFICategory = Literal[
+    "design-conflict", "missing-information", "clarification",
+    "substitution", "coordination", "code-compliance",
+]
+
+RFIPriority = Literal["low", "medium", "high", "critical"]
 
 
 # ---------------------------------------------------------------------------

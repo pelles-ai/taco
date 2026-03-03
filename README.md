@@ -122,18 +122,24 @@ card.serve(host="0.0.0.0", port=8080)
 ```
 
 ```python
+from caip import CAIPClient
+
+# Send a task to an agent
+async with CAIPClient(agent_url="http://localhost:8001") as client:
+    card = await client.discover()
+    task = await client.send_message("estimate", bom)
+    estimate = task.artifacts[0].parts[0].structured_data
+    # estimate follows the estimate-v1 schema
+```
+
+```python
 from caip import AgentRegistry
 
-# Discover agents
-registry = AgentRegistry(url="https://registry.caip.dev")
+# Discover and filter agents in-memory
+registry = AgentRegistry()
+await registry.register("http://localhost:8001")
+await registry.register("http://localhost:8002")
 agents = registry.find(trade="plumbing", task_type="material-procurement")
-
-# Delegate a task
-result = await agents[0].run_task(
-    task_type="material-procurement",
-    input_data=bom,
-)
-# result.schema == "quote-v1"
 ```
 
 > **Note:** The Python SDK uses snake_case parameter names (e.g., `csi_divisions`, `task_type`) that map to the camelCase JSON fields defined in the spec (`csiDivisions`, `taskType`).

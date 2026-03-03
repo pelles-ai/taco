@@ -5,6 +5,7 @@ Port 8000 | Discovers agents, sends tasks, serves the dashboard UI.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import datetime, timezone
@@ -50,6 +51,47 @@ def _log(direction: str, url: str, method: str, payload: dict, response: dict) -
 
 
 # ------------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------------
+
+def _find_agent_by_task_type(task_type: str) -> str | None:
+    """Find the URL of a discovered agent that handles the given task type."""
+    for url, card in discovered_agents.items():
+        for skill in card.get("skills", []):
+            xc = skill.get("x-construction", {})
+            if xc.get("taskType") == task_type:
+                return url
+    return None
+
+
+async def _send_task_to_agent(
+    client: httpx.AsyncClient,
+    agent_url: str,
+    task_type: str,
+    input_data: dict,
+) -> dict:
+    """Send a CAIP task to a specific agent and return the JSON-RPC response."""
+    rpc_payload = {
+        "jsonrpc": "2.0",
+        "id": f"orch-{datetime.now(timezone.utc).timestamp()}",
+        "method": "message/send",
+        "params": {
+            "message": {
+                "role": "user",
+                "parts": [{"structuredData": input_data}],
+            },
+            "metadata": {"taskType": task_type},
+        },
+    }
+
+    resp = await client.post(f"{agent_url}/", json=rpc_payload)
+    resp.raise_for_status()
+    result = resp.json()
+    _log("outbound", agent_url, f"message/send ({task_type})", rpc_payload, result)
+    return result
+
+
+# ------------------------------------------------------------------
 # Dashboard
 # ------------------------------------------------------------------
 
@@ -59,8 +101,8 @@ async def dashboard() -> HTMLResponse:
     return HTMLResponse(html_path.read_text())
 
 
-@app.get("/assets/{filename}")
-async def serve_asset(filename: str):
+@app.get("/assets/{filename}", response_model=None)
+async def serve_asset(filename: str) -> FileResponse | JSONResponse:
     """Serve static assets (logo, etc.)."""
     if ".." in filename or "/" in filename or "\\" in filename:
         return JSONResponse({"error": "Invalid filename"}, status_code=400)
@@ -102,25 +144,67 @@ async def send_task(request: Request) -> dict:
     task_type: str = body["taskType"]
     input_data: dict = body.get("inputData", SAMPLE_BOM)
 
-    rpc_payload = {
-        "jsonrpc": "2.0",
-        "id": f"orch-{datetime.now(timezone.utc).timestamp()}",
-        "method": "message/send",
-        "params": {
-            "message": {
-                "role": "user",
-                "parts": [{"structuredData": input_data}],
-            },
-            "metadata": {"taskType": task_type},
-        },
+    async with httpx.AsyncClient(timeout=120) as client:
+        return await _send_task_to_agent(client, agent_url, task_type, input_data)
+
+
+@app.post("/api/run-pipeline")
+async def run_pipeline(request: Request) -> dict:
+    """Run a full pipeline: Estimate + Quote + RFI in parallel."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    input_data: dict = body.get("inputData", SAMPLE_BOM)
+
+    # Find agents for each task type
+    task_types = ["estimate", "material-procurement", "rfi-generation"]
+    agent_map: dict[str, str] = {
+        tt: url
+        for tt in task_types
+        if (url := _find_agent_by_task_type(tt))
     }
 
-    async with httpx.AsyncClient(timeout=120) as client:
-        resp = await client.post(f"{agent_url}/", json=rpc_payload)
-        result = resp.json()
-        _log("outbound", agent_url, f"message/send ({task_type})", rpc_payload, result)
+    if not agent_map:
+        return JSONResponse(
+            {"error": "No agents found. Run discovery first."},
+            status_code=400,
+        )
 
-    return result
+    pipeline_results: list[dict] = []
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        # Run all available tasks in parallel
+        tasks = {}
+        for tt, url in agent_map.items():
+            tasks[tt] = asyncio.create_task(
+                _send_task_to_agent(client, url, tt, input_data),
+            )
+
+        for tt in task_types:
+            if tt not in tasks:
+                pipeline_results.append({
+                    "step": tt,
+                    "status": "skipped",
+                    "reason": f"No agent found for task type '{tt}'",
+                })
+                continue
+            try:
+                result = await tasks[tt]
+                pipeline_results.append({
+                    "step": tt,
+                    "status": "completed",
+                    "result": result,
+                })
+            except Exception as exc:
+                logger.exception("Pipeline step %s failed", tt)
+                pipeline_results.append({
+                    "step": tt,
+                    "status": "failed",
+                    "error": str(exc),
+                })
+
+    return {"pipeline": pipeline_results}
 
 
 @app.get("/api/sample-bom")

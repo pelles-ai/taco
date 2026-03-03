@@ -9,7 +9,15 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from .models import Availability, CaipBaseModel, Trade
+from .models import (
+    Availability,
+    BOMUnit,
+    CaipBaseModel,
+    FlagSeverity,
+    RFICategory,
+    RFIPriority,
+    Trade,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +119,117 @@ class QuoteV1(CaipBaseModel):
 
 
 # ---------------------------------------------------------------------------
+# bom-v1
+# ---------------------------------------------------------------------------
+
+class BOMAlternate(CaipBaseModel):
+    description: str | None = None
+    manufacturer: str | None = None
+    part_number: str | None = Field(None, alias="partNumber")
+
+
+class BOMLineItem(CaipBaseModel):
+    id: str
+    description: str
+    quantity: float = Field(ge=0)
+    unit: BOMUnit
+    size: str | None = None
+    material: str | None = None
+    spec_section: str | None = Field(None, alias="specSection")
+    source_sheet: str | None = Field(None, alias="sourceSheet")
+    location: str | None = None
+    alternates: list[BOMAlternate] = Field(default_factory=list)
+
+
+class BOMSourceDocument(CaipBaseModel):
+    filename: str | None = None
+    sheet_id: str | None = Field(None, alias="sheetId")
+    revision: str | None = None
+
+
+class BOMFlaggedItem(CaipBaseModel):
+    line_item_id: str | None = Field(None, alias="lineItemId")
+    reason: str | None = None
+    severity: FlagSeverity | None = None
+
+
+class BOMMetadata(CaipBaseModel):
+    generated_by: str = Field(alias="generatedBy")
+    generated_at: str = Field(alias="generatedAt")
+    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    source_documents: list[BOMSourceDocument] = Field(
+        default_factory=list, alias="sourceDocuments",
+    )
+    flagged_items: list[BOMFlaggedItem] = Field(
+        default_factory=list, alias="flaggedItems",
+    )
+
+
+class BOMV1(CaipBaseModel):
+    project_id: str = Field(alias="projectId")
+    revision: str | None = None
+    trade: Trade
+    csi_division: str = Field(alias="csiDivision")
+    line_items: list[BOMLineItem] = Field(alias="lineItems", min_length=1)
+    metadata: BOMMetadata
+
+
+# ---------------------------------------------------------------------------
+# rfi-v1
+# ---------------------------------------------------------------------------
+
+class RFICoordinates(CaipBaseModel):
+    x: float
+    y: float
+    width: float
+    height: float
+
+
+class RFIReference(CaipBaseModel):
+    sheet_id: str = Field(alias="sheetId")
+    area: str | None = None
+    coordinates: RFICoordinates | None = None
+    markup: str | None = None
+
+
+class RFIAssignee(CaipBaseModel):
+    role: str | None = None
+    company: str | None = None
+    contact: str | None = None
+
+
+class RFIMetadata(CaipBaseModel):
+    generated_by: str = Field(alias="generatedBy")
+    generated_at: str = Field(alias="generatedAt")
+    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    related_rfis: list[str] = Field(default_factory=list, alias="relatedRfis")
+
+
+class RFIV1(CaipBaseModel):
+    project_id: str = Field(alias="projectId")
+    subject: str
+    question: str
+    category: RFICategory
+    priority: RFIPriority
+    references: list[RFIReference] = Field(min_length=1)
+    suggested_resolution: str | None = Field(None, alias="suggestedResolution")
+    related_bom_items: list[str] = Field(
+        default_factory=list, alias="relatedBomItems",
+    )
+    due_date: str | None = Field(None, alias="dueDate")
+    assigned_to: RFIAssignee | None = Field(None, alias="assignedTo")
+    metadata: RFIMetadata
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible aliases
+# ---------------------------------------------------------------------------
+
+BOMSchema = BOMV1
+RFISchema = RFIV1
+
+
+# ---------------------------------------------------------------------------
 # Stubs — schemas defined in spec but not yet implemented as Pydantic models.
 # These raise NotImplementedError to prevent silent data loss.
 # ---------------------------------------------------------------------------
@@ -128,14 +247,6 @@ class _StubSchema(CaipBaseModel):
                 f"for the expected format."
             )
         super().__init__(**data)
-
-
-class BOMSchema(_StubSchema):
-    schema_id: str = "bom-v1"
-
-
-class RFISchema(_StubSchema):
-    schema_id: str = "rfi-v1"
 
 
 class ScheduleSchema(_StubSchema):
