@@ -11,16 +11,16 @@ The TACO Python SDK provides models, a server framework, a client, and an agent 
 
 ```bash
 # Core models and schemas
-pip install taco
+pip install taco-agent
 
 # With server support (FastAPI-based A2A server)
-pip install taco[server]
+pip install taco-agent[server]
 
 # With client support (async HTTP client)
-pip install taco[client]
+pip install taco-agent[client]
 
 # Everything
-pip install taco[server,client]
+pip install taco-agent[server,client]
 ```
 
 ## Modules

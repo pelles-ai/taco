@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "taco"
+name = "taco-agent"
 version = "0.2.0"
 description = "TACO — The A2A Construction Open-standard SDK"
 readme = "../README.md"

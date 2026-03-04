@@ -165,13 +165,13 @@ __all__ = [
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     # name -> (module, install hint)
-    "A2AServer": (".server", "taco[server]"),
-    "TaskHandler": (".server", "taco[server]"),
-    "StreamingTaskHandler": (".server", "taco[server]"),
-    "TacoClient": (".client", "taco[client]"),
-    "TacoClientError": (".client", "taco[client]"),
-    "RpcError": (".client", "taco[client]"),
-    "AgentRegistry": (".registry", "taco[client]"),
+    "A2AServer": (".server", "taco-agent[server]"),
+    "TaskHandler": (".server", "taco-agent[server]"),
+    "StreamingTaskHandler": (".server", "taco-agent[server]"),
+    "TacoClient": (".client", "taco-agent[client]"),
+    "TacoClientError": (".client", "taco-agent[client]"),
+    "RpcError": (".client", "taco-agent[client]"),
+    "AgentRegistry": (".registry", "taco-agent[client]"),
 }
 
 

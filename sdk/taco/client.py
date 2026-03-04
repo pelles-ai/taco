@@ -12,7 +12,7 @@ try:
     import httpx
 except ImportError:
     raise ImportError(
-        "Client dependencies not installed. Install with: pip install taco[client]"
+        "Client dependencies not installed. Install with: pip install taco-agent[client]"
     ) from None
 
 from .types import AgentCard, Task

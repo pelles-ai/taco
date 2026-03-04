@@ -263,7 +263,7 @@ function QuickStartSection() {
               </TabItem>
             </Tabs>
             <div className="install-badge">
-              <code>pip install taco</code>
+              <code>pip install taco-agent</code>
             </div>
           </div>
         </div>
