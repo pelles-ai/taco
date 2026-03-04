@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import AsyncIterator
 
 import httpx
@@ -13,13 +12,11 @@ from taco.types import (
     Artifact,
     Part,
     Task,
-    TaskState,
 )
 from taco._compat import (
     make_artifact,
     make_data_part,
     make_text_part,
-    extract_structured_data,
 )
 from taco.server import A2AServer
 
@@ -58,10 +55,6 @@ def _msg_payload(
 
 def _send_msg(task_type: str, input_data: dict, context_id: str | None = None) -> dict:
     return _msg_payload("message/send", task_type, input_data, context_id)
-
-
-def _stream_msg(task_type: str, input_data: dict, context_id: str | None = None) -> dict:
-    return _msg_payload("message/stream", task_type, input_data, context_id)
 
 
 class TestAgentCardDiscovery:
@@ -182,3 +175,94 @@ class TestErrorHandling:
             body = resp.json()
             result = body["result"]
             assert result["status"]["state"] == "failed"
+
+    async def test_wrong_task_type(self, sample_agent_card: AgentCard):
+        """Sending a nonexistent taskType should return failed state."""
+        server = A2AServer(sample_agent_card)
+
+        async def noop_handler(task: Task, input_data: dict) -> Artifact:
+            return make_artifact(parts=[make_data_part(input_data)])
+
+        server.register_handler("real-task", noop_handler)
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post("/", json=_send_msg("nonexistent", {}))
+            body = resp.json()
+            result = body["result"]
+            assert result["status"]["state"] == "failed"
+
+
+class TestStreamingHandler:
+    async def test_streaming_handler_success(self, sample_agent_card: AgentCard):
+        """Streaming handler yielding parts should complete with artifact."""
+        server = A2AServer(sample_agent_card)
+
+        async def stream_handler(task: Task, input_data: dict) -> AsyncIterator[Part]:
+            yield make_text_part("chunk-1")
+            yield make_text_part("chunk-2")
+
+        server.register_streaming_handler("stream-task", stream_handler)
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post("/", json=_send_msg("stream-task", {}))
+            body = resp.json()
+            result = body["result"]
+            assert result["status"]["state"] == "completed"
+            assert len(result["artifacts"]) >= 1
+
+    async def test_streaming_handler_error(self, sample_agent_card: AgentCard):
+        """Streaming handler that raises should result in failed state."""
+        server = A2AServer(sample_agent_card)
+
+        async def bad_stream(task: Task, input_data: dict) -> AsyncIterator[Part]:
+            yield make_text_part("partial")
+            raise RuntimeError("stream broke")
+
+        server.register_streaming_handler("bad-stream", bad_stream)
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post("/", json=_send_msg("bad-stream", {}))
+            body = resp.json()
+            result = body["result"]
+            assert result["status"]["state"] == "failed"
+
+
+class TestMultipleHandlers:
+    async def test_multiple_handlers_missing_task_type(self, sample_agent_card: AgentCard):
+        """With 2+ handlers and no taskType, should fail (not auto-select)."""
+        server = A2AServer(sample_agent_card)
+
+        async def handler_a(task: Task, input_data: dict) -> Artifact:
+            return make_artifact(parts=[make_data_part({"from": "a"})])
+
+        async def handler_b(task: Task, input_data: dict) -> Artifact:
+            return make_artifact(parts=[make_data_part({"from": "b"})])
+
+        server.register_handler("task-a", handler_a)
+        server.register_handler("task-b", handler_b)
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            payload = _rpc("message/send", {
+                "message": {
+                    "role": "user",
+                    "parts": [{"kind": "data", "data": {}}],
+                    "messageId": "test-multi",
+                },
+                "metadata": {},
+            })
+            resp = await client.post("/", json=payload)
+            body = resp.json()
+            result = body["result"]
+            assert result["status"]["state"] == "failed"
+
+
+class TestA2ASDKCardConversion:
+    async def test_a2a_sdk_card_has_skills_and_capabilities(self, client: httpx.AsyncClient):
+        """Verify /.well-known/agent.json (A2A SDK path) has skills, streaming, version."""
+        resp = await client.get("/.well-known/agent.json")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["skills"]) >= 1
+        assert data["skills"][0]["name"] == "Test Skill"
+        assert "capabilities" in data
+        assert "version" in data

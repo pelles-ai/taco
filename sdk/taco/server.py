@@ -18,13 +18,12 @@ Internally wraps the official A2A SDK server infrastructure
 
 from __future__ import annotations
 
-import json as _json
 import logging
 import uuid
 from collections.abc import AsyncIterator, Callable, Coroutine
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -38,7 +37,6 @@ from .types import (
     AgentCard,
     AgentSkill,
     Artifact,
-    DataPart,
     Message,
     Part,
     Role,
@@ -47,13 +45,10 @@ from .types import (
     TaskState,
     TaskStatus,
     TaskStatusUpdateEvent,
-    TextPart,
 )
 from ._compat import (
     extract_structured_data,
     make_artifact,
-    make_data_part,
-    make_message,
     make_text_part,
 )
 
@@ -94,7 +89,47 @@ class _TacoAgentExecutor(AgentExecutor):
             data = extract_structured_data(part)
             if data is not None:
                 return data
+        logger.warning("Message has no DataPart; handler receives empty input")
         return {}
+
+    # ------------------------------------------------------------------
+    # Event-emission helpers (reduce duplication)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _emit_failure(
+        eq: EventQueue, task_id: str, ctx_id: str, text: str,
+    ) -> None:
+        await eq.enqueue_event(
+            TaskStatusUpdateEvent(
+                task_id=task_id,
+                context_id=ctx_id,
+                status=TaskStatus(
+                    state=TaskState.failed,
+                    message=Message(
+                        role=Role.agent,
+                        parts=[make_text_part(text)],
+                        message_id=str(uuid.uuid4()),
+                    ),
+                ),
+                final=True,
+            )
+        )
+
+    @staticmethod
+    async def _emit_completed(
+        eq: EventQueue, task_id: str, ctx_id: str,
+    ) -> None:
+        await eq.enqueue_event(
+            TaskStatusUpdateEvent(
+                task_id=task_id,
+                context_id=ctx_id,
+                status=TaskStatus(state=TaskState.completed),
+                final=True,
+            )
+        )
+
+    # ------------------------------------------------------------------
 
     async def execute(self, context, event_queue: EventQueue) -> None:
         """Dispatch to the registered TACO handler for this task type."""
@@ -106,13 +141,7 @@ class _TacoAgentExecutor(AgentExecutor):
         try:
             task_type = self._resolve_task_type(metadata)
         except ValueError as exc:
-            # No valid task type — send error as message
-            error_msg = Message(
-                role=Role.agent,
-                parts=[make_text_part(str(exc))],
-                message_id=str(uuid.uuid4()),
-            )
-            await event_queue.enqueue_event(error_msg)
+            await self._emit_failure(event_queue, task_id, context_id, str(exc))
             return
 
         input_data = self._extract_input(message) if message else {}
@@ -142,32 +171,12 @@ class _TacoAgentExecutor(AgentExecutor):
                         append=False,
                     )
                 )
-                await event_queue.enqueue_event(
-                    TaskStatusUpdateEvent(
-                        task_id=task_id,
-                        context_id=context_id,
-                        status=TaskStatus(state=TaskState.completed),
-                        final=True,
-                    )
-                )
-            except Exception:
+                await self._emit_completed(event_queue, task_id, context_id)
+            except Exception as exc:
                 logger.exception("Task handler failed for %s", task_type)
-                await event_queue.enqueue_event(
-                    TaskStatusUpdateEvent(
-                        task_id=task_id,
-                        context_id=context_id,
-                        status=TaskStatus(
-                            state=TaskState.failed,
-                            message=Message(
-                                role=Role.agent,
-                                parts=[make_text_part(
-                                    f"Task handler failed for type '{task_type}'"
-                                )],
-                                message_id=str(uuid.uuid4()),
-                            ),
-                        ),
-                        final=True,
-                    )
+                await self._emit_failure(
+                    event_queue, task_id, context_id,
+                    f"Task handler failed for type '{task_type}': {exc}",
                 )
         elif is_streaming:
             try:
@@ -199,38 +208,18 @@ class _TacoAgentExecutor(AgentExecutor):
                             append=False,
                         )
                     )
-                await event_queue.enqueue_event(
-                    TaskStatusUpdateEvent(
-                        task_id=task_id,
-                        context_id=context_id,
-                        status=TaskStatus(state=TaskState.completed),
-                        final=True,
-                    )
-                )
+                await self._emit_completed(event_queue, task_id, context_id)
             except Exception as exc:
                 logger.exception("Streaming handler error for %s", task_type)
-                await event_queue.enqueue_event(
-                    TaskStatusUpdateEvent(
-                        task_id=task_id,
-                        context_id=context_id,
-                        status=TaskStatus(
-                            state=TaskState.failed,
-                            message=Message(
-                                role=Role.agent,
-                                parts=[make_text_part(str(exc))],
-                                message_id=str(uuid.uuid4()),
-                            ),
-                        ),
-                        final=True,
-                    )
+                await self._emit_failure(
+                    event_queue, task_id, context_id,
+                    f"Streaming handler failed for type '{task_type}': {exc}",
                 )
         else:
-            error_msg = Message(
-                role=Role.agent,
-                parts=[make_text_part(f"No handler for task type: {task_type}")],
-                message_id=str(uuid.uuid4()),
+            await self._emit_failure(
+                event_queue, task_id, context_id,
+                f"No handler for task type: {task_type}",
             )
-            await event_queue.enqueue_event(error_msg)
 
     async def cancel(self, context, event_queue: EventQueue) -> None:
         """Handle task cancellation."""
@@ -302,9 +291,11 @@ class A2AServer:
     @staticmethod
     def _to_a2a_sdk_card(card: AgentCard):
         """Convert TACO AgentCard to upstream a2a.types.AgentCard."""
-        from a2a.types import AgentCard as A2AAgentCard
-        from a2a.types import AgentSkill as A2AAgentSkill
-        from a2a.types import AgentCapabilities as A2ACapabilities
+        from a2a.types import (
+            AgentCapabilities as A2ACapabilities,
+            AgentCard as A2AAgentCard,
+            AgentSkill as A2AAgentSkill,
+        )
 
         skills = []
         for s in card.skills:
@@ -312,7 +303,9 @@ class A2AServer:
                 id=s.id,
                 name=s.name,
                 description=s.description,
-                tags=s.tags if s.tags else [],
+                tags=s.tags or [],
+                input_modes=s.input_modes,
+                output_modes=s.output_modes,
             )
             skills.append(a2a_skill)
 

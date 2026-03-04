@@ -12,8 +12,6 @@ from taco.types import (
     Artifact,
     SkillConstructionExt,
     Task,
-    TaskState,
-    TaskStatus,
 )
 from taco._compat import make_artifact, make_data_part
 from taco.server import A2AServer
