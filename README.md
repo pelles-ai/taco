@@ -99,6 +99,10 @@ taco/
 
 ## Quick Start
 
+```bash
+pip install taco-agent
+```
+
 ```python
 from taco import ConstructionAgentCard, ConstructionSkill
 
