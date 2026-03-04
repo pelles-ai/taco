@@ -122,13 +122,13 @@ card.serve(host="0.0.0.0", port=8080)
 ```
 
 ```python
-from taco import TacoClient
+from taco import TacoClient, extract_structured_data
 
 # Send a task to an agent
 async with TacoClient(agent_url="http://localhost:8001") as client:
     card = await client.discover()
     task = await client.send_message("estimate", bom)
-    estimate = task.artifacts[0].parts[0].structured_data
+    estimate = extract_structured_data(task.artifacts[0].parts[0])
     # estimate follows the estimate-v1 schema
 ```
 

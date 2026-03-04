@@ -133,7 +133,7 @@ curl -X POST http://localhost:8001/ \
     "params": {
       "message": {
         "role": "user",
-        "parts": [{"structuredData": {"projectId": "test", "trade": "mechanical", "csiDivision": "23", "lineItems": [], "metadata": {"generatedBy": "test", "generatedAt": "2026-01-01T00:00:00Z"}}}]
+        "parts": [{"kind": "data", "data": {"projectId": "test", "trade": "mechanical", "csiDivision": "23", "lineItems": [], "metadata": {"generatedBy": "test", "generatedAt": "2026-01-01T00:00:00Z"}}}]
       },
       "metadata": {"taskType": "estimate"}
     }

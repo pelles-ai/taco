@@ -27,7 +27,7 @@ pip install taco[server,client]
 
 | Module | Description |
 |--------|-------------|
-| `taco.models` | Pydantic v2 models for A2A protocol types (AgentCard, Task, Message, Part, etc.) |
+| `taco.types` | Pydantic v2 models for A2A protocol types (AgentCard, Task, Message, Part, etc.) and construction domain types |
 | `taco.schemas` | Construction data schema models (BOMV1, RFIV1, EstimateV1, QuoteV1) |
 | `taco.server` | A2AServer — FastAPI-based server with JSON-RPC routing, streaming, and task store |
 | `taco.client` | TacoClient — async HTTP client for agent discovery, task submission, and streaming |
@@ -37,7 +37,11 @@ pip install taco[server,client]
 ## Quick Start: Expose an Agent
 
 ```python
-from taco import ConstructionAgentCard, ConstructionSkill, A2AServer, Artifact, Part
+import uvicorn
+from taco import (
+    ConstructionAgentCard, ConstructionSkill, A2AServer,
+    make_artifact, make_data_part,
+)
 
 # 1. Define your agent's identity and capabilities
 card = ConstructionAgentCard(
@@ -55,28 +59,28 @@ card = ConstructionAgentCard(
 )
 
 # 2. Create the server
-server = A2AServer(card.to_agent_card())
+server = A2AServer(card.to_a2a())
 
 # 3. Register a handler for the task type
 async def handle_estimate(task, input_data):
     # Your estimation logic here
     estimate = generate_estimate(input_data)
-    return Artifact(
+    return make_artifact(
+        parts=[make_data_part(estimate)],
         name="estimate-result",
-        parts=[Part(structured_data=estimate)],
         metadata={"schema": "estimate-v1"},
     )
 
 server.register_handler("estimate", handle_estimate)
 
 # 4. Run the server
-server.run(host="0.0.0.0", port=8001)
+uvicorn.run(server.app, host="0.0.0.0", port=8001)
 ```
 
 ## Quick Start: Call an Agent
 
 ```python
-from taco import TacoClient
+from taco import TacoClient, extract_structured_data
 
 async with TacoClient(agent_url="http://localhost:8001") as client:
     # Discover agent capabilities
@@ -85,7 +89,7 @@ async with TacoClient(agent_url="http://localhost:8001") as client:
 
     # Send a task
     task = await client.send_message("estimate", bom_data)
-    estimate = task.artifacts[0].parts[0].structured_data
+    estimate = extract_structured_data(task.artifacts[0].parts[0])
 
     # Or use the convenience method
     result = await client.run_task(
@@ -146,12 +150,12 @@ The server supports SSE streaming for long-running tasks:
 
 ```python
 from collections.abc import AsyncIterator
-from taco import Part
+from taco import Part, make_text_part, make_data_part
 
 async def stream_handler(task, input_data) -> AsyncIterator[Part]:
     for chunk in process_incrementally(input_data):
-        yield Part(text=f"Processing: {chunk}")
-    yield Part(structured_data=final_result)
+        yield make_text_part(f"Processing: {chunk}")
+    yield make_data_part(final_result)
 
 server.register_streaming_handler("estimate", stream_handler)
 ```
@@ -163,8 +167,8 @@ The SDK is in early development. The API surface is subject to change. Current c
 - Full A2A protocol support (message/send, message/stream, tasks/get, tasks/cancel)
 - Agent Card discovery at `/.well-known/agent.json`
 - Multi-turn conversations via context IDs
-- LRU task store with configurable limits
+- In-memory task store
 - Pydantic v2 models with full validation
-- 95 tests passing
+- 87 tests passing
 
 See the [GitHub repository](https://github.com/pelles-ai/taco) for the latest.

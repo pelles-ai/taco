@@ -1,33 +1,53 @@
 """TACO — The A2A Construction Open-standard SDK"""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
-# A2A protocol models
-from .models import (
+# A2A protocol models (via types.py which re-exports from a2a-sdk)
+from .types import (
+    AgentCapabilities,
     AgentCard,
     AgentConstructionExt,
     AgentSkill,
     Artifact,
     Availability,
     BOMUnit,
-    TacoBaseModel,
     Certification,
+    DataPart,
     FlagSeverity,
     Integration,
-    JsonRpcError,
-    JsonRpcRequest,
-    JsonRpcResponse,
+    JSONRPCError,
+    JSONRPCRequest,
+    JSONRPCResponse,
     Message,
     Part,
     ProjectType,
     RFICategory,
     RFIPriority,
+    Role,
     SecurityExt,
     SkillConstructionExt,
+    TacoBaseModel,
     Task,
     TaskState,
     TaskStatus,
+    TextPart,
     Trade,
+    get_construction_ext,
+    get_skill_construction_ext,
+    # Deprecated aliases (old casing)
+    JsonRpcError,
+    JsonRpcRequest,
+    JsonRpcResponse,
+)
+
+# Compatibility helpers
+from ._compat import (
+    extract_structured_data,
+    extract_text,
+    make_artifact,
+    make_data_part,
+    make_message,
+    make_text_part,
 )
 
 # TACO data schemas
@@ -63,16 +83,20 @@ from .agent_card import ConstructionAgentCard, ConstructionSkill
 
 __all__ = [
     # A2A protocol models
+    "AgentCapabilities",
     "AgentCard",
     "AgentConstructionExt",
     "AgentSkill",
     "Artifact",
     "Availability",
     "BOMUnit",
-    "TacoBaseModel",
     "Certification",
+    "DataPart",
     "FlagSeverity",
     "Integration",
+    "JSONRPCError",
+    "JSONRPCRequest",
+    "JSONRPCResponse",
     "JsonRpcError",
     "JsonRpcRequest",
     "JsonRpcResponse",
@@ -81,12 +105,24 @@ __all__ = [
     "ProjectType",
     "RFICategory",
     "RFIPriority",
+    "Role",
     "SecurityExt",
     "SkillConstructionExt",
+    "TacoBaseModel",
     "Task",
     "TaskState",
     "TaskStatus",
+    "TextPart",
     "Trade",
+    "get_construction_ext",
+    "get_skill_construction_ext",
+    # Compatibility helpers
+    "extract_structured_data",
+    "extract_text",
+    "make_artifact",
+    "make_data_part",
+    "make_message",
+    "make_text_part",
     # TACO data schemas
     "BOMAlternate",
     "BOMFlaggedItem",

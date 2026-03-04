@@ -17,9 +17,11 @@ from common.a2a_models import (
     AgentConstructionExt,
     AgentSkill,
     Artifact,
-    Part,
     SkillConstructionExt,
     Task,
+    make_artifact,
+    make_data_part,
+    extract_structured_data,
 )
 from common.a2a_server import A2AServer
 from common.llm_provider import LLMProvider
@@ -105,6 +107,7 @@ card = AgentCard(
             id="generate-estimate",
             name="Generate Cost Estimate",
             description="Takes a BOM and produces a detailed cost estimate with labor, material, and equipment costs",
+            tags=["estimate"],
             x_construction=SkillConstructionExt(
                 task_type="estimate",
                 input_schema="bom-v1",
@@ -137,7 +140,7 @@ async def _fetch_supplier_quotes(input_data: dict) -> dict | None:
         async with TacoClient(agent_url=SUPPLIER_AGENT_URL, timeout=30.0) as client:
             task = await client.send_message("quote", input_data)
             if task.artifacts and task.artifacts[0].parts:
-                return task.artifacts[0].parts[0].structured_data
+                return extract_structured_data(task.artifacts[0].parts[0])
     except Exception as exc:
         logger.warning(
             "Failed to fetch supplier quotes from %s: %s: %s",
@@ -170,10 +173,10 @@ def _make_handler(
         if SUPPLIER_AGENT_URL:
             metadata["supplierDataUsed"] = supplier_data_used
 
-        return Artifact(
+        return make_artifact(
+            parts=[make_data_part(result)],
             name=artifact_name,
             description=description,
-            parts=[Part(structured_data=result)],
             metadata=metadata,
         )
     return handler

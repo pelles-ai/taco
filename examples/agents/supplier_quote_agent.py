@@ -15,9 +15,10 @@ from common.a2a_models import (
     AgentConstructionExt,
     AgentSkill,
     Artifact,
-    Part,
     SkillConstructionExt,
     Task,
+    make_artifact,
+    make_data_part,
 )
 from common.a2a_server import A2AServer
 from common.llm_provider import LLMProvider
@@ -68,6 +69,7 @@ card = AgentCard(
             id="generate-quote",
             name="Generate Supplier Quote",
             description="Takes a BOM and produces a supplier quote with unit prices, lead times, and availability",
+            tags=["material-procurement"],
             x_construction=SkillConstructionExt(
                 task_type="material-procurement",
                 input_schema="bom-v1",
@@ -89,10 +91,10 @@ server = A2AServer(card, enable_admin=True)
 
 async def handle_procurement(task: Task, input_data: dict) -> Artifact:
     result = await llm.generate_json(SYSTEM_PROMPT, json.dumps(input_data, indent=2))
-    return Artifact(
+    return make_artifact(
+        parts=[make_data_part(result)],
         name="supplier-quote",
         description="AI-generated supplier quote from BOM",
-        parts=[Part(structured_data=result)],
         metadata={"schema": "quote-v1"},
     )
 

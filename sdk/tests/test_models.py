@@ -2,61 +2,69 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from pydantic import ValidationError
 
-from taco.models import (
+from taco.types import (
+    AgentCapabilities,
     AgentCard,
     AgentConstructionExt,
     AgentSkill,
     Artifact,
-    JsonRpcError,
-    JsonRpcResponse,
+    DataPart,
     Message,
     Part,
+    Role,
     SkillConstructionExt,
     Task,
     TaskState,
     TaskStatus,
+    TextPart,
+)
+from taco._compat import (
+    make_text_part,
+    make_data_part,
+    make_message,
+    make_artifact,
+    extract_text,
+    extract_structured_data,
 )
 
 
 class TestPart:
     def test_text_part(self):
-        p = Part(text="hello")
-        assert p.text == "hello"
-        assert p.structured_data is None
+        p = make_text_part("hello")
+        assert extract_text(p) == "hello"
+        assert extract_structured_data(p) is None
 
     def test_structured_data_part(self):
-        p = Part(structured_data={"key": "value"})
-        assert p.structured_data == {"key": "value"}
-        assert p.text is None
+        p = make_data_part({"key": "value"})
+        assert extract_structured_data(p) == {"key": "value"}
+        assert extract_text(p) is None
 
-    def test_both_text_and_structured(self):
-        p = Part(text="hello", structured_data={"key": "value"})
-        assert p.text == "hello"
-        assert p.structured_data == {"key": "value"}
+    def test_text_part_via_constructor(self):
+        p = Part(root=TextPart(text="hello"))
+        assert p.root.text == "hello"
 
-    def test_empty_part_fails(self):
-        with pytest.raises(ValidationError, match="must have at least"):
-            Part()
-
-    def test_none_values_fail(self):
-        with pytest.raises(ValidationError, match="must have at least"):
-            Part(text=None, structured_data=None)
+    def test_data_part_via_constructor(self):
+        p = Part(root=DataPart(data={"key": "value"}))
+        assert p.root.data == {"key": "value"}
 
 
 class TestCamelCaseSerialization:
     def test_task_status_round_trip(self):
-        ts = TaskStatus(state=TaskState.WORKING)
+        ts = TaskStatus(state=TaskState.working)
         data = ts.model_dump(by_alias=True)
         assert "state" in data
         ts2 = TaskStatus.model_validate(data)
-        assert ts2.state == TaskState.WORKING
+        assert ts2.state == TaskState.working
 
     def test_task_round_trip(self):
         task = Task(
-            status=TaskStatus(state=TaskState.COMPLETED),
+            id=str(uuid.uuid4()),
+            status=TaskStatus(state=TaskState.completed),
             context_id="ctx-123",
             metadata={"taskType": "test"},
         )
@@ -92,30 +100,6 @@ class TestCamelCaseSerialization:
         assert data["x-construction"]["trade"] == "mechanical"
 
 
-class TestJsonRpcResponse:
-    def test_result_only(self):
-        r = JsonRpcResponse(id="1", result={"ok": True})
-        assert r.result == {"ok": True}
-        assert r.error is None
-
-    def test_error_only(self):
-        r = JsonRpcResponse(id="1", error=JsonRpcError(code=-1, message="fail"))
-        assert r.error.code == -1
-        assert r.result is None
-
-    def test_both_result_and_error_fails(self):
-        with pytest.raises(ValidationError, match="must not have both"):
-            JsonRpcResponse(
-                id="1",
-                result={"ok": True},
-                error=JsonRpcError(code=-1, message="fail"),
-            )
-
-    def test_neither_result_nor_error_fails(self):
-        with pytest.raises(ValidationError, match="must have either"):
-            JsonRpcResponse(id="1")
-
-
 class TestAgentCard:
     def test_full_construction_card(self, sample_agent_card: AgentCard):
         data = sample_agent_card.model_dump(by_alias=True, exclude_none=True)
@@ -136,14 +120,15 @@ class TestAgentCard:
 
 
 class TestTaskState:
-    def test_all_values(self):
-        expected = {"working", "completed", "failed", "canceled", "input-required"}
+    def test_core_values(self):
+        # A2A SDK TaskState is a superset — check core values exist
+        core = {"working", "completed", "failed", "canceled", "input-required"}
         actual = {s.value for s in TaskState}
-        assert actual == expected
+        assert core.issubset(actual)
 
     def test_string_value(self):
-        assert TaskState.WORKING == "working"
-        assert TaskState.COMPLETED == "completed"
+        assert TaskState.working == "working"
+        assert TaskState.completed == "completed"
 
 
 class TestLiterals:
@@ -162,21 +147,72 @@ class TestLiterals:
 
 class TestMessage:
     def test_message_creation(self):
-        m = Message(role="user", parts=[Part(text="hello")])
-        assert m.role == "user"
+        m = make_message("user", [make_text_part("hello")])
+        assert m.role == Role.user
         assert len(m.parts) == 1
 
-    def test_message_empty_parts_fails(self):
-        with pytest.raises(ValidationError):
-            Message(role="user", parts=[])
+    def test_message_with_multiple_parts(self):
+        m = make_message("user", [make_text_part("hello"), make_data_part({"x": 1})])
+        assert len(m.parts) == 2
 
 
 class TestArtifact:
     def test_artifact_with_metadata(self):
-        a = Artifact(
+        a = make_artifact(
+            parts=[make_text_part("data")],
             name="test",
             description="desc",
-            parts=[Part(text="data")],
             metadata={"schema": "test-v1"},
         )
         assert a.metadata["schema"] == "test-v1"
+
+
+class TestCompatHelpers:
+    def test_make_text_part(self):
+        p = make_text_part("hello")
+        assert isinstance(p.root, TextPart)
+        assert p.root.text == "hello"
+
+    def test_make_data_part(self):
+        p = make_data_part({"x": 1})
+        assert isinstance(p.root, DataPart)
+        assert p.root.data == {"x": 1}
+
+    def test_make_message_auto_id(self):
+        m = make_message("agent", [make_text_part("hi")])
+        assert m.message_id is not None
+        assert m.role == Role.agent
+
+    def test_make_artifact_auto_id(self):
+        a = make_artifact([make_text_part("data")])
+        assert a.artifact_id is not None
+
+    def test_extract_text_from_text_part(self):
+        p = make_text_part("hello")
+        assert extract_text(p) == "hello"
+
+    def test_extract_text_from_data_part(self):
+        p = make_data_part({"x": 1})
+        assert extract_text(p) is None
+
+    def test_extract_structured_data_from_data_part(self):
+        p = make_data_part({"x": 1})
+        assert extract_structured_data(p) == {"x": 1}
+
+    def test_extract_structured_data_from_text_part(self):
+        p = make_text_part("hello")
+        assert extract_structured_data(p) is None
+
+
+class TestBackwardCompat:
+    def test_json_rpc_aliases(self):
+        from taco.models import JsonRpcError, JsonRpcRequest, JsonRpcResponse
+        from taco.types import JSONRPCError, JSONRPCRequest, JSONRPCResponse
+        assert JsonRpcError is JSONRPCError
+        assert JsonRpcRequest is JSONRPCRequest
+        assert JsonRpcResponse is JSONRPCResponse
+
+    def test_taco_base_model_alias(self):
+        from taco.models import TacoBaseModel
+        from a2a._base import A2ABaseModel
+        assert TacoBaseModel is A2ABaseModel

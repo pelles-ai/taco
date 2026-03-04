@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from .models import (
+from .types import (
+    AgentCapabilities,
     AgentCard,
     AgentConstructionExt,
     AgentSkill,
@@ -50,6 +51,7 @@ class ConstructionSkill:
             id=self.id,
             name=self.name,
             description=self.description,
+            tags=[self.task_type],
             x_construction=SkillConstructionExt(
                 task_type=self.task_type,
                 input_schema=self.input_schema,
@@ -104,6 +106,9 @@ class ConstructionAgentCard:
             name=self.name,
             description=self.description,
             url=self.url,
+            default_input_modes=["application/json"],
+            default_output_modes=["application/json"],
+            capabilities=AgentCapabilities(streaming=False),
             skills=[s.to_a2a() for s in self.skills],
             x_construction=AgentConstructionExt(
                 trade=self.trade,

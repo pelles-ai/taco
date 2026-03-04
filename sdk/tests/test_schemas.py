@@ -69,7 +69,8 @@ class TestEstimateV1:
                 pricing_date="2026-01-01",
             ),
         )
-        data = est.model_dump(by_alias=True)
+        # A2ABaseModel serializes by alias by default
+        data = est.model_dump()
         assert data["projectId"] == "PRJ-001"
         assert len(data["lineItems"]) == 1
 
@@ -147,7 +148,7 @@ class TestQuoteV1:
                 confidence=0.92,
             ),
         )
-        data = quote.model_dump(by_alias=True)
+        data = quote.model_dump()
         assert data["supplierName"] == "ACME Supply"
         assert data["lineItems"][0]["leadTimeDays"] == 14
 
@@ -162,7 +163,7 @@ class TestBOMV1:
 
     def test_bom_round_trip(self, sample_bom: dict):
         bom = BOMV1.model_validate(sample_bom)
-        data = bom.model_dump(by_alias=True, exclude_none=True)
+        data = bom.model_dump(exclude_none=True)
         bom2 = BOMV1.model_validate(data)
         assert bom2.project_id == bom.project_id
         assert len(bom2.line_items) == len(bom.line_items)
@@ -294,7 +295,7 @@ class TestRFIV1:
                 confidence=0.85,
             ),
         )
-        data = rfi.model_dump(by_alias=True, exclude_none=True)
+        data = rfi.model_dump(exclude_none=True)
         assert data["category"] == "design-conflict"
         assert data["priority"] == "high"
         assert data["references"][0]["sheetId"] == "M-201"
@@ -314,7 +315,7 @@ class TestRFIV1:
             },
         }
         rfi = RFIV1.model_validate(rfi_data)
-        data = rfi.model_dump(by_alias=True, exclude_none=True)
+        data = rfi.model_dump(exclude_none=True)
         rfi2 = RFIV1.model_validate(data)
         assert rfi2.subject == rfi.subject
         assert rfi2.category == rfi.category
@@ -337,7 +338,7 @@ class TestRFIV1:
                 generated_at="2026-01-01T00:00:00Z",
             ),
         )
-        data = rfi.model_dump(by_alias=True, exclude_none=True)
+        data = rfi.model_dump(exclude_none=True)
         assert data["assignedTo"]["role"] == "engineer"
 
     def test_rfi_empty_references_fails(self):

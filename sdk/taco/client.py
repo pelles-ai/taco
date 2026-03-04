@@ -15,7 +15,8 @@ except ImportError:
         "Client dependencies not installed. Install with: pip install taco[client]"
     ) from None
 
-from .models import AgentCard, Task
+from .types import AgentCard, Task
+from ._compat import make_data_part, make_message
 
 _log = logging.getLogger("taco.client")
 
@@ -103,11 +104,9 @@ class TacoClient:
         context_id: str | None = None,
     ) -> dict[str, Any]:
         """Build the common params dict for message/send and message/stream."""
+        msg = make_message("user", [make_data_part(input_data)])
         params: dict[str, Any] = {
-            "message": {
-                "role": "user",
-                "parts": [{"structuredData": input_data}],
-            },
+            "message": msg.model_dump(mode="json", by_alias=True, exclude_none=True),
             "metadata": {"taskType": task_type},
         }
         if context_id is not None:

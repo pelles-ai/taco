@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from taco.models import (
+from taco.types import (
+    AgentCapabilities,
     AgentCard,
     AgentConstructionExt,
     AgentSkill,
@@ -24,11 +25,15 @@ def _make_card(
         name=name,
         description=f"Agent: {name}",
         url=f"http://localhost/{name.lower().replace(' ', '-')}",
+        default_input_modes=["application/json"],
+        default_output_modes=["application/json"],
+        capabilities=AgentCapabilities(streaming=False),
         skills=[
             AgentSkill(
                 id=f"skill-{tt}",
                 name=f"Skill for {tt}",
                 description=f"Handles {tt}",
+                tags=[tt],
                 x_construction=SkillConstructionExt(
                     task_type=tt,
                     output_schema=f"{tt}-v1",

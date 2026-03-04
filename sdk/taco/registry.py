@@ -9,7 +9,7 @@ except ImportError:
         "Client dependencies not installed. Install with: pip install taco[client]"
     ) from None
 
-from .models import AgentCard
+from .types import AgentCard, get_construction_ext, get_skill_construction_ext
 
 
 class AgentRegistry:
@@ -44,7 +44,7 @@ class AgentRegistry:
         """Find agents matching the given filters (all optional, AND logic)."""
         results: list[AgentCard] = []
         for card in self._agents.values():
-            xc = card.x_construction
+            xc = get_construction_ext(card)
             if trade is not None:
                 if xc is None or xc.trade != trade:
                     continue
@@ -56,7 +56,8 @@ class AgentRegistry:
                     continue
             if task_type is not None:
                 has_task = any(
-                    s.x_construction is not None and s.x_construction.task_type == task_type
+                    (sxc := get_skill_construction_ext(s)) is not None
+                    and sxc.task_type == task_type
                     for s in card.skills
                 )
                 if not has_task:

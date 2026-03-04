@@ -34,8 +34,8 @@ Added to the root of the Agent Card.
 | `csiDivisions` | string[] | Yes | CSI MasterFormat division numbers this agent covers (e.g., `["22", "23"]` for plumbing and HVAC) |
 | `projectTypes` | string[] | No | Project types supported. Values: `commercial`, `residential`, `healthcare`, `education`, `industrial`, `infrastructure`, `mixed-use` |
 | `certifications` | string[] | No | Security/compliance certifications. Values: `SOC2`, `ISO27001`, `FedRAMP` |
-| `dataFormats.input` | string[] | Yes | File formats the agent can accept as input |
-| `dataFormats.output` | string[] | Yes | File formats the agent can produce |
+| `dataFormats.input` | string[] | No | File formats the agent can accept as input |
+| `dataFormats.output` | string[] | No | File formats the agent can produce |
 | `integrations` | string[] | No | Platform integrations. Values: `procore`, `acc`, `bluebeam`, `plangrid`, `p6`, `ms-project`, `sage`, `viewpoint` |
 | `security` | object | No | TACO security metadata. See [`security.md`](security.md) for the full field reference. |
 

@@ -11,32 +11,45 @@ When ``enable_admin=True``:
 - POST /admin/skills              — dynamic skill registration
 - DELETE /admin/skills/{skill_id} — remove a skill
 - GET  /admin/skills              — list current skills
+
+Internally wraps the official A2A SDK server infrastructure
+(``A2AFastAPIApplication``, ``DefaultRequestHandler``, etc.).
 """
 
 from __future__ import annotations
 
-import json as _json
 import logging
-from collections import OrderedDict
+import uuid
 from collections.abc import AsyncIterator, Callable, Coroutine
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .models import (
+from a2a.server.agent_execution import AgentExecutor
+from a2a.server.apps import A2AFastAPIApplication
+from a2a.server.events import EventQueue
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
+
+from .types import (
     AgentCard,
     AgentSkill,
     Artifact,
-    JsonRpcError,
-    JsonRpcRequest,
-    JsonRpcResponse,
     Message,
     Part,
+    Role,
     Task,
+    TaskArtifactUpdateEvent,
     TaskState,
     TaskStatus,
+    TaskStatusUpdateEvent,
+)
+from ._compat import (
+    extract_structured_data,
+    make_artifact,
+    make_text_part,
 )
 
 logger = logging.getLogger("a2a")
@@ -45,17 +58,189 @@ TaskHandler = Callable[[Task, dict], Coroutine[Any, Any, Artifact]]
 StreamingTaskHandler = Callable[[Task, dict], AsyncIterator[Part]]
 
 
-class _TaskError(Exception):
-    """Internal error raised by handlers to produce proper JSON-RPC errors."""
+class _TacoAgentExecutor(AgentExecutor):
+    """Bridge between TACO task handlers and the A2A SDK AgentExecutor ABC."""
 
-    def __init__(self, code: int, message: str) -> None:
-        super().__init__(message)
-        self.code = code
-        self.rpc_message = message
+    def __init__(self) -> None:
+        self._handlers: dict[str, TaskHandler] = {}
+        self._streaming_handlers: dict[str, StreamingTaskHandler] = {}
+
+    def _resolve_task_type(self, metadata: dict[str, Any] | None) -> str:
+        """Determine task_type from request metadata, or auto-select sole handler."""
+        task_type = (metadata or {}).get("taskType")
+        if task_type:
+            return task_type
+        all_handlers = set(self._handlers) | set(self._streaming_handlers)
+        if len(all_handlers) == 1:
+            task_type = next(iter(all_handlers))
+            logger.info(
+                "No taskType specified; using sole registered handler: %s",
+                task_type,
+            )
+            return task_type
+        available = sorted(all_handlers)
+        raise ValueError(
+            f"Missing metadata.taskType. Available: {available}"
+        )
+
+    def _extract_input(self, message: Message) -> dict[str, Any]:
+        """Extract structured data from the first DataPart in a message."""
+        for part in message.parts:
+            data = extract_structured_data(part)
+            if data is not None:
+                return data
+        logger.warning("Message has no DataPart; handler receives empty input")
+        return {}
+
+    # ------------------------------------------------------------------
+    # Event-emission helpers (reduce duplication)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _emit_failure(
+        eq: EventQueue, task_id: str, ctx_id: str, text: str,
+    ) -> None:
+        await eq.enqueue_event(
+            TaskStatusUpdateEvent(
+                task_id=task_id,
+                context_id=ctx_id,
+                status=TaskStatus(
+                    state=TaskState.failed,
+                    message=Message(
+                        role=Role.agent,
+                        parts=[make_text_part(text)],
+                        message_id=str(uuid.uuid4()),
+                    ),
+                ),
+                final=True,
+            )
+        )
+
+    @staticmethod
+    async def _emit_completed(
+        eq: EventQueue, task_id: str, ctx_id: str,
+    ) -> None:
+        await eq.enqueue_event(
+            TaskStatusUpdateEvent(
+                task_id=task_id,
+                context_id=ctx_id,
+                status=TaskStatus(state=TaskState.completed),
+                final=True,
+            )
+        )
+
+    # ------------------------------------------------------------------
+
+    async def execute(self, context, event_queue: EventQueue) -> None:
+        """Dispatch to the registered TACO handler for this task type."""
+        metadata = context.metadata
+        message = context.message
+        task_id = context.task_id or str(uuid.uuid4())
+        context_id = context.context_id or str(uuid.uuid4())
+
+        try:
+            task_type = self._resolve_task_type(metadata)
+        except ValueError as exc:
+            await self._emit_failure(event_queue, task_id, context_id, str(exc))
+            return
+
+        input_data = self._extract_input(message) if message else {}
+
+        # Build a TACO-style Task object for the handler
+        task = context.current_task
+        if task is None:
+            task = Task(
+                id=task_id,
+                context_id=context_id,
+                status=TaskStatus(state=TaskState.working),
+                metadata={"taskType": task_type},
+            )
+
+        # Check if it's a streaming-only handler called via send
+        is_streaming = task_type in self._streaming_handlers
+        is_regular = task_type in self._handlers
+
+        if is_regular:
+            try:
+                artifact = await self._handlers[task_type](task, input_data)
+                await event_queue.enqueue_event(
+                    TaskArtifactUpdateEvent(
+                        task_id=task_id,
+                        context_id=context_id,
+                        artifact=artifact,
+                        append=False,
+                    )
+                )
+                await self._emit_completed(event_queue, task_id, context_id)
+            except Exception as exc:
+                logger.exception("Task handler failed for %s", task_type)
+                await self._emit_failure(
+                    event_queue, task_id, context_id,
+                    f"Task handler failed for type '{task_type}': {exc}",
+                )
+        elif is_streaming:
+            try:
+                collected_parts: list[Part] = []
+                handler = self._streaming_handlers[task_type]
+                async for part in handler(task, input_data):
+                    collected_parts.append(part)
+                    await event_queue.enqueue_event(
+                        TaskArtifactUpdateEvent(
+                            task_id=task_id,
+                            context_id=context_id,
+                            artifact=make_artifact(
+                                parts=[part],
+                                name=f"{task_type}-stream-chunk",
+                            ),
+                            append=True,
+                        )
+                    )
+
+                if collected_parts:
+                    await event_queue.enqueue_event(
+                        TaskArtifactUpdateEvent(
+                            task_id=task_id,
+                            context_id=context_id,
+                            artifact=make_artifact(
+                                parts=collected_parts,
+                                name=f"{task_type}-stream-result",
+                            ),
+                            append=False,
+                        )
+                    )
+                await self._emit_completed(event_queue, task_id, context_id)
+            except Exception as exc:
+                logger.exception("Streaming handler error for %s", task_type)
+                await self._emit_failure(
+                    event_queue, task_id, context_id,
+                    f"Streaming handler failed for type '{task_type}': {exc}",
+                )
+        else:
+            await self._emit_failure(
+                event_queue, task_id, context_id,
+                f"No handler for task type: {task_type}",
+            )
+
+    async def cancel(self, context, event_queue: EventQueue) -> None:
+        """Handle task cancellation."""
+        task_id = context.task_id or str(uuid.uuid4())
+        context_id = context.context_id or str(uuid.uuid4())
+        await event_queue.enqueue_event(
+            TaskStatusUpdateEvent(
+                task_id=task_id,
+                context_id=context_id,
+                status=TaskStatus(state=TaskState.canceled),
+                final=True,
+            )
+        )
 
 
 class A2AServer:
-    """Reusable FastAPI application implementing the A2A protocol."""
+    """Reusable FastAPI application implementing the A2A protocol.
+
+    Wraps the official A2A SDK server infrastructure while maintaining
+    TACO's handler registration API.
+    """
 
     def __init__(
         self,
@@ -63,15 +248,27 @@ class A2AServer:
         *,
         cors_origins: list[str] | None = None,
         enable_admin: bool = False,
-        max_tasks: int = 10_000,
     ) -> None:
         self.agent_card = agent_card
-        self.app = FastAPI(title=agent_card.name)
-        self._tasks: OrderedDict[str, Task] = OrderedDict()
-        self._context_index: dict[str, str] = {}  # context_id -> task_id
-        self._max_tasks = max_tasks
-        self._handlers: dict[str, TaskHandler] = {}
-        self._streaming_handlers: dict[str, StreamingTaskHandler] = {}
+        self._executor = _TacoAgentExecutor()
+
+        # Convert TACO AgentCard to A2A SDK AgentCard for the app
+        self._a2a_card = self._to_a2a_sdk_card(agent_card)
+
+        task_store = InMemoryTaskStore()
+        request_handler = DefaultRequestHandler(
+            agent_executor=self._executor,
+            task_store=task_store,
+        )
+        self._a2a_app = A2AFastAPIApplication(
+            agent_card=self._a2a_card,
+            http_handler=request_handler,
+        )
+
+        self.app = self._a2a_app.build(
+            agent_card_url="/.well-known/agent.json",
+        )
+        self.app.title = agent_card.name
 
         if cors_origins is None:
             cors_origins = ["*"]
@@ -82,9 +279,8 @@ class A2AServer:
             allow_headers=["*"],
         )
 
-        # A2A endpoints
-        self.app.get("/.well-known/agent.json")(self._serve_agent_card)
-        self.app.post("/")(self._jsonrpc_dispatch)
+        # Also serve the new standard path
+        self.app.get("/.well-known/agent-card.json")(self._serve_agent_card)
 
         # Admin endpoints (opt-in)
         if enable_admin:
@@ -92,12 +288,46 @@ class A2AServer:
             self.app.delete("/admin/skills/{skill_id}")(self._remove_skill)
             self.app.get("/admin/skills")(self._list_skills)
 
+    @staticmethod
+    def _to_a2a_sdk_card(card: AgentCard):
+        """Convert TACO AgentCard to upstream a2a.types.AgentCard."""
+        from a2a.types import (
+            AgentCapabilities as A2ACapabilities,
+            AgentCard as A2AAgentCard,
+            AgentSkill as A2AAgentSkill,
+        )
+
+        skills = []
+        for s in card.skills:
+            a2a_skill = A2AAgentSkill(
+                id=s.id,
+                name=s.name,
+                description=s.description,
+                tags=s.tags or [],
+                input_modes=s.input_modes,
+                output_modes=s.output_modes,
+            )
+            skills.append(a2a_skill)
+
+        return A2AAgentCard(
+            name=card.name,
+            description=card.description,
+            url=card.url,
+            version=card.version,
+            default_input_modes=card.default_input_modes,
+            default_output_modes=card.default_output_modes,
+            capabilities=A2ACapabilities(
+                streaming=card.capabilities.streaming if card.capabilities else False,
+            ),
+            skills=skills,
+        )
+
     def register_handler(self, task_type: str, handler: TaskHandler) -> None:
         """Register an async handler for a TACO task type.
 
         Handler signature: async def handler(task: Task, input_data: dict) -> Artifact
         """
-        self._handlers[task_type] = handler
+        self._executor._handlers[task_type] = handler
 
     def register_streaming_handler(
         self, task_type: str, handler: StreamingTaskHandler,
@@ -106,274 +336,18 @@ class A2AServer:
 
         Handler signature: async def handler(task: Task, input_data: dict) -> AsyncIterator[Part]
         """
-        self._streaming_handlers[task_type] = handler
-        self.agent_card.capabilities["streaming"] = True
+        self._executor._streaming_handlers[task_type] = handler
+        if self.agent_card.capabilities:
+            self.agent_card.capabilities.streaming = True
 
     # ------------------------------------------------------------------
-    # A2A endpoints
+    # Agent card endpoint (serves TACO card with x-construction)
     # ------------------------------------------------------------------
 
     async def _serve_agent_card(self) -> JSONResponse:
         return JSONResponse(
             self.agent_card.model_dump(by_alias=True, exclude_none=True),
         )
-
-    async def _jsonrpc_dispatch(self, request: Request) -> JSONResponse:
-        # Parse raw JSON
-        try:
-            body = await request.json()
-        except Exception:
-            logger.exception("Failed to parse JSON-RPC request body")
-            return self._error_response(
-                request_id=None, code=-32700, message="Parse error: invalid JSON",
-            )
-
-        # Validate JSON-RPC structure
-        try:
-            rpc = JsonRpcRequest(**body) if isinstance(body, dict) else None
-            if rpc is None:
-                raise ValueError("Request body must be a JSON object")
-        except Exception as exc:
-            logger.warning("Invalid JSON-RPC request: %s", exc)
-            request_id = body.get("id") if isinstance(body, dict) else None
-            return self._error_response(
-                request_id=request_id, code=-32600,
-                message=f"Invalid request: {exc}",
-            )
-
-        dispatch: dict[str, Callable] = {
-            "message/send": self._handle_message_send,
-            "message/stream": self._handle_message_stream,
-            "tasks/get": self._handle_get_task,
-            "tasks/cancel": self._handle_cancel_task,
-        }
-
-        handler = dispatch.get(rpc.method)
-        if not handler:
-            return self._error_response(
-                request_id=rpc.id, code=-32601,
-                message=f"Method not found: {rpc.method}",
-            )
-
-        try:
-            result = await handler(rpc)
-        except _TaskError as exc:
-            return self._error_response(
-                request_id=rpc.id, code=exc.code, message=exc.rpc_message,
-            )
-        except Exception as exc:
-            logger.exception("Handler error for %s", rpc.method)
-            return self._error_response(
-                request_id=rpc.id, code=-32603,
-                message="Internal error",
-                data=f"{type(exc).__name__}: {exc}",
-            )
-
-        # SSE responses bypass JSON-RPC wrapping
-        if not isinstance(result, dict):
-            return result
-
-        return JSONResponse(
-            JsonRpcResponse(id=rpc.id, result=result).model_dump(
-                by_alias=True, exclude_none=True,
-            ),
-        )
-
-    def _extract_input(self, params: dict) -> tuple[dict, str, Message]:
-        """Extract input_data, task_type, and user message from RPC params."""
-        message_data = params.get("message", {})
-        parts = message_data.get("parts", [])
-
-        input_data: dict = {}
-        structured_parts = [p for p in parts if p.get("structuredData")]
-        if not structured_parts:
-            logger.warning(
-                "message received with no structuredData parts; "
-                "handler will receive empty input",
-            )
-        else:
-            if len(structured_parts) > 1:
-                logger.warning(
-                    "message received %d structuredData parts; using first",
-                    len(structured_parts),
-                )
-            input_data = structured_parts[0]["structuredData"]
-
-        task_type = params.get("metadata", {}).get("taskType")
-        if not task_type:
-            all_handlers = set(self._handlers) | set(self._streaming_handlers)
-            if len(all_handlers) == 1:
-                task_type = next(iter(all_handlers))
-                logger.info(
-                    "No taskType specified; using sole registered handler: %s",
-                    task_type,
-                )
-            else:
-                available = sorted(all_handlers)
-                raise _TaskError(
-                    -32602,
-                    f"Missing metadata.taskType. Available: {available}",
-                )
-
-        # Build the user message
-        msg_parts = [Part.model_validate(p) for p in parts]
-        if not msg_parts:
-            msg_parts = [Part(text="(empty message)")]
-        user_message = Message(role="user", parts=msg_parts)
-
-        return input_data, task_type, user_message
-
-    def _get_or_create_task(
-        self, task_type: str, context_id: str | None, user_message: Message,
-    ) -> tuple[Task, bool]:
-        """Return (task, is_continuation). Creates or resumes a task."""
-        # Multi-turn: look up existing task by context_id
-        if context_id is not None:
-            existing_task_id = self._context_index.get(context_id)
-            if existing_task_id and existing_task_id in self._tasks:
-                task = self._tasks[existing_task_id]
-                task.history.append(user_message)
-                task.status = TaskStatus(state=TaskState.WORKING)
-                return task, True
-
-        # Evict oldest tasks if at capacity
-        while len(self._tasks) >= self._max_tasks:
-            evicted_id, evicted_task = self._tasks.popitem(last=False)
-            if evicted_task.context_id:
-                self._context_index.pop(evicted_task.context_id, None)
-
-        # Create new task
-        task = Task(
-            status=TaskStatus(state=TaskState.WORKING),
-            metadata={"taskType": task_type},
-        )
-        if context_id is not None:
-            task.context_id = context_id
-            self._context_index[context_id] = task.id
-        task.history.append(user_message)
-        self._tasks[task.id] = task
-        return task, False
-
-    async def _handle_message_send(self, rpc: JsonRpcRequest) -> dict:
-        """Receive a message, dispatch to the matching task handler, return task."""
-        params = rpc.params
-        input_data, task_type, user_message = self._extract_input(params)
-        context_id = params.get("contextId")
-
-        if task_type not in self._handlers:
-            if task_type in self._streaming_handlers:
-                raise _TaskError(
-                    -32602,
-                    f"Task type '{task_type}' only supports streaming. "
-                    f"Use message/stream instead of message/send.",
-                )
-            raise _TaskError(
-                -32602, f"No handler for task type: {task_type}",
-            )
-
-        task, _ = self._get_or_create_task(task_type, context_id, user_message)
-
-        # Execute
-        try:
-            artifact = await self._handlers[task_type](task, input_data)
-            task.artifacts = [artifact]
-            task.status = TaskStatus(state=TaskState.COMPLETED)
-        except Exception:
-            logger.exception("Task handler failed for %s", task_type)
-            task.status = TaskStatus(
-                state=TaskState.FAILED,
-                message=Message(
-                    role="agent",
-                    parts=[Part(text=f"Task handler failed for type '{task_type}'")],
-                ),
-            )
-
-        return task.model_dump(by_alias=True, exclude_none=True)
-
-    async def _handle_message_stream(self, rpc: JsonRpcRequest):
-        """Handle streaming message — returns an SSE response."""
-        try:
-            from sse_starlette.sse import EventSourceResponse
-        except ImportError:
-            raise _TaskError(
-                -32603,
-                "Streaming not available: sse-starlette not installed",
-            )
-
-        params = rpc.params
-        input_data, task_type, user_message = self._extract_input(params)
-        context_id = params.get("contextId")
-
-        if task_type not in self._streaming_handlers:
-            raise _TaskError(
-                -32602, f"No streaming handler for task type: {task_type}",
-            )
-
-        task, _ = self._get_or_create_task(task_type, context_id, user_message)
-
-        async def event_generator():
-            try:
-                handler = self._streaming_handlers[task_type]
-                collected_parts: list[Part] = []
-                async for part in handler(task, input_data):
-                    collected_parts.append(part)
-                    yield {
-                        "event": "update",
-                        "data": _json.dumps(
-                            part.model_dump(by_alias=True, exclude_none=True),
-                        ),
-                    }
-
-                # Mark complete
-                if collected_parts:
-                    task.artifacts = [Artifact(
-                        name=f"{task_type}-stream-result",
-                        parts=collected_parts,
-                    )]
-                task.status = TaskStatus(state=TaskState.COMPLETED)
-                yield {
-                    "event": "complete",
-                    "data": _json.dumps(
-                        task.model_dump(by_alias=True, exclude_none=True),
-                    ),
-                }
-            except Exception as exc:
-                logger.exception("Streaming handler error for %s", task_type)
-                task.status = TaskStatus(
-                    state=TaskState.FAILED,
-                    message=Message(
-                        role="agent",
-                        parts=[Part(text=str(exc))],
-                    ),
-                )
-                yield {
-                    "event": "error",
-                    "data": _json.dumps({
-                        "error": f"{type(exc).__name__}: {exc}",
-                        "task": task.model_dump(by_alias=True, exclude_none=True),
-                    }),
-                }
-
-        return EventSourceResponse(event_generator())
-
-    def _require_task(self, rpc: JsonRpcRequest) -> Task:
-        """Extract and validate the task ID from RPC params, return the task."""
-        task_id = rpc.params.get("id")
-        if not task_id:
-            raise _TaskError(-32602, "Missing required parameter: 'id'")
-        task = self._tasks.get(task_id)
-        if not task:
-            raise _TaskError(-32602, f"Task not found: {task_id}")
-        return task
-
-    async def _handle_get_task(self, rpc: JsonRpcRequest) -> dict:
-        task = self._require_task(rpc)
-        return task.model_dump(by_alias=True, exclude_none=True)
-
-    async def _handle_cancel_task(self, rpc: JsonRpcRequest) -> dict:
-        task = self._require_task(rpc)
-        task.status = TaskStatus(state=TaskState.CANCELED)
-        return task.model_dump(by_alias=True, exclude_none=True)
 
     # ------------------------------------------------------------------
     # Dynamic skill admin (opt-in, not part of A2A spec)
@@ -406,20 +380,3 @@ class A2AServer:
             s.model_dump(by_alias=True, exclude_none=True)
             for s in self.agent_card.skills
         ]
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _error_response(
-        *,
-        request_id: str | int | None,
-        code: int,
-        message: str,
-        data: Any = None,
-    ) -> JSONResponse:
-        """Build a spec-compliant JSON-RPC 2.0 error response."""
-        error = JsonRpcError(code=code, message=message, data=data)
-        resp = JsonRpcResponse(id=request_id, error=error)
-        return JSONResponse(resp.model_dump(by_alias=True, exclude_none=True))

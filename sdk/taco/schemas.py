@@ -7,12 +7,12 @@ snake_case internally.
 
 from __future__ import annotations
 
+from a2a._base import A2ABaseModel
 from pydantic import Field
 
-from .models import (
+from .types import (
     Availability,
     BOMUnit,
-    TacoBaseModel,
     FlagSeverity,
     RFICategory,
     RFIPriority,
@@ -24,7 +24,7 @@ from .models import (
 # estimate-v1
 # ---------------------------------------------------------------------------
 
-class EstimateLineItem(TacoBaseModel):
+class EstimateLineItem(A2ABaseModel):
     bom_item_id: str = Field(alias="bomItemId")
     description: str
     quantity: float = Field(ge=0)
@@ -38,7 +38,7 @@ class EstimateLineItem(TacoBaseModel):
     subtotal: float = Field(ge=0)
 
 
-class EstimateSummary(TacoBaseModel):
+class EstimateSummary(A2ABaseModel):
     total_material: float = Field(ge=0, alias="totalMaterial")
     total_labor: float = Field(ge=0, alias="totalLabor")
     total_equipment: float = Field(ge=0, alias="totalEquipment")
@@ -50,7 +50,7 @@ class EstimateSummary(TacoBaseModel):
     grand_total: float = Field(ge=0, alias="grandTotal")
 
 
-class EstimateMetadata(TacoBaseModel):
+class EstimateMetadata(A2ABaseModel):
     generated_by: str = Field(alias="generatedBy")
     generated_at: str = Field(alias="generatedAt")
     confidence: float = Field(ge=0.0, le=1.0)
@@ -59,7 +59,7 @@ class EstimateMetadata(TacoBaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
-class EstimateV1(TacoBaseModel):
+class EstimateV1(A2ABaseModel):
     project_id: str = Field(alias="projectId")
     trade: Trade
     csi_division: str = Field(alias="csiDivision")
@@ -72,7 +72,7 @@ class EstimateV1(TacoBaseModel):
 # quote-v1
 # ---------------------------------------------------------------------------
 
-class QuoteLineItem(TacoBaseModel):
+class QuoteLineItem(A2ABaseModel):
     bom_item_id: str = Field(alias="bomItemId")
     description: str
     quantity: float = Field(ge=0)
@@ -86,7 +86,7 @@ class QuoteLineItem(TacoBaseModel):
     notes: str | None = None
 
 
-class QuoteSummary(TacoBaseModel):
+class QuoteSummary(A2ABaseModel):
     subtotal: float = Field(ge=0)
     tax_rate: float = Field(ge=0, alias="taxRate")
     tax_amount: float = Field(ge=0, alias="taxAmount")
@@ -94,20 +94,20 @@ class QuoteSummary(TacoBaseModel):
     total: float = Field(ge=0)
 
 
-class QuoteTerms(TacoBaseModel):
+class QuoteTerms(A2ABaseModel):
     payment_terms: str = Field(alias="paymentTerms")
     delivery_method: str = Field(alias="deliveryMethod")
     warranty: str
     return_policy: str = Field(alias="returnPolicy")
 
 
-class QuoteMetadata(TacoBaseModel):
+class QuoteMetadata(A2ABaseModel):
     generated_by: str = Field(alias="generatedBy")
     generated_at: str = Field(alias="generatedAt")
     confidence: float = Field(ge=0.0, le=1.0)
 
 
-class QuoteV1(TacoBaseModel):
+class QuoteV1(A2ABaseModel):
     project_id: str = Field(alias="projectId")
     supplier_name: str = Field(alias="supplierName")
     quote_number: str = Field(alias="quoteNumber")
@@ -122,13 +122,13 @@ class QuoteV1(TacoBaseModel):
 # bom-v1
 # ---------------------------------------------------------------------------
 
-class BOMAlternate(TacoBaseModel):
+class BOMAlternate(A2ABaseModel):
     description: str | None = None
     manufacturer: str | None = None
     part_number: str | None = Field(None, alias="partNumber")
 
 
-class BOMLineItem(TacoBaseModel):
+class BOMLineItem(A2ABaseModel):
     id: str
     description: str
     quantity: float = Field(ge=0)
@@ -141,19 +141,19 @@ class BOMLineItem(TacoBaseModel):
     alternates: list[BOMAlternate] = Field(default_factory=list)
 
 
-class BOMSourceDocument(TacoBaseModel):
+class BOMSourceDocument(A2ABaseModel):
     filename: str | None = None
     sheet_id: str | None = Field(None, alias="sheetId")
     revision: str | None = None
 
 
-class BOMFlaggedItem(TacoBaseModel):
+class BOMFlaggedItem(A2ABaseModel):
     line_item_id: str | None = Field(None, alias="lineItemId")
     reason: str | None = None
     severity: FlagSeverity | None = None
 
 
-class BOMMetadata(TacoBaseModel):
+class BOMMetadata(A2ABaseModel):
     generated_by: str = Field(alias="generatedBy")
     generated_at: str = Field(alias="generatedAt")
     confidence: float | None = Field(None, ge=0.0, le=1.0)
@@ -165,7 +165,7 @@ class BOMMetadata(TacoBaseModel):
     )
 
 
-class BOMV1(TacoBaseModel):
+class BOMV1(A2ABaseModel):
     project_id: str = Field(alias="projectId")
     revision: str | None = None
     trade: Trade
@@ -178,34 +178,34 @@ class BOMV1(TacoBaseModel):
 # rfi-v1
 # ---------------------------------------------------------------------------
 
-class RFICoordinates(TacoBaseModel):
+class RFICoordinates(A2ABaseModel):
     x: float
     y: float
     width: float
     height: float
 
 
-class RFIReference(TacoBaseModel):
+class RFIReference(A2ABaseModel):
     sheet_id: str = Field(alias="sheetId")
     area: str | None = None
     coordinates: RFICoordinates | None = None
     markup: str | None = None
 
 
-class RFIAssignee(TacoBaseModel):
+class RFIAssignee(A2ABaseModel):
     role: str | None = None
     company: str | None = None
     contact: str | None = None
 
 
-class RFIMetadata(TacoBaseModel):
+class RFIMetadata(A2ABaseModel):
     generated_by: str = Field(alias="generatedBy")
     generated_at: str = Field(alias="generatedAt")
     confidence: float | None = Field(None, ge=0.0, le=1.0)
     related_rfis: list[str] = Field(default_factory=list, alias="relatedRfis")
 
 
-class RFIV1(TacoBaseModel):
+class RFIV1(A2ABaseModel):
     project_id: str = Field(alias="projectId")
     subject: str
     question: str
@@ -231,10 +231,9 @@ RFISchema = RFIV1
 
 # ---------------------------------------------------------------------------
 # Stubs — schemas defined in spec but not yet implemented as Pydantic models.
-# These raise NotImplementedError to prevent silent data loss.
 # ---------------------------------------------------------------------------
 
-class _StubSchema(TacoBaseModel):
+class _StubSchema(A2ABaseModel):
     """Base for unimplemented schemas that fail loudly."""
 
     schema_id: str
