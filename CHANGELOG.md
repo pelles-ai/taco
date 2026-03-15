@@ -2,7 +2,9 @@
 
 All notable changes to the TACO SDK are documented in this file.
 
-## [0.3.0] — 2026-03-15
+Versions are auto-published to PyPI on every push to `main`.
+
+## [0.1.x] — 2026-03-15
 
 ### Added
 - **TacoAgent** — high-level class combining A2AServer + TacoClient pool + peer discovery from `agents.yaml`
@@ -15,7 +17,6 @@ All notable changes to the TACO SDK are documented in this file.
 
 ### Changed
 - Migrated to official `a2a-sdk` package (≥0.3.25) — TACO models now wrap upstream types
-- Renamed PyPI package from `taco` to `taco-agent`
 - `A2AServer` now wraps `A2AFastAPIApplication` from a2a-sdk internally
 - Lazy imports for server, client, agent, and monitor modules — `pip install taco-agent` stays lightweight
 
@@ -24,8 +25,9 @@ All notable changes to the TACO SDK are documented in this file.
 - EventBus `get_history()` pagination semantics (offset/limit)
 - Lifespan management uses context manager instead of deprecated `on_event()`
 - Peer discovery handles malformed config entries gracefully
+- All ruff lint, format, and mypy checks pass in CI
 
-## [0.2.0] — 2026-03-04
+## [0.0.x] — 2026-03-05
 
 ### Added
 - `TacoClient` — async HTTP client for agent-to-agent communication
@@ -35,12 +37,11 @@ All notable changes to the TACO SDK are documented in this file.
 - CLI tool (`taco discover`, `taco inspect`, `taco send`, `taco health`)
 - CI test workflow with 178+ tests
 - Docusaurus documentation website
-
-### Changed
+- Renamed PyPI package from `taco` to `taco-agent`
 - Migrated from standalone implementation to `a2a-sdk` dependency
 - Renamed project from CAIP to TACO
 
-## [0.1.0] — 2026-03-01
+## [0.0.0] — 2026-03-01
 
 ### Added
 - Initial TACO specification (task types, agent card extensions, security model)

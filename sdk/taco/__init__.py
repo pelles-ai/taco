@@ -1,6 +1,6 @@
 """TACO — The A2A Construction Open-standard SDK"""
 
-__version__ = "0.3.0"
+__version__ = "0.1.3"
 
 # A2A protocol models (via types.py which re-exports from a2a-sdk)
 # Compatibility helpers

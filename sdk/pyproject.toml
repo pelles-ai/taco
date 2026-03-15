@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "taco-agent"
-version = "0.3.0"
+version = "0.1.3"
 description = "TACO — The A2A Construction Open-standard SDK"
 readme = "../README.md"
 license = "Apache-2.0"
