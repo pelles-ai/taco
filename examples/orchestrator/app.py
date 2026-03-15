@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,19 +41,22 @@ message_log: list[dict] = []
 
 
 def _log(direction: str, url: str, method: str, payload: dict, response: dict) -> None:
-    message_log.append({
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "direction": direction,
-        "url": url,
-        "method": method,
-        "payload": payload,
-        "response": response,
-    })
+    message_log.append(
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "direction": direction,
+            "url": url,
+            "method": method,
+            "payload": payload,
+            "response": response,
+        }
+    )
 
 
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
 
 def _find_agent_by_task_type(task_type: str) -> str | None:
     """Find the URL of a discovered agent that handles the given task type."""
@@ -78,7 +82,8 @@ async def _send_task_to_agent(
         "params": {
             "message": {
                 "role": "user",
-                "parts": [{"structuredData": input_data}],
+                "messageId": str(uuid.uuid4()),
+                "parts": [{"kind": "data", "data": input_data}],
             },
             "metadata": {"taskType": task_type},
         },
@@ -94,6 +99,7 @@ async def _send_task_to_agent(
 # ------------------------------------------------------------------
 # Dashboard
 # ------------------------------------------------------------------
+
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard() -> HTMLResponse:
@@ -116,6 +122,7 @@ async def serve_asset(filename: str) -> FileResponse | JSONResponse:
 # ------------------------------------------------------------------
 # API endpoints
 # ------------------------------------------------------------------
+
 
 @app.get("/api/discover")
 async def discover_agents() -> dict:
@@ -160,9 +167,7 @@ async def run_pipeline(request: Request) -> dict:
     # Find agents for each task type
     task_types = ["estimate", "material-procurement", "rfi-generation"]
     agent_map: dict[str, str] = {
-        tt: url
-        for tt in task_types
-        if (url := _find_agent_by_task_type(tt))
+        tt: url for tt in task_types if (url := _find_agent_by_task_type(tt))
     }
 
     if not agent_map:
@@ -183,26 +188,32 @@ async def run_pipeline(request: Request) -> dict:
 
         for tt in task_types:
             if tt not in tasks:
-                pipeline_results.append({
-                    "step": tt,
-                    "status": "skipped",
-                    "reason": f"No agent found for task type '{tt}'",
-                })
+                pipeline_results.append(
+                    {
+                        "step": tt,
+                        "status": "skipped",
+                        "reason": f"No agent found for task type '{tt}'",
+                    }
+                )
                 continue
             try:
                 result = await tasks[tt]
-                pipeline_results.append({
-                    "step": tt,
-                    "status": "completed",
-                    "result": result,
-                })
+                pipeline_results.append(
+                    {
+                        "step": tt,
+                        "status": "completed",
+                        "result": result,
+                    }
+                )
             except Exception as exc:
                 logger.exception("Pipeline step %s failed", tt)
-                pipeline_results.append({
-                    "step": tt,
-                    "status": "failed",
-                    "error": str(exc),
-                })
+                pipeline_results.append(
+                    {
+                        "step": tt,
+                        "status": "failed",
+                        "error": str(exc),
+                    }
+                )
 
     return {"pipeline": pipeline_results}
 
