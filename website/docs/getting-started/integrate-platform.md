@@ -68,9 +68,9 @@ Review the [Task Types](/docs/task-types) list and identify which ones your plat
 The handler translates A2A requests into calls to your platform's API:
 
 ```python
+from taco import make_artifact, make_data_part
 from taco.server import A2AServer
-from taco._compat import make_artifact, make_data_part
-from a2a.types import Artifact, Task
+from taco.types import Artifact, Task
 
 # Your existing platform client
 from your_platform import PlatformClient

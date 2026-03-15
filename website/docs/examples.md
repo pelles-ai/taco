@@ -13,7 +13,7 @@ A mechanical estimating agent that generates cost estimates from bills of materi
 
 | Property | Value |
 |----------|-------|
-| **Trade** | Multi-trade |
+| **Trade** | multi-trade |
 | **Task Type** | `estimate` |
 | **Input Schema** | `bom-v1` |
 | **Output Schema** | `estimate-v1` |
@@ -22,13 +22,13 @@ A mechanical estimating agent that generates cost estimates from bills of materi
 
 ## RFI Generation Agent
 
-Generates Requests for Information (RFIs) from specification documents and drawing references.
+Generates Requests for Information (RFIs) from bills of materials, flagging potential design conflicts and missing information.
 
 | Property | Value |
 |----------|-------|
 | **Trade** | Mechanical |
 | **Task Type** | `rfi-generation` |
-| **Input** | Specification text / drawing references |
+| **Input Schema** | `bom-v1` |
 | **Output Schema** | `rfi-v1` |
 
 **Source:** [`examples/agents/rfi_generation_agent.py`](https://github.com/pelles-ai/taco/blob/main/examples/agents/rfi_generation_agent.py)
@@ -70,7 +70,7 @@ taco discover http://localhost:8001
 taco inspect http://localhost:8001
 
 # Send a task
-taco send http://localhost:8001 '{"task_type": "estimate", "data": {...}}'
+taco send http://localhost:8001 estimate
 
 # Check health
 taco health http://localhost:8001

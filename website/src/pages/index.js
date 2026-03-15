@@ -469,11 +469,10 @@ card = ConstructionAgentCard(
     ],
 )
 
-# Register your task handlers before serving
+# Serve the agent card for discovery
 card.serve(host="0.0.0.0", port=8080)`;
 
-const discoverCode = `from taco import TacoClient, AgentRegistry
-from taco._compat import extract_structured_data
+const discoverCode = `from taco import TacoClient, AgentRegistry, extract_structured_data
 
 # Discover agents by trade and capability
 registry = AgentRegistry()

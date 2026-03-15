@@ -51,9 +51,9 @@ See [Agent Card Extensions](/docs/agent-card-extensions) for all available field
 The handler processes incoming tasks. It receives a `Task` object and parsed input data, and returns an `Artifact`.
 
 ```python
+from taco import make_artifact, make_data_part
 from taco.server import A2AServer
-from taco._compat import make_artifact, make_data_part
-from a2a.types import Artifact, Task
+from taco.types import Artifact, Task
 
 
 async def handle_takeoff(task: Task, input_data: dict) -> Artifact:
@@ -75,19 +75,23 @@ The server handles status updates (working → completed) and event streaming au
 ```python
 import uvicorn
 
-# Convert card to A2A format and create the server
-a2a_card = card.to_a2a()
-server = A2AServer(a2a_card)
+# Convert construction card to standard AgentCard and create the server
+agent_card = card.to_a2a()
+server = A2AServer(agent_card)
 server.register_handler("takeoff", handle_takeoff)
 
 uvicorn.run(server.app, host="0.0.0.0", port=8080)
 ```
 
-Or use the shorthand if you just need to serve the agent card:
+:::tip
+If you only need to expose your agent card for discovery (no task handlers), you can use the shorthand:
 
 ```python
 card.serve(host="0.0.0.0", port=8080)
 ```
+
+This starts a server that advertises your skills but does not process tasks. Use the full `A2AServer` pattern above when you need handler routing.
+:::
 
 ## 5. Test It
 
@@ -121,7 +125,7 @@ Or use the TACO CLI:
 
 ```bash
 taco inspect http://localhost:8080
-taco send http://localhost:8080 "Generate BOM for project drawings"
+taco send http://localhost:8080 takeoff
 ```
 
 ## Next Steps
