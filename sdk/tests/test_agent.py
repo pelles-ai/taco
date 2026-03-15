@@ -9,13 +9,10 @@ import tempfile
 import httpx
 import pytest
 
-from taco.types import (
-    Artifact,
-    Task,
-)
 from taco._compat import make_artifact, make_data_part
-from taco.agent_card import ConstructionAgentCard, ConstructionSkill
 from taco.agent import TacoAgent
+from taco.agent_card import ConstructionAgentCard, ConstructionSkill
+from taco.types import Artifact, Task
 
 
 @pytest.fixture()
@@ -95,7 +92,9 @@ class TestTacoAgentMonitorMount:
             assert resp.status_code == 200
             assert "TACO Agent Monitor" in resp.text
 
-    async def test_monitor_not_mounted_when_disabled(self, construction_card: ConstructionAgentCard):
+    async def test_monitor_not_mounted_when_disabled(
+        self, construction_card: ConstructionAgentCard
+    ):
         """When enable_monitor is not set, /monitor should not exist."""
         agent = TacoAgent(construction_card)
 

@@ -168,7 +168,7 @@ def main(argv: list[str] | None = None) -> None:
         try:
             import httpx
         except ImportError:
-            raise exc
+            raise exc from None
         if isinstance(exc, httpx.HTTPStatusError):
             print(f"Error: HTTP {exc.response.status_code} from server", file=sys.stderr)
             sys.exit(1)

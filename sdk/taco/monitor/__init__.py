@@ -152,7 +152,11 @@ def _add_server_middleware(server: A2AServer, bus: EventBus) -> None:
                 resp_data = json.loads(resp_body)
                 if isinstance(resp_data, dict) and resp_data.get("error"):
                     err_obj = resp_data["error"]
-                    error = err_obj.get("message", "Unknown error") if isinstance(err_obj, dict) else str(err_obj)
+                    error = (
+                        err_obj.get("message", "Unknown error")
+                        if isinstance(err_obj, dict)
+                        else str(err_obj)
+                    )
             except (json.JSONDecodeError, ValueError):
                 pass
 
