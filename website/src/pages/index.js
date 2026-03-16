@@ -248,9 +248,9 @@ function StandardizationSection() {
               <tbody>
                 {standardizationRows.map((row) => (
                   <tr key={row.dimension}>
-                    <td className="standardization-table__dim">{row.dimension}</td>
-                    <td className="standardization-table__a2a">{row.a2a}</td>
-                    <td className="standardization-table__taco">{row.taco}</td>
+                    <td className="standardization-table__dim" data-label="Dimension">{row.dimension}</td>
+                    <td className="standardization-table__a2a" data-label="A2A (generic)">{row.a2a}</td>
+                    <td className="standardization-table__taco" data-label="TACO adds">{row.taco}</td>
                   </tr>
                 ))}
               </tbody>

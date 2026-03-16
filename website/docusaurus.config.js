@@ -28,6 +28,26 @@ const config = {
 
   headTags: [
     {
+      tagName: 'link',
+      attributes: {
+        rel: 'preload',
+        href: '/fonts/inter-variable.woff2',
+        as: 'font',
+        type: 'font/woff2',
+        crossorigin: 'anonymous',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preload',
+        href: '/fonts/jetbrains-mono-variable.woff2',
+        as: 'font',
+        type: 'font/woff2',
+        crossorigin: 'anonymous',
+      },
+    },
+    {
       tagName: 'meta',
       attributes: {
         name: 'keywords',
