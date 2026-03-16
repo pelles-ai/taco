@@ -49,7 +49,7 @@ const config = {
         applicationCategory: 'DeveloperApplication',
         operatingSystem: 'Cross-platform',
         license: 'https://opensource.org/licenses/Apache-2.0',
-        version: '0.3.0',
+        version: '0.2.5',
         codeRepository: 'https://github.com/pelles-ai/taco',
         url: 'https://taco-protocol.com',
       }),
@@ -133,7 +133,7 @@ const config = {
             type: 'html',
             position: 'right',
             value:
-              '<a href="https://pypi.org/project/taco-agent/" target="_blank" rel="noopener noreferrer" class="navbar__version-badge">v0.3</a>',
+              '<a href="https://pypi.org/project/taco-agent/" target="_blank" rel="noopener noreferrer" class="navbar__version-badge">v0.2</a>',
           },
           {
             href: 'https://github.com/pelles-ai/taco',

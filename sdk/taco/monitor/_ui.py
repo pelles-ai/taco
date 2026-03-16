@@ -5,6 +5,7 @@ HTML_UI = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌮</text></svg>">
 <title>TACO Agent Monitor</title>
 <style>
   :root {
@@ -17,6 +18,8 @@ HTML_UI = r"""<!DOCTYPE html>
     --handler-bg: #f5f3ff; --handler-border: #ddd6fe; --handler-text: #6d28d9; --handler-dot: #8b5cf6;
     --disc-bg: #fff7ed; --disc-border: #fed7aa; --disc-text: #c2410c; --disc-dot: #f97316;
     --err-bg: #fef2f2; --err-border: #fecaca; --err-text: #dc2626; --err-dot: #ef4444;
+    --green: #10b981; --green-light: #ecfdf5; --green-border: #a7f3d0;
+    --red: #ef4444; --red-light: #fef2f2; --red-border: #fecaca;
     --radius: 8px; --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
   }
@@ -31,21 +34,28 @@ HTML_UI = r"""<!DOCTYPE html>
       --handler-bg: #1e1b3a; --handler-border: #312e81; --handler-text: #a78bfa; --handler-dot: #8b5cf6;
       --disc-bg: #2a1708; --disc-border: #431407; --disc-text: #fb923c; --disc-dot: #f97316;
       --err-bg: #2a0808; --err-border: #450a0a; --err-text: #f87171; --err-dot: #ef4444;
+      --green: #34d399; --green-light: #052e16; --green-border: #14532d;
+      --red: #f87171; --red-light: #2a0808; --red-border: #450a0a;
     }
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; height: 100vh; display: flex; flex-direction: column; }
 
   /* Header */
-  .header { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--bg-card); flex-shrink: 0; }
-  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--bg-card); flex-shrink: 0; transition: box-shadow 0.2s; z-index: 5; }
+  .header.scrolled { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  @media (prefers-color-scheme: dark) { .header.scrolled { box-shadow: 0 2px 12px rgba(0,0,0,0.3); } }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-icon { font-size: 22px; line-height: 1; }
   .agent-name { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
   .badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 10px; background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent); letter-spacing: 0.2px; white-space: nowrap; text-transform: uppercase; }
   .header-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-  .status { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
-  .status-dot { width: 7px; height: 7px; border-radius: 50%; }
-  .status-dot.connected { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.4); }
-  .status-dot.disconnected { background: #ef4444; animation: pulse 1.5s infinite; }
+  .status-pill { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 12px; transition: all 0.2s; }
+  .status-pill.connected { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); }
+  .status-pill.disconnected { background: var(--red-light); color: var(--red); border: 1px solid var(--red-border); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .status-pill.connected .status-dot { background: var(--green); box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+  .status-pill.disconnected .status-dot { background: var(--red); animation: pulse 1.5s infinite; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
   .btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); font-size: 11px; cursor: pointer; font-family: var(--font); transition: all 0.15s; }
   .btn:hover { background: var(--bg-hover); color: var(--text); }
@@ -56,6 +66,12 @@ HTML_UI = r"""<!DOCTYPE html>
   .filter-chip { padding: 3px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-size: 11px; cursor: pointer; transition: all 0.15s; user-select: none; }
   .filter-chip.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 500; }
   .filter-chip:hover { border-color: var(--accent); }
+  .chip-count { font-size: 10px; opacity: 0.7; margin-left: 2px; font-variant-numeric: tabular-nums; }
+  .search-box { margin-left: 12px; position: relative; flex-shrink: 0; }
+  .search-input { padding: 4px 10px 4px 26px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 11px; font-family: var(--font); width: 160px; outline: none; transition: all 0.2s; }
+  .search-input:focus { border-color: var(--accent); width: 200px; }
+  .search-input::placeholder { color: var(--text-dim); }
+  .search-icon { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 11px; pointer-events: none; }
   .event-count { margin-left: auto; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
   /* Timeline */
@@ -66,7 +82,7 @@ HTML_UI = r"""<!DOCTYPE html>
   .event-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
   .event-body { flex: 1; min-width: 0; }
   .event-header { display: flex; align-items: center; gap: 8px; }
-  .event-time { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; font-family: var(--mono); flex-shrink: 0; }
+  .event-time { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; font-family: var(--mono); flex-shrink: 0; cursor: default; }
   .event-kind { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
   .event-method { font-size: 12px; font-weight: 600; color: var(--text); }
   .event-summary { font-size: 12px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -98,14 +114,15 @@ HTML_UI = r"""<!DOCTYPE html>
 </head>
 <body>
 
-<div class="header">
+<div class="header" id="header">
   <div class="header-left">
+    <span class="header-icon">&#x1F32E;</span>
     <span class="agent-name" id="agentName">Agent</span>
-    <span class="badge">TACO Monitor</span>
+    <span class="badge">Monitor</span>
   </div>
   <div class="header-right">
-    <div class="status">
-      <span class="status-dot" id="statusDot"></span>
+    <div class="status-pill disconnected" id="statusPill">
+      <span class="status-dot"></span>
       <span id="statusText">Connecting...</span>
     </div>
     <button class="btn" onclick="clearEvents()">Clear</button>
@@ -115,10 +132,14 @@ HTML_UI = r"""<!DOCTYPE html>
 <div class="filters">
   <label>Filter:</label>
   <span class="filter-chip active" data-filter="all" onclick="toggleFilter(this)">All</span>
-  <span class="filter-chip active" data-filter="incoming" onclick="toggleFilter(this)">Incoming</span>
-  <span class="filter-chip active" data-filter="outgoing" onclick="toggleFilter(this)">Outgoing</span>
-  <span class="filter-chip active" data-filter="handler" onclick="toggleFilter(this)">Handler</span>
-  <span class="filter-chip active" data-filter="discovery" onclick="toggleFilter(this)">Discovery</span>
+  <span class="filter-chip active" data-filter="incoming" onclick="toggleFilter(this)">Incoming <span class="chip-count" data-count="incoming"></span></span>
+  <span class="filter-chip active" data-filter="outgoing" onclick="toggleFilter(this)">Outgoing <span class="chip-count" data-count="outgoing"></span></span>
+  <span class="filter-chip active" data-filter="handler" onclick="toggleFilter(this)">Handler <span class="chip-count" data-count="handler"></span></span>
+  <span class="filter-chip active" data-filter="discovery" onclick="toggleFilter(this)">Discovery <span class="chip-count" data-count="discovery"></span></span>
+  <div class="search-box">
+    <span class="search-icon">&#x1F50D;</span>
+    <input class="search-input" id="searchInput" type="text" placeholder="Search events..." oninput="onSearch()">
+  </div>
   <span class="event-count" id="eventCount">0 events</span>
 </div>
 
@@ -130,8 +151,10 @@ const timeline = document.getElementById('timeline');
 const scrollBtn = document.getElementById('scrollBtn');
 const eventCountEl = document.getElementById('eventCount');
 const agentNameEl = document.getElementById('agentName');
-const statusDot = document.getElementById('statusDot');
+const statusPill = document.getElementById('statusPill');
 const statusText = document.getElementById('statusText');
+const headerEl = document.getElementById('header');
+const searchInput = document.getElementById('searchInput');
 
 // Derive the base path so fetch/ws work when mounted under a prefix
 const basePath = location.pathname.replace(/\/$/, '');
@@ -140,8 +163,15 @@ let events = [];
 let autoScroll = true;
 let expandedId = null;
 let filters = { all: true, incoming: true, outgoing: true, handler: true, discovery: true };
+let searchQuery = '';
 let ws = null;
 let reconnectDelay = 1000;
+
+// --- Search ---
+function onSearch() {
+  searchQuery = searchInput.value.toLowerCase().trim();
+  renderAll();
+}
 
 // --- Filters ---
 function toggleFilter(chip) {
@@ -172,9 +202,28 @@ function kindCategory(kind) {
   return 'incoming';
 }
 
+function matchesSearch(ev) {
+  if (!searchQuery) return true;
+  const hay = `${ev.method || ''} ${ev.summary || ''} ${ev.error || ''}`.toLowerCase();
+  return hay.includes(searchQuery);
+}
+
 function isVisible(ev) {
-  if (filters.all) return true;
-  return filters[kindCategory(ev.kind)];
+  const catVisible = filters.all || filters[kindCategory(ev.kind)];
+  return catVisible && matchesSearch(ev);
+}
+
+// --- Filter counts ---
+function updateFilterCounts() {
+  const counts = { incoming: 0, outgoing: 0, handler: 0, discovery: 0 };
+  for (const ev of events) {
+    const cat = kindCategory(ev.kind);
+    if (counts[cat] !== undefined) counts[cat]++;
+  }
+  for (const [cat, count] of Object.entries(counts)) {
+    const el = document.querySelector(`[data-count="${cat}"]`);
+    if (el) el.textContent = count > 0 ? `(${count})` : '';
+  }
 }
 
 // --- Rendering ---
@@ -201,11 +250,22 @@ function kindLabel(kind) {
   return map[kind] || kind.toUpperCase();
 }
 
-function formatTime(ts) {
+function formatTimeAbsolute(ts) {
   try {
     const d = new Date(ts);
     return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
       + '.' + String(d.getMilliseconds()).padStart(3, '0');
+  } catch { return ts; }
+}
+
+function formatTimeRelative(ts) {
+  try {
+    const diff = Math.max(0, (Date.now() - new Date(ts).getTime()) / 1000);
+    if (diff < 2) return 'just now';
+    if (diff < 60) return `${Math.floor(diff)}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return formatTimeAbsolute(ts);
   } catch { return ts; }
 }
 
@@ -221,11 +281,13 @@ function renderEvent(ev) {
   const dur = ev.duration_ms != null ? `${Math.round(ev.duration_ms)}ms` : '';
   const arrow = ev.direction === 'in' ? '&#x2B07;' : ev.direction === 'out' ? '&#x2B06;' : '&#x2699;';
 
-  let html = `<div class="event ${kc} ${expanded ? 'expanded' : ''}" data-id="${ev.id}" onclick="toggleExpand('${ev.id}')">
+  const safeId = escapeAttr(ev.id);
+  const safeTs = escapeAttr(ev.ts);
+  let html = `<div class="event ${kc} ${expanded ? 'expanded' : ''}" data-id="${safeId}" onclick="toggleExpand('${safeId}')">
     <div class="event-dot"></div>
     <div class="event-body">
       <div class="event-header">
-        <span class="event-time">${formatTime(ev.ts)}</span>
+        <span class="event-time" data-ts="${safeTs}" title="${escapeAttr(formatTimeAbsolute(ev.ts))}">${formatTimeRelative(ev.ts)}</span>
         <span class="event-kind">${kindLabel(ev.kind)}</span>
         <span class="event-method">${arrow} ${ev.method || ''}</span>
         ${dur ? `<span class="event-duration">${dur}</span>` : ''}
@@ -244,12 +306,17 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+function escapeAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');
+}
+
 function renderAll() {
   const visible = events.filter(isVisible);
   timeline.innerHTML = visible.length === 0
-    ? '<div class="empty"><div class="empty-icon">&#x1F50D;</div><h2>No events yet</h2><p>Events will appear here as the agent processes requests</p></div>'
+    ? '<div class="empty"><div class="empty-icon">&#x1F32E;</div><h2>No events yet</h2><p>Events will appear here as the agent processes requests</p></div>'
     : visible.map(renderEvent).join('');
   eventCountEl.textContent = `${events.length} events`;
+  updateFilterCounts();
   if (autoScroll) scrollToBottom();
 }
 
@@ -263,6 +330,7 @@ timeline.addEventListener('scroll', () => {
   const atBottom = timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 60;
   autoScroll = atBottom;
   scrollBtn.classList.toggle('visible', !atBottom && events.length > 0);
+  headerEl.classList.toggle('scrolled', timeline.scrollTop > 0);
 });
 
 function scrollToBottom() {
@@ -271,11 +339,28 @@ function scrollToBottom() {
   scrollBtn.classList.remove('visible');
 }
 
+// --- Relative time refresh ---
+function refreshRelativeTimes() {
+  if (document.hidden) return;
+  document.querySelectorAll('.event-time[data-ts]').forEach(el => {
+    el.textContent = formatTimeRelative(el.dataset.ts);
+  });
+}
+setInterval(refreshRelativeTimes, 5000);
+
 // --- Append events efficiently ---
+function incrementFilterCount(ev) {
+  const cat = kindCategory(ev.kind);
+  const el = document.querySelector(`[data-count="${cat}"]`);
+  if (!el) return;
+  const cur = parseInt(el.textContent.replace(/[()]/g, ''), 10) || 0;
+  el.textContent = `(${cur + 1})`;
+}
+
 function appendEvent(ev) {
   events.push(ev);
+  incrementFilterCount(ev);
   if (isVisible(ev)) {
-    // Remove empty state if present
     const empty = timeline.querySelector('.empty');
     if (empty) empty.remove();
     timeline.insertAdjacentHTML('beforeend', renderEvent(ev));
@@ -301,7 +386,7 @@ async function loadInfo() {
     const resp = await fetch(`${basePath}/api/info`);
     const info = await resp.json();
     agentNameEl.textContent = info.agentName || 'Agent';
-    document.title = `${info.agentName || 'Agent'} — TACO Monitor`;
+    document.title = `\u{1F32E} ${info.agentName || 'Agent'} \u2014 Monitor`;
   } catch(e) {
     console.warn('Failed to load info:', e);
   }
@@ -322,7 +407,7 @@ function connectWs() {
   ws = new WebSocket(`${proto}//${location.host}${basePath}/ws`);
 
   ws.onopen = () => {
-    statusDot.className = 'status-dot connected';
+    statusPill.className = 'status-pill connected';
     statusText.textContent = 'Live';
     reconnectDelay = 1000;
   };
@@ -335,7 +420,7 @@ function connectWs() {
   };
 
   ws.onclose = () => {
-    statusDot.className = 'status-dot disconnected';
+    statusPill.className = 'status-pill disconnected';
     statusText.textContent = 'Reconnecting...';
     setTimeout(connectWs, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 1.5, 10000);
