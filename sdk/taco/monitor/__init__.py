@@ -257,7 +257,11 @@ def _instrument_client(client: TacoClient, bus: EventBus) -> None:
     original_discover = client.discover
     agent_url = client.agent_url
 
-    async def monitored_rpc_call(method: str, params: dict[str, Any]) -> dict[str, Any]:
+    async def monitored_rpc_call(
+        method: str,
+        params: dict[str, Any],
+        **kwargs: Any,
+    ) -> dict[str, Any]:
         task_type = None
         if isinstance(params, dict):
             task_type = (params.get("metadata") or {}).get("taskType")
@@ -276,7 +280,7 @@ def _instrument_client(client: TacoClient, bus: EventBus) -> None:
 
         start = time.monotonic()
         try:
-            result = await original_rpc(method, params)
+            result = await original_rpc(method, params, **kwargs)
             duration_ms = (time.monotonic() - start) * 1000
             bus.emit(
                 make_event(
