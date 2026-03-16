@@ -170,6 +170,7 @@ class TacoAgent:
         input_data: dict[str, Any],
         *,
         context_id: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Task:
         """Send a message to whichever peer agent handles *task_type*.
 
@@ -192,7 +193,9 @@ class TacoAgent:
             raise ValueError(f"No peer agent found for task type: {task_type}")
 
         client = self._get_or_create_client(card.url)
-        return await client.send_message(task_type, input_data, context_id=context_id)
+        return await client.send_message(
+            task_type, input_data, context_id=context_id, headers=headers,
+        )
 
     async def stream_from_peer(
         self,
@@ -200,6 +203,7 @@ class TacoAgent:
         input_data: dict[str, Any],
         *,
         context_id: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream a message from whichever peer agent handles *task_type*.
 
@@ -223,6 +227,7 @@ class TacoAgent:
             task_type,
             input_data,
             context_id=context_id,
+            headers=headers,
         ):
             yield event
 

@@ -85,9 +85,17 @@ class TacoClient:
             "params": params,
         }
 
-    async def _rpc_call(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+    async def _rpc_call(
+        self,
+        method: str,
+        params: dict[str, Any],
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         payload = self._rpc_request(method, params)
-        resp = await self._client.post(f"{self.agent_url}/", json=payload)
+        resp = await self._client.post(
+            f"{self.agent_url}/", json=payload, headers=headers,
+        )
         resp.raise_for_status()
         body = resp.json()
         if "error" in body and body["error"] is not None:
@@ -119,10 +127,11 @@ class TacoClient:
         input_data: dict[str, Any],
         *,
         context_id: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Task:
         """Send a message to the agent and return the resulting Task."""
         params = self._message_params(task_type, input_data, context_id)
-        result = await self._rpc_call("message/send", params)
+        result = await self._rpc_call("message/send", params, headers=headers)
         return Task.model_validate(result)
 
     async def get_task(self, task_id: str) -> Task:
@@ -140,10 +149,11 @@ class TacoClient:
         *,
         task_type: str,
         input_data: dict[str, Any],
+        headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Legacy convenience — send a message and return raw result dict."""
         params = self._message_params(task_type, input_data)
-        return await self._rpc_call("message/send", params)
+        return await self._rpc_call("message/send", params, headers=headers)
 
     # -- streaming --
 
@@ -153,6 +163,7 @@ class TacoClient:
         input_data: dict[str, Any],
         *,
         context_id: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Send a streaming message and yield SSE event dicts.
 
@@ -164,6 +175,7 @@ class TacoClient:
             "POST",
             f"{self.agent_url}/",
             json=payload,
+            headers=headers,
         ) as resp:
             resp.raise_for_status()
             event_type = "message"
