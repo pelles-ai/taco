@@ -96,6 +96,7 @@ from .types import (
     Task,
     TaskState,
     TaskStatus,
+    TaskStore,
     TextPart,
     Trade,
     get_construction_ext,
@@ -134,6 +135,7 @@ __all__ = [
     "Task",
     "TaskState",
     "TaskStatus",
+    "TaskStore",
     "TextPart",
     "Trade",
     "get_construction_ext",
@@ -186,6 +188,8 @@ __all__ = [
     "ScheduleMilestone",
     "ScheduleSchema",
     "ScheduleV1",
+    # Task store (lazy)
+    "JsonFileTaskStore",
     # Server (lazy — requires taco[server])
     "A2AServer",
     "TaskHandler",
@@ -216,6 +220,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TacoClientError": (".client", "taco-agent[client]"),
     "RpcError": (".client", "taco-agent[client]"),
     "AgentRegistry": (".registry", "taco-agent[client]"),
+    "JsonFileTaskStore": (".task_store", "taco-agent"),
     "TacoAgent": (".agent", "taco-agent[all]"),
     "enable_monitor": (".monitor", "taco-agent[server]"),
     "EventBus": (".monitor._event_bus", "taco-agent[server]"),

@@ -13,9 +13,11 @@ from taco._compat import (
     make_text_part,
 )
 from taco.server import A2AServer
+from taco.task_store import JsonFileTaskStore
 from taco.types import (
     AgentCard,
     Artifact,
+    InMemoryTaskStore,
     Part,
     Task,
 )
@@ -485,3 +487,64 @@ class TestAdminAuth:
             resp = await c.get("/.well-known/agent.json")
             updated_skills = resp.json()["skills"]
             assert len(updated_skills) == 0
+
+
+class TestCustomTaskStore:
+    async def test_custom_store_receives_tasks(self, sample_agent_card: AgentCard):
+        """Passing a custom TaskStore to A2AServer should be used for task storage."""
+        custom_store = InMemoryTaskStore()
+        server = A2AServer(sample_agent_card, task_store=custom_store)
+
+        async def echo_handler(task: Task, input_data: dict) -> Artifact:
+            return make_artifact(parts=[make_data_part(input_data)])
+
+        server.register_handler("test-task", echo_handler)
+
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            resp = await c.post("/", json=_send_msg("test-task", {"x": 1}))
+            body = resp.json()
+            task_id = body["result"]["id"]
+
+            # The task should be in our custom store
+            stored = await custom_store.get(task_id)
+            assert stored is not None
+            assert stored.id == task_id
+            assert stored.status.state.value == "completed"
+
+    def test_task_store_attribute(self, sample_agent_card: AgentCard):
+        """A2AServer should expose _task_store attribute."""
+        custom_store = InMemoryTaskStore()
+        server = A2AServer(sample_agent_card, task_store=custom_store)
+        assert server._task_store is custom_store
+
+    def test_default_task_store(self, sample_agent_card: AgentCard):
+        """Without task_store param, A2AServer should use InMemoryTaskStore."""
+        server = A2AServer(sample_agent_card)
+        assert isinstance(server._task_store, InMemoryTaskStore)
+
+
+class TestJsonFileTaskStoreIntegration:
+    async def test_end_to_end_persistence(self, sample_agent_card: AgentCard, tmp_path):
+        """JsonFileTaskStore + A2AServer: task survives across store instances."""
+        store_path = str(tmp_path / "tasks.json")
+        store = JsonFileTaskStore(store_path)
+        server = A2AServer(sample_agent_card, task_store=store)
+
+        async def echo_handler(task: Task, input_data: dict) -> Artifact:
+            return make_artifact(parts=[make_data_part(input_data)])
+
+        server.register_handler("test-task", echo_handler)
+
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            resp = await c.post("/", json=_send_msg("test-task", {"key": "value"}))
+            body = resp.json()
+            task_id = body["result"]["id"]
+
+        # Load a fresh store from the same file — task should be persisted
+        store2 = JsonFileTaskStore(store_path)
+        persisted = await store2.get(task_id)
+        assert persisted is not None
+        assert persisted.id == task_id
+        assert persisted.status.state.value == "completed"

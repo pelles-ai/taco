@@ -141,6 +141,8 @@ card = ConstructionAgentCard(
 
 # Serve with live monitor UI at /monitor
 server = A2AServer(card.to_a2a(), enable_monitor=True)
+# Optional: persist tasks across restarts
+# server = A2AServer(card.to_a2a(), enable_monitor=True, task_store=JsonFileTaskStore("tasks.json"))
 server.register_handler("estimate", my_handler)
 
 import uvicorn
