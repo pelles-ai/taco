@@ -48,6 +48,7 @@ from taco import A2AServer
 
 server = A2AServer(
     agent_card,                     # AgentCard (from card.to_a2a())
+    task_store=None,                # TaskStore (default: InMemoryTaskStore)
     cors_origins=["*"],             # CORS allowed origins (default: None = no CORS)
     enable_admin=False,             # Enable /admin/skills endpoints
     admin_auth_token="secret",      # Protect admin endpoints with Bearer token
@@ -154,6 +155,32 @@ curl -X POST http://localhost:8001/admin/skills \
   }'
 ```
 
+### Task persistence
+
+By default, `A2AServer` stores tasks in memory using `InMemoryTaskStore`. Tasks are lost when the process restarts.
+
+For durable storage, pass a `task_store` to the constructor:
+
+```python
+from taco import A2AServer, JsonFileTaskStore
+
+store = JsonFileTaskStore("tasks.json")
+server = A2AServer(card.to_a2a(), task_store=store, enable_monitor=True)
+```
+
+`JsonFileTaskStore` persists all tasks to a local JSON file. Tasks survive restarts and are loaded back automatically on startup.
+
+For multi-process or production deployments, implement the `TaskStore` protocol with your own backend (e.g., PostgreSQL, Redis):
+
+```python
+from taco.types import TaskStore
+
+class DatabaseTaskStore(TaskStore):
+    async def get(self, task_id: str) -> Task | None: ...
+    async def save(self, task: Task) -> None: ...
+    async def delete(self, task_id: str) -> None: ...
+```
+
 ---
 
 ## TacoClient
@@ -247,6 +274,7 @@ from taco import TacoAgent, ConstructionAgentCard
 
 agent = TacoAgent(
     card,                                    # ConstructionAgentCard
+    task_store=None,                         # TaskStore (default: InMemoryTaskStore)
     peers=["http://localhost:8101"],          # Peer URLs or path to YAML/JSON file
     peer_retry_attempts=5,                   # Retries per peer at startup (default: 5)
     peer_retry_delay=2.0,                    # Seconds between retries (default: 2.0)
@@ -573,7 +601,7 @@ The SDK is in early development. The API surface is subject to change. Current c
 - Full A2A protocol support (message/send, message/stream, tasks/get, tasks/cancel)
 - Agent Card discovery at `/.well-known/agent.json`
 - Multi-turn conversations via context IDs
-- In-memory task store
+- Pluggable task store (in-memory default, JSON file, or database-backed)
 - Pydantic v2 models with full validation
 
 See the [GitHub repository](https://github.com/pelles-ai/taco) for the latest.
