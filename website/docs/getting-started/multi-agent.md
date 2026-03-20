@@ -63,6 +63,7 @@ card = ConstructionAgentCard(
 )
 
 server = A2AServer(card.to_a2a(), enable_monitor=True)
+# Optional: server = A2AServer(card.to_a2a(), task_store=JsonFileTaskStore("tasks.json"), enable_monitor=True)
 
 
 async def handle_query(task: Task, input_data: dict) -> Artifact:
@@ -124,6 +125,7 @@ agent = TacoAgent(
     card,
     peers=["http://localhost:9001"],
     enable_monitor=True,
+    # task_store=JsonFileTaskStore("orchestrator-tasks.json"),  # optional persistence
 )
 
 

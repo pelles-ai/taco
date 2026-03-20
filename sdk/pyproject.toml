@@ -22,6 +22,7 @@ test = [
     "a2a-sdk[http-server]>=0.3.25",
     "pyyaml>=6.0",
 ]
+langgraph = ["langgraph>=0.2"]
 all = ["a2a-sdk[http-server]>=0.3.25", "httpx>=0.27"]
 dev = [
     "a2a-sdk[http-server]>=0.3.25",

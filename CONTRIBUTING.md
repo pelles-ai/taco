@@ -2,6 +2,70 @@
 
 Thank you for your interest in contributing to The A2A Construction Open-standard.
 
+## Developer Setup
+
+**Prerequisites:** Python 3.10+
+
+```bash
+git clone https://github.com/pelles-ai/taco.git && cd taco
+make install    # pip install -e sdk[dev]
+make test       # verify everything works
+```
+
+## Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `make install` | Install SDK with dev dependencies |
+| `make lint` | Run ruff linter |
+| `make format` | Run ruff formatter |
+| `make typecheck` | Run mypy type checker |
+| `make test` | Run tests |
+| `make test-verbose` | Run tests with verbose output |
+| `make check-all` | Run all checks (mirrors CI exactly) |
+| `make clean` | Remove caches and build artifacts |
+
+## Testing
+
+- Tests live in `sdk/tests/`, one file per module
+- Run a specific test: `cd sdk && pytest tests/test_server.py -v`
+- Run a specific test function: `cd sdk && pytest tests/test_server.py::test_name -v`
+- Uses `asyncio_mode = "auto"` — no need for `@pytest.mark.asyncio`
+
+## Code Style
+
+- **Linter/formatter**: ruff (line-length 100, target Python 3.10)
+- **Type checker**: mypy with `pydantic.mypy` plugin
+- **Import convention**: Use `from taco.types import ...`, never `from a2a.types` directly
+- **Helpers**: Use `taco._compat` helpers (`make_text_part`, `make_data_part`, etc.)
+
+## Commit Message Format
+
+Format: `<scope>: <imperative verb> <what>`
+
+| Scope | When |
+|-------|------|
+| `sdk` | SDK source changes |
+| `ui` | Website or monitor UI |
+| `docs` | Documentation |
+| `ci` | CI/CD workflows |
+| `examples` | Demo and examples |
+| `spec` | Protocol specification |
+
+Examples:
+- `sdk: add streaming support to TacoClient`
+- `docs: update agent card extension spec`
+- `ci: add Python 3.12 to test matrix`
+
+## PR Checklist
+
+- [ ] `make check-all` passes
+- [ ] Tests added for new functionality
+- [ ] All imports use `taco.types` / `taco._compat`
+- [ ] CHANGELOG.md updated if user-facing
+
+---
+
 ## How to Contribute
 
 ### Feedback & Discussion

@@ -12,7 +12,7 @@ import pytest
 from taco._compat import make_artifact, make_data_part
 from taco.agent import TacoAgent
 from taco.agent_card import ConstructionAgentCard, ConstructionSkill
-from taco.types import Artifact, Task
+from taco.types import Artifact, InMemoryTaskStore, Task
 
 
 @pytest.fixture()
@@ -141,6 +141,19 @@ class TestTacoAgentPeerLoading:
             assert result == ["http://localhost:9001"]
         finally:
             os.unlink(path)
+
+
+class TestTacoAgentTaskStore:
+    def test_task_store_forwarded(self, construction_card: ConstructionAgentCard):
+        """Passing task_store to TacoAgent should forward to the underlying server."""
+        custom_store = InMemoryTaskStore()
+        agent = TacoAgent(construction_card, task_store=custom_store)
+        assert agent.server._task_store is custom_store
+
+    def test_default_task_store(self, construction_card: ConstructionAgentCard):
+        """Without task_store, the server should use InMemoryTaskStore."""
+        agent = TacoAgent(construction_card)
+        assert isinstance(agent.server._task_store, InMemoryTaskStore)
 
 
 class TestSendToPeerErrors:
