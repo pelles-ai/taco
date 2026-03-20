@@ -1,6 +1,6 @@
 """JSON-file-backed TaskStore for lightweight task persistence.
 
-Implements the A2A SDK ``TaskStore`` ABC using a single JSON file.
+Implements the A2A SDK ``TaskStore`` protocol using a single JSON file.
 Uses atomic writes (``tempfile.mkstemp`` + ``os.replace``) to avoid
 data corruption on crash — the same pattern used by
 :class:`taco.registry.AgentRegistry`.
@@ -57,8 +57,7 @@ class JsonFileTaskStore(TaskStore):
     async def delete(self, task_id: str, context=None) -> None:  # type: ignore[override]
         """Delete a task by ID (no-op if absent), then flush to disk."""
         async with self._lock:
-            if task_id in self._tasks:
-                del self._tasks[task_id]
+            if self._tasks.pop(task_id, None) is not None:
                 self._flush()
 
     # ------------------------------------------------------------------

@@ -286,6 +286,25 @@ class TestAsHandler:
             "task_ref": "task-1",
         }
 
+    async def test_ainvoke_exception_propagates(self, mock_graph, sample_task):
+        mock_graph.ainvoke = AsyncMock(side_effect=RuntimeError("graph crashed"))
+        adapter = _get_adapter(graph=mock_graph)
+        handler = adapter.as_handler()
+
+        with pytest.raises(RuntimeError, match="graph crashed"):
+            await handler(sample_task, {})
+
+    async def test_missing_key_logs_warning(self, mock_graph, sample_task, caplog):
+        mock_graph.ainvoke = AsyncMock(return_value={"other": "value"})
+        adapter = _get_adapter(graph=mock_graph)
+        handler = adapter.as_handler()
+
+        with caplog.at_level(logging.WARNING, logger="taco.adapters.langgraph"):
+            artifact = await handler(sample_task, {})
+
+        assert "not found" in caplog.text.lower()
+        assert artifact.parts[0].root.text == ""
+
 
 # ======================================================================
 # TestAsStreamingHandler
@@ -397,6 +416,38 @@ class TestAsStreamingHandler:
         call_kwargs = mock_graph.astream.call_args
         assert call_kwargs.kwargs["config"]["configurable"]["thread_id"] == "ctx-1"
 
+    async def test_empty_stream_yields_nothing(self, mock_graph, sample_task):
+        async def _astream(*args, **kwargs):
+            return
+            yield  # noqa: RET504  — make this an async generator
+
+        mock_graph.astream = MagicMock(side_effect=_astream)
+        adapter = _get_adapter(graph=mock_graph)
+        handler = adapter.as_streaming_handler()
+
+        parts = []
+        async for part in handler(sample_task, {}):
+            parts.append(part)
+
+        assert parts == []
+
+    async def test_astream_exception_propagates(self, mock_graph, sample_task):
+        async def _astream(*args, **kwargs):
+            yield (MagicMock(content="ok"), {"langgraph_node": "agent"})
+            raise RuntimeError("stream crashed")
+
+        mock_graph.astream = MagicMock(side_effect=_astream)
+        adapter = _get_adapter(graph=mock_graph)
+        handler = adapter.as_streaming_handler()
+
+        parts = []
+        with pytest.raises(RuntimeError, match="stream crashed"):
+            async for part in handler(sample_task, {}):
+                parts.append(part)
+
+        assert len(parts) == 1
+        assert parts[0].root.text == "ok"
+
 
 # ======================================================================
 # TestRegisterOn
@@ -434,7 +485,9 @@ class TestCheckLangGraphInstalled:
         """Creating an adapter raises ImportError when langgraph is not installed."""
         from taco.adapters import langgraph as lg_mod
 
-        # Replace the autouse-mocked function with the real implementation
+        # Re-define the real check inline because the autouse fixture replaces
+        # the module-level function with a mock, and we cannot retrieve the
+        # original through the patch layer.
         def _real_check() -> None:
             try:
                 import langgraph  # noqa: F401

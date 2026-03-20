@@ -43,7 +43,8 @@ class LangGraphAdapter:
     Parameters
     ----------
     graph:
-        A compiled LangGraph ``StateGraph`` (must support ``ainvoke`` and ``astream``).
+        A compiled LangGraph graph (the result of ``builder.compile()``).
+        Must support ``ainvoke`` and ``astream`` methods.
     input_key:
         State key to inject input data into (default ``"input"``).
     output_key:
@@ -58,6 +59,8 @@ class LangGraphAdapter:
         Custom ``(chunk) -> Part | None`` for streaming. When provided,
         ``astream`` is called with ``stream_mode="updates"`` and each chunk
         is passed through this filter. Return ``None`` to skip a chunk.
+        When not provided, ``astream`` uses ``stream_mode="messages"`` (v2)
+        and emits text parts for chunks with a ``langgraph_node`` metadata key.
     artifact_name:
         Name for the output artifact (default ``"langgraph-result"``).
     artifact_description:
@@ -98,10 +101,9 @@ class LangGraphAdapter:
 
     def _build_config(self, task: Task) -> dict:
         """Build the LangGraph ``config`` dict, mapping ``context_id`` to ``thread_id``."""
-        config: dict[str, Any] = {}
         if task.context_id:
-            config["configurable"] = {"thread_id": task.context_id}
-        return config
+            return {"configurable": {"thread_id": task.context_id}}
+        return {}
 
     def _build_artifact(self, final_state: dict) -> Artifact:
         """Build a TACO artifact from the graph's final state."""
@@ -120,15 +122,13 @@ class LangGraphAdapter:
                 description=self.artifact_description,
             )
 
-        if isinstance(value, str):
-            parts = [make_text_part(value)]
-        elif isinstance(value, dict):
-            parts = [make_data_part(value)]
+        if isinstance(value, dict):
+            part = make_data_part(value)
         else:
-            parts = [make_text_part(str(value))]
+            part = make_text_part(value if isinstance(value, str) else str(value))
 
         return make_artifact(
-            parts=parts,
+            parts=[part],
             name=self.artifact_name,
             description=self.artifact_description,
         )
@@ -147,18 +147,17 @@ class LangGraphAdapter:
     # ------------------------------------------------------------------
 
     def as_handler(self) -> Callable[[Task, dict], Any]:
-        """Return a TACO ``TaskHandler`` that invokes the graph synchronously.
+        """Return a non-streaming TACO ``TaskHandler`` that invokes the graph.
 
         Signature: ``async def handler(task, input_data) -> Artifact``
         """
-        adapter = self
 
         async def handler(task: Task, input_data: dict) -> Artifact:
-            graph_input = adapter._build_input(task, input_data)
-            config = adapter._build_config(task)
-            result = await adapter.graph.ainvoke(graph_input, config=config)
-            adapter._check_interrupt(result)
-            return adapter._build_artifact(result)
+            graph_input = self._build_input(task, input_data)
+            config = self._build_config(task)
+            result = await self.graph.ainvoke(graph_input, config=config)
+            self._check_interrupt(result)
+            return self._build_artifact(result)
 
         return handler
 
@@ -167,27 +166,25 @@ class LangGraphAdapter:
 
         Signature: ``async def handler(task, input_data) -> AsyncIterator[Part]``
         """
-        adapter = self
 
         async def handler(task: Task, input_data: dict) -> AsyncIterator[Part]:
-            graph_input = adapter._build_input(task, input_data)
-            config = adapter._build_config(task)
+            graph_input = self._build_input(task, input_data)
+            config = self._build_config(task)
 
-            if adapter.stream_filter is not None:
-                async for chunk in adapter.graph.astream(
+            if self.stream_filter is not None:
+                async for chunk in self.graph.astream(
                     graph_input, config=config, stream_mode="updates"
                 ):
-                    part = adapter.stream_filter(chunk)
+                    part = self.stream_filter(chunk)
                     if part is not None:
                         yield part
             else:
-                async for chunk in adapter.graph.astream(
+                async for chunk in self.graph.astream(
                     graph_input, config=config, stream_mode="messages", version="v2"
                 ):
                     if not isinstance(chunk, tuple) or len(chunk) < 2:
                         continue
-                    message_chunk = chunk[0]
-                    metadata = chunk[1]
+                    message_chunk, metadata = chunk[0], chunk[1]
                     if metadata.get("langgraph_node") is None:
                         continue
                     content = getattr(message_chunk, "content", None)
