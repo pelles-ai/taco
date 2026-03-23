@@ -30,7 +30,7 @@ from a2a.server.agent_execution import AgentExecutor
 from a2a.server.apps import A2AFastAPIApplication
 from a2a.server.events import EventQueue
 from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.tasks import InMemoryTaskStore
+from a2a.server.tasks import InMemoryTaskStore, TaskStore
 from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -257,6 +257,7 @@ class A2AServer:
         self,
         agent_card: AgentCard,
         *,
+        task_store: TaskStore | None = None,
         cors_origins: list[str] | None = None,
         enable_admin: bool = False,
         admin_auth_token: str | None = None,
@@ -270,10 +271,10 @@ class A2AServer:
         # Convert TACO AgentCard to A2A SDK AgentCard for the app
         self._a2a_card = self._to_a2a_sdk_card(agent_card)
 
-        task_store = InMemoryTaskStore()
+        self._task_store = task_store or InMemoryTaskStore()
         request_handler = DefaultRequestHandler(
             agent_executor=self._executor,
-            task_store=task_store,
+            task_store=self._task_store,
         )
         self._a2a_app = A2AFastAPIApplication(
             agent_card=self._a2a_card,

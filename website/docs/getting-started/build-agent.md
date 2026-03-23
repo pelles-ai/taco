@@ -100,6 +100,18 @@ if __name__ == "__main__":
 
 `enable_monitor=True` mounts a live tracing UI at `/monitor` — no extra servers or ports needed.
 
+:::tip Persist tasks across restarts
+By default, tasks are stored in memory and lost on restart. For durable storage:
+
+```python
+from taco import JsonFileTaskStore
+
+server = A2AServer(card.to_a2a(), task_store=JsonFileTaskStore("tasks.json"), enable_monitor=True)
+```
+
+See [Task persistence](/docs/sdk#task-persistence) in the SDK Reference.
+:::
+
 :::tip Discovery-only mode
 If you only need to expose your Agent Card for discovery (no task handlers), use the shorthand:
 

@@ -4,6 +4,13 @@ All notable changes to the TACO SDK are documented in this file.
 
 Versions are auto-published to PyPI on every push to `main`.
 
+## [Unreleased]
+
+### Added
+- **Task persistence** — `A2AServer` and `TacoAgent` accept an optional `task_store` parameter for pluggable task persistence (defaults to `InMemoryTaskStore`)
+- **`JsonFileTaskStore`** — lightweight JSON-file-backed `TaskStore` implementation with atomic writes, suitable for single-process agents that need persistence without a database
+- **`TaskStore` re-export** — available via `from taco import TaskStore`
+
 ## [0.1.x] — 2026-03-15
 
 ### Added

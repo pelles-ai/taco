@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Literal
 
 from a2a._base import A2ABaseModel
+from a2a.server.tasks import InMemoryTaskStore, TaskStore  # noqa: F401 — re-export
 from a2a.types import (  # noqa: F401 — re-exports
     AgentCapabilities,
     Artifact,

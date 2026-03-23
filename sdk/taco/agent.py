@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any
 
 from .agent_card import ConstructionAgentCard
 from .server import A2AServer, StreamingTaskHandler, TaskHandler
-from .types import AgentCard, Task
+from .types import AgentCard, Task, TaskStore
 
 if TYPE_CHECKING:
     from .client import TacoClient
@@ -53,10 +53,15 @@ class TacoAgent:
               ``agents: [{url: "http://..."}]`` format
             - A list of URL strings
             - ``None`` to disable peer communication
+        task_store: Optional :class:`TaskStore` for task persistence.
+            Defaults to ``InMemoryTaskStore`` (state lost on restart).
+            Pass a :class:`JsonFileTaskStore` or ``DatabaseTaskStore``
+            for durable storage.
         peer_retry_attempts: How many times to retry discovering each peer
             at startup (default 5).
         peer_retry_delay: Seconds between retry attempts (default 2.0).
-        cors_origins: CORS origins for the server (default ``["*"]``).
+        cors_origins: CORS origins for the server. ``None`` (the default)
+            disables CORS middleware entirely.
         enable_monitor: Whether to enable the Agent Monitor UI at
             ``/monitor`` on this agent's port.
     """
@@ -65,6 +70,7 @@ class TacoAgent:
         self,
         agent_card: ConstructionAgentCard,
         *,
+        task_store: TaskStore | None = None,
         peers: list[str] | str | None = None,
         peer_retry_attempts: int = 5,
         peer_retry_delay: float = 2.0,
@@ -74,6 +80,7 @@ class TacoAgent:
         self._card = agent_card
         self._server = A2AServer(
             agent_card.to_a2a(),
+            task_store=task_store,
             cors_origins=cors_origins,
             enable_monitor=enable_monitor,
         )

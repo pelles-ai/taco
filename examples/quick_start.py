@@ -38,6 +38,7 @@ card = ConstructionAgentCard(
 )
 
 # 2. Create the server (with monitor UI at /monitor)
+# Tip: pass task_store=JsonFileTaskStore("tasks.json") to persist tasks across restarts
 server = A2AServer(card.to_a2a(), enable_monitor=True)
 
 
