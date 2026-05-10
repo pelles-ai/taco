@@ -11,6 +11,9 @@ Versions are auto-published to PyPI on every push to `main`.
 - **`JsonFileTaskStore`** — lightweight JSON-file-backed `TaskStore` implementation with atomic writes, suitable for single-process agents that need persistence without a database
 - **`TaskStore` re-export** — available via `from taco import TaskStore`
 
+### Changed
+- **`a2a-sdk` upper-bounded to `<1`** — the released `a2a-sdk` 1.0 contains breaking changes that TACO does not yet support (Pydantic→protobuf types, server-module restructure). Pinning the upper bound prevents accidental v1 installs that would fail to import. The bump to v1.0.x will land in a dedicated PR per the playbook in `sdk/V1_MIGRATION.md`.
+
 ## [0.1.x] — 2026-03-15
 
 ### Added
