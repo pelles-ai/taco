@@ -20,6 +20,8 @@ Versions are auto-published to PyPI on every push to `main`.
 ### Internal
 - `taco._compat` no longer re-exports from `a2a.utils.message`/`parts`/`artifact` (gone in v1). The previously-exported helper names (`get_text_parts`, `new_agent_text_message`, `new_text_artifact`, etc.) are now reimplemented locally on top of `a2a.compat.v0_3.types` so the public `taco.*` surface is unchanged.
 - `taco.server._TacoAgentExecutor` now translates between protobuf (the v1 SDK runtime types) and Pydantic v0_3 (the type shape registered TACO handlers see) at the executor boundary, so user-facing `TaskHandler` signatures keep working.
+- Added explicit `fastapi>=0.115` to the `server` / `test` / `dev` / `all` extras — `a2a-sdk[http-server]` 1.0+ ships only `starlette` + `sse-starlette`, but `taco/server.py` imports FastAPI directly.
+- Pinned `protobuf>=5.29.5,<6` to work around an upstream bug where `a2a-sdk` 1.0.2 calls `FieldDescriptor.label`, which was removed in protobuf 7.x.
 
 ## [0.1.x] — 2026-03-15
 
