@@ -3,9 +3,10 @@
 Each TACO agent creates an A2AServer with an AgentCard and registers
 async handlers for TACO task types. The server provides:
 
-- GET  /.well-known/agent.json   — A2A Agent Card discovery
-- POST /                          — JSON-RPC 2.0 dispatch
-- GET  /health                    — Health check endpoint
+- GET  /.well-known/agent-card.json — A2A v0.3+ Agent Card discovery
+- GET  /.well-known/agent.json      — Legacy Agent Card path (kept for back-compat)
+- POST /                            — JSON-RPC 2.0 dispatch
+- GET  /health                      — Health check endpoint
 
 When ``enable_admin=True``:
 

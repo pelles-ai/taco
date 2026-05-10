@@ -65,8 +65,14 @@ class TacoClient:
     # -- discovery --
 
     async def discover(self) -> AgentCard:
-        """Fetch and cache the agent's AgentCard."""
-        resp = await self._client.get(f"{self.agent_url}/.well-known/agent.json")
+        """Fetch and cache the agent's AgentCard.
+
+        Tries the A2A v0.3+ path ``/.well-known/agent-card.json`` first,
+        falling back to the legacy ``/.well-known/agent.json`` on 404.
+        """
+        resp = await self._client.get(f"{self.agent_url}/.well-known/agent-card.json")
+        if resp.status_code == 404:
+            resp = await self._client.get(f"{self.agent_url}/.well-known/agent.json")
         resp.raise_for_status()
         self._agent_card = AgentCard.model_validate(resp.json())
         return self._agent_card
