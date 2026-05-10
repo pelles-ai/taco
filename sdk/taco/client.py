@@ -20,6 +20,19 @@ from .types import AgentCard, Task
 
 _log = logging.getLogger("taco.client")
 
+# A2A protocol version this client speaks. Sent on every request as the
+# ``A2A-Version`` header so peers can negotiate (the v1 protocol added
+# this header explicitly; v0.3 servers ignore it harmlessly).
+A2A_PROTOCOL_VERSION = "0.3"
+
+
+def _merge_protocol_headers(headers: dict[str, str] | None) -> dict[str, str]:
+    """Add A2A-Version to caller headers without clobbering an explicit override."""
+    merged: dict[str, str] = {"A2A-Version": A2A_PROTOCOL_VERSION}
+    if headers:
+        merged.update(headers)
+    return merged
+
 
 class TacoClientError(Exception):
     """Base exception for TACO client errors."""
@@ -69,10 +82,18 @@ class TacoClient:
 
         Tries the A2A v0.3+ path ``/.well-known/agent-card.json`` first,
         falling back to the legacy ``/.well-known/agent.json`` on 404.
+        Sends the ``A2A-Version`` header so v1 peers can negotiate.
         """
-        resp = await self._client.get(f"{self.agent_url}/.well-known/agent-card.json")
+        headers = _merge_protocol_headers(None)
+        resp = await self._client.get(
+            f"{self.agent_url}/.well-known/agent-card.json",
+            headers=headers,
+        )
         if resp.status_code == 404:
-            resp = await self._client.get(f"{self.agent_url}/.well-known/agent.json")
+            resp = await self._client.get(
+                f"{self.agent_url}/.well-known/agent.json",
+                headers=headers,
+            )
         resp.raise_for_status()
         self._agent_card = AgentCard.model_validate(resp.json())
         return self._agent_card
@@ -102,7 +123,7 @@ class TacoClient:
         resp = await self._client.post(
             f"{self.agent_url}/",
             json=payload,
-            headers=headers,
+            headers=_merge_protocol_headers(headers),
         )
         resp.raise_for_status()
         body = resp.json()
@@ -183,7 +204,7 @@ class TacoClient:
             "POST",
             f"{self.agent_url}/",
             json=payload,
-            headers=headers,
+            headers=_merge_protocol_headers(headers),
         ) as resp:
             resp.raise_for_status()
             event_type = "message"
