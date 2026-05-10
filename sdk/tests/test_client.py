@@ -148,3 +148,71 @@ class TestMessageParams:
     def test_message_params_no_context_id(self):
         params = TacoClient._message_params("estimate", {"x": 1})
         assert "contextId" not in params
+
+
+class TestProtocolHeaders:
+    """Verify A2A-Version is sent on every request."""
+
+    async def test_a2a_version_header_on_rpc_call(self):
+        captured: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured.append(request)
+            return httpx.Response(
+                200,
+                json={"jsonrpc": "2.0", "id": "1", "result": {}},
+            )
+
+        transport = httpx.MockTransport(handler)
+        http_client = httpx.AsyncClient(transport=transport, base_url="http://test")
+        async with TacoClient(agent_url="http://test", http_client=http_client) as client:
+            await client._rpc_call("message/send", {})
+
+        assert captured, "expected at least one request"
+        assert captured[0].headers.get("a2a-version") == "0.3"
+
+    async def test_a2a_version_header_on_discover(self):
+        captured: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured.append(request)
+            return httpx.Response(
+                200,
+                json={
+                    "name": "Mock",
+                    "description": "x",
+                    "url": "http://test",
+                    "defaultInputModes": ["application/json"],
+                    "defaultOutputModes": ["application/json"],
+                    "capabilities": {"streaming": False},
+                    "skills": [],
+                },
+            )
+
+        transport = httpx.MockTransport(handler)
+        http_client = httpx.AsyncClient(transport=transport, base_url="http://test")
+        async with TacoClient(agent_url="http://test", http_client=http_client) as client:
+            await client.discover()
+
+        assert captured[0].headers.get("a2a-version") == "0.3"
+
+    async def test_caller_headers_take_precedence(self):
+        captured: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured.append(request)
+            return httpx.Response(
+                200,
+                json={"jsonrpc": "2.0", "id": "1", "result": {}},
+            )
+
+        transport = httpx.MockTransport(handler)
+        http_client = httpx.AsyncClient(transport=transport, base_url="http://test")
+        async with TacoClient(agent_url="http://test", http_client=http_client) as client:
+            await client._rpc_call(
+                "message/send",
+                {},
+                headers={"A2A-Version": "0.4-experimental"},
+            )
+
+        assert captured[0].headers.get("a2a-version") == "0.4-experimental"

@@ -16,6 +16,9 @@ import json
 import sys
 
 from . import __version__
+from .client import A2A_PROTOCOL_VERSION
+
+_PROTOCOL_HEADERS = {"A2A-Version": A2A_PROTOCOL_VERSION}
 
 
 def _get_http_client():
@@ -31,11 +34,20 @@ def _fetch_agent_card(httpx, url: str, timeout: float):
     """Fetch an agent card, preferring the A2A v0.3+ path.
 
     Tries ``/.well-known/agent-card.json`` first, falling back to the
-    legacy ``/.well-known/agent.json`` on 404.
+    legacy ``/.well-known/agent.json`` on 404. Sends the
+    ``A2A-Version`` header so v1 peers can negotiate.
     """
-    resp = httpx.get(f"{url}/.well-known/agent-card.json", timeout=timeout)
+    resp = httpx.get(
+        f"{url}/.well-known/agent-card.json",
+        timeout=timeout,
+        headers=_PROTOCOL_HEADERS,
+    )
     if resp.status_code == 404:
-        resp = httpx.get(f"{url}/.well-known/agent.json", timeout=timeout)
+        resp = httpx.get(
+            f"{url}/.well-known/agent.json",
+            timeout=timeout,
+            headers=_PROTOCOL_HEADERS,
+        )
     resp.raise_for_status()
     return resp
 
@@ -109,7 +121,12 @@ def _cmd_send(args: argparse.Namespace) -> None:
             "metadata": {"taskType": args.task_type},
         },
     }
-    resp = httpx.post(f"{url}/", json=payload, timeout=args.timeout)
+    resp = httpx.post(
+        f"{url}/",
+        json=payload,
+        timeout=args.timeout,
+        headers=_PROTOCOL_HEADERS,
+    )
     resp.raise_for_status()
     print(json.dumps(resp.json(), indent=2))
 

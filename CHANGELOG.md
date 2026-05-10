@@ -10,6 +10,7 @@ Versions are auto-published to PyPI on every push to `main`.
 - **Task persistence** — `A2AServer` and `TacoAgent` accept an optional `task_store` parameter for pluggable task persistence (defaults to `InMemoryTaskStore`)
 - **`JsonFileTaskStore`** — lightweight JSON-file-backed `TaskStore` implementation with atomic writes, suitable for single-process agents that need persistence without a database
 - **`TaskStore` re-export** — available via `from taco import TaskStore`
+- **`A2A-Version` request header** — `TacoClient`, `AgentRegistry`, and the CLI now send `A2A-Version: 0.3` on every request so v1 peers can negotiate. Constant exposed as `taco.client.A2A_PROTOCOL_VERSION`. Caller-supplied headers override the default.
 
 ### Changed
 - **`a2a-sdk` upper-bounded to `<1`** — the released `a2a-sdk` 1.0 contains breaking changes that TACO does not yet support (Pydantic→protobuf types, server-module restructure). Pinning the upper bound prevents accidental v1 installs that would fail to import. The bump to v1.0.x will land in a dedicated PR per the playbook in `sdk/V1_MIGRATION.md`.
