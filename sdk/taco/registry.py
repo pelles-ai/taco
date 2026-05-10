@@ -78,10 +78,16 @@ class AgentRegistry:
     # ------------------------------------------------------------------
 
     async def register(self, agent_url: str) -> AgentCard:
-        """Discover an agent by URL and store its card."""
+        """Discover an agent by URL and store its card.
+
+        Tries the A2A v0.3+ path ``/.well-known/agent-card.json`` first,
+        falling back to the legacy ``/.well-known/agent.json`` on 404.
+        """
         agent_url = agent_url.rstrip("/")
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.get(f"{agent_url}/.well-known/agent.json")
+            resp = await client.get(f"{agent_url}/.well-known/agent-card.json")
+            if resp.status_code == 404:
+                resp = await client.get(f"{agent_url}/.well-known/agent.json")
             resp.raise_for_status()
         card = AgentCard.model_validate(resp.json())
         self._agents[agent_url] = card

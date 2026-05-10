@@ -13,6 +13,7 @@ Versions are auto-published to PyPI on every push to `main`.
 
 ### Changed
 - **`a2a-sdk` upper-bounded to `<1`** — the released `a2a-sdk` 1.0 contains breaking changes that TACO does not yet support (Pydantic→protobuf types, server-module restructure). Pinning the upper bound prevents accidental v1 installs that would fail to import. The bump to v1.0.x will land in a dedicated PR per the playbook in `sdk/V1_MIGRATION.md`.
+- **Agent card discovery** — `TacoClient.discover()`, `AgentRegistry.register()`, and the `taco discover` / `taco inspect` CLI commands now fetch `/.well-known/agent-card.json` first (the A2A v0.3+ standard path) and fall back to the legacy `/.well-known/agent.json` on 404. The server already serves both paths, so this is a no-op against TACO peers.
 
 ## [0.1.x] — 2026-03-15
 

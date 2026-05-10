@@ -27,19 +27,30 @@ def _get_http_client():
     return httpx
 
 
+def _fetch_agent_card(httpx, url: str, timeout: float):
+    """Fetch an agent card, preferring the A2A v0.3+ path.
+
+    Tries ``/.well-known/agent-card.json`` first, falling back to the
+    legacy ``/.well-known/agent.json`` on 404.
+    """
+    resp = httpx.get(f"{url}/.well-known/agent-card.json", timeout=timeout)
+    if resp.status_code == 404:
+        resp = httpx.get(f"{url}/.well-known/agent.json", timeout=timeout)
+    resp.raise_for_status()
+    return resp
+
+
 def _cmd_discover(args: argparse.Namespace) -> None:
     httpx = _get_http_client()
     url = args.url.rstrip("/")
-    resp = httpx.get(f"{url}/.well-known/agent.json", timeout=args.timeout)
-    resp.raise_for_status()
+    resp = _fetch_agent_card(httpx, url, args.timeout)
     print(json.dumps(resp.json(), indent=2))
 
 
 def _cmd_inspect(args: argparse.Namespace) -> None:
     httpx = _get_http_client()
     url = args.url.rstrip("/")
-    resp = httpx.get(f"{url}/.well-known/agent.json", timeout=args.timeout)
-    resp.raise_for_status()
+    resp = _fetch_agent_card(httpx, url, args.timeout)
     card = resp.json()
 
     print(f"Agent: {card.get('name', 'Unknown')}")

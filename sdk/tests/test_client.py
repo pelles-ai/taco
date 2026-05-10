@@ -31,6 +31,29 @@ class TestDiscover:
         assert test_client.agent_card is not None
         assert test_client.agent_card.name == "Test Agent"
 
+    async def test_discover_falls_back_to_legacy_path(self):
+        """When /.well-known/agent-card.json 404s, fall back to /.well-known/agent.json."""
+        legacy_card = {
+            "name": "Legacy Agent",
+            "description": "Only serves the legacy well-known path",
+            "url": "http://legacy",
+            "defaultInputModes": ["application/json"],
+            "defaultOutputModes": ["application/json"],
+            "capabilities": {"streaming": False},
+            "skills": [],
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/.well-known/agent.json":
+                return httpx.Response(200, json=legacy_card)
+            return httpx.Response(404)
+
+        transport = httpx.MockTransport(handler)
+        http_client = httpx.AsyncClient(transport=transport, base_url="http://legacy")
+        async with TacoClient(agent_url="http://legacy", http_client=http_client) as client:
+            card = await client.discover()
+            assert card.name == "Legacy Agent"
+
 
 class TestSendMessage:
     async def test_returns_completed_task(self, test_client: TacoClient):
