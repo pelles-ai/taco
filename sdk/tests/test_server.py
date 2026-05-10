@@ -492,6 +492,9 @@ class TestAdminAuth:
 class TestCustomTaskStore:
     async def test_custom_store_receives_tasks(self, sample_agent_card: AgentCard):
         """Passing a custom TaskStore to A2AServer should be used for task storage."""
+        from a2a.compat.v0_3 import conversions
+        from a2a.server.context import ServerCallContext
+
         custom_store = InMemoryTaskStore()
         server = A2AServer(sample_agent_card, task_store=custom_store)
 
@@ -506,9 +509,11 @@ class TestCustomTaskStore:
             body = resp.json()
             task_id = body["result"]["id"]
 
-            # The task should be in our custom store
-            stored = await custom_store.get(task_id)
-            assert stored is not None
+            # The task should be in our custom store; v1's TaskStore returns
+            # protobuf, so convert back to v0.3 Pydantic for inspection.
+            stored_pb = await custom_store.get(task_id, ServerCallContext())
+            assert stored_pb is not None
+            stored = conversions.to_compat_task(stored_pb)
             assert stored.id == task_id
             assert stored.status.state.value == "completed"
 
@@ -543,8 +548,11 @@ class TestJsonFileTaskStoreIntegration:
             task_id = body["result"]["id"]
 
         # Load a fresh store from the same file — task should be persisted
+        from a2a.compat.v0_3 import conversions
+
         store2 = JsonFileTaskStore(store_path)
-        persisted = await store2.get(task_id)
-        assert persisted is not None
+        persisted_pb = await store2.get(task_id)
+        assert persisted_pb is not None
+        persisted = conversions.to_compat_task(persisted_pb)
         assert persisted.id == task_id
         assert persisted.status.state.value == "completed"

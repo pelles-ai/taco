@@ -13,8 +13,13 @@ Versions are auto-published to PyPI on every push to `main`.
 - **`A2A-Version` request header** — `TacoClient`, `AgentRegistry`, and the CLI now send `A2A-Version: 0.3` on every request so v1 peers can negotiate. Constant exposed as `taco.client.A2A_PROTOCOL_VERSION`. Caller-supplied headers override the default.
 
 ### Changed
-- **`a2a-sdk` upper-bounded to `<1`** — the released `a2a-sdk` 1.0 contains breaking changes that TACO does not yet support (Pydantic→protobuf types, server-module restructure). Pinning the upper bound prevents accidental v1 installs that would fail to import. The bump to v1.0.x will land in a dedicated PR per the playbook in `sdk/V1_MIGRATION.md`.
+- **Bumped `a2a-sdk` to `>=1.0.2,<2`** — adopt the v1 SDK via the v0.3 compat layer. `taco.types` re-exports from `a2a.compat.v0_3.types` (Pydantic) and `taco.server.A2AServer` now wraps `LegacyRequestHandler` plus `create_jsonrpc_routes(enable_v0_3_compat=True)` instead of the removed `A2AFastAPIApplication`. On-the-wire JSON for the agent card, `message/send`, `message/stream`, `tasks/get`, and `tasks/cancel` is byte-identical to TACO 0.3.x — existing clients require no changes.
+- **`JsonFileTaskStore`** now implements the v1 `TaskStore` interface (added `list()`, `context` parameter on save/get/delete). It accepts both protobuf `Task` (the runtime path) and Pydantic v0.3 `Task` (for application code) on `save()`, and persists in the existing v0.3 Pydantic on-disk format so previously-stored data keeps loading.
 - **Agent card discovery** — `TacoClient.discover()`, `AgentRegistry.register()`, and the `taco discover` / `taco inspect` CLI commands now fetch `/.well-known/agent-card.json` first (the A2A v0.3+ standard path) and fall back to the legacy `/.well-known/agent.json` on 404. The server already serves both paths, so this is a no-op against TACO peers.
+
+### Internal
+- `taco._compat` no longer re-exports from `a2a.utils.message`/`parts`/`artifact` (gone in v1). The previously-exported helper names (`get_text_parts`, `new_agent_text_message`, `new_text_artifact`, etc.) are now reimplemented locally on top of `a2a.compat.v0_3.types` so the public `taco.*` surface is unchanged.
+- `taco.server._TacoAgentExecutor` now translates between protobuf (the v1 SDK runtime types) and Pydantic v0_3 (the type shape registered TACO handlers see) at the executor boundary, so user-facing `TaskHandler` signatures keep working.
 
 ## [0.1.x] — 2026-03-15
 

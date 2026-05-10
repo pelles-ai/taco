@@ -1,8 +1,9 @@
 # TACO SDK — A2A Protocol v1.0 Migration Guide
 
-> **Status (2026-05-10):** `a2a-sdk` **1.0.2** shipped on PyPI on **2026-04-24**.
-> The protocol spec hit **v1.0.0** on **2026-03-12**. TACO is currently
-> targeting `a2a-sdk>=0.3.25,<1` and has not yet bumped to v1.
+> **Status (2026-05-10):** TACO is now on `a2a-sdk>=1.0.2,<2` via the v0.3
+> compat layer (Phase 2 landed). The on-the-wire JSON dialect is still
+> v0.3 — Phase 3 will flip individual wire-level concerns to v1 one PR at
+> a time.
 
 ## What v1.0 changed (and why our original "1-line switch" plan no longer fits)
 
