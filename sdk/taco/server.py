@@ -14,8 +14,10 @@ When ``enable_admin=True``:
 - DELETE /admin/skills/{skill_id} — remove a skill
 - GET  /admin/skills              — list current skills
 
-Internally wraps the official A2A SDK server infrastructure
-(``A2AFastAPIApplication``, ``DefaultRequestHandler``, etc.).
+Internally wires the A2A SDK v1 server primitives (``LegacyRequestHandler``
+plus ``create_jsonrpc_routes``) and exposes the v0.3 wire format via the
+``enable_v0_3_compat=True`` flag, so on-the-wire JSON is unchanged from
+TACO 0.3.x.
 """
 
 from __future__ import annotations
@@ -27,12 +29,13 @@ import uuid
 from collections.abc import AsyncIterator, Callable, Coroutine
 from typing import Any
 
+from a2a.compat.v0_3 import conversions
 from a2a.server.agent_execution import AgentExecutor
-from a2a.server.apps import A2AFastAPIApplication
 from a2a.server.events import EventQueue
-from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.request_handlers import LegacyRequestHandler
+from a2a.server.routes import create_jsonrpc_routes
 from a2a.server.tasks import InMemoryTaskStore, TaskStore
-from fastapi import Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -59,6 +62,39 @@ logger = logging.getLogger("a2a")
 
 TaskHandler = Callable[[Task, dict], Coroutine[Any, Any, Artifact]]
 StreamingTaskHandler = Callable[[Task, dict], AsyncIterator[Part]]
+
+
+# ---------------------------------------------------------------------------
+# Pydantic ↔ protobuf bridge for the executor
+#
+# v1 of the A2A SDK passes protobuf objects through the executor boundary
+# (``RequestContext.message`` / ``.current_task``, ``EventQueue`` events).
+# We keep the user-facing handler API on Pydantic v0_3 types so existing
+# TACO handlers do not have to change. These helpers convert at the edges.
+# ---------------------------------------------------------------------------
+
+
+def _pb_message_to_compat(pb_msg) -> Message | None:
+    return conversions.to_compat_message(pb_msg) if pb_msg is not None else None
+
+
+def _pb_task_to_compat(pb_task) -> Task | None:
+    return conversions.to_compat_task(pb_task) if pb_task is not None else None
+
+
+async def _enqueue(event_queue: EventQueue, event: object) -> None:
+    """Convert a Pydantic v0.3 event to protobuf and enqueue."""
+    if isinstance(event, TaskStatusUpdateEvent):
+        await event_queue.enqueue_event(conversions.to_core_task_status_update_event(event))
+    elif isinstance(event, TaskArtifactUpdateEvent):
+        await event_queue.enqueue_event(conversions.to_core_task_artifact_update_event(event))
+    elif isinstance(event, Message):
+        await event_queue.enqueue_event(conversions.to_core_message(event))
+    elif isinstance(event, Task):
+        await event_queue.enqueue_event(conversions.to_core_task(event))
+    else:
+        # Already a protobuf event; let the queue validate it.
+        await event_queue.enqueue_event(event)  # type: ignore[arg-type]
 
 
 class _TacoAgentExecutor(AgentExecutor):
@@ -104,7 +140,8 @@ class _TacoAgentExecutor(AgentExecutor):
         ctx_id: str,
         text: str,
     ) -> None:
-        await eq.enqueue_event(
+        await _enqueue(
+            eq,
             TaskStatusUpdateEvent(
                 task_id=task_id,
                 context_id=ctx_id,
@@ -117,7 +154,7 @@ class _TacoAgentExecutor(AgentExecutor):
                     ),
                 ),
                 final=True,
-            )
+            ),
         )
 
     @staticmethod
@@ -126,13 +163,14 @@ class _TacoAgentExecutor(AgentExecutor):
         task_id: str,
         ctx_id: str,
     ) -> None:
-        await eq.enqueue_event(
+        await _enqueue(
+            eq,
             TaskStatusUpdateEvent(
                 task_id=task_id,
                 context_id=ctx_id,
                 status=TaskStatus(state=TaskState.completed),
                 final=True,
-            )
+            ),
         )
 
     # ------------------------------------------------------------------
@@ -140,7 +178,7 @@ class _TacoAgentExecutor(AgentExecutor):
     async def execute(self, context, event_queue: EventQueue) -> None:
         """Dispatch to the registered TACO handler for this task type."""
         metadata = context.metadata
-        message = context.message
+        message = _pb_message_to_compat(context.message)
         task_id = context.task_id or str(uuid.uuid4())
         context_id = context.context_id or str(uuid.uuid4())
 
@@ -153,7 +191,7 @@ class _TacoAgentExecutor(AgentExecutor):
         input_data = self._extract_input(message) if message else {}
 
         # Build a TACO-style Task object for the handler
-        task = context.current_task
+        task = _pb_task_to_compat(context.current_task)
         if task is None:
             task = Task(
                 id=task_id,
@@ -169,13 +207,14 @@ class _TacoAgentExecutor(AgentExecutor):
         if is_regular:
             try:
                 artifact = await self._handlers[task_type](task, input_data)
-                await event_queue.enqueue_event(
+                await _enqueue(
+                    event_queue,
                     TaskArtifactUpdateEvent(
                         task_id=task_id,
                         context_id=context_id,
                         artifact=artifact,
                         append=False,
-                    )
+                    ),
                 )
                 await self._emit_completed(event_queue, task_id, context_id)
             except Exception as exc:
@@ -192,7 +231,8 @@ class _TacoAgentExecutor(AgentExecutor):
                 handler = self._streaming_handlers[task_type]
                 async for part in handler(task, input_data):
                     collected_parts.append(part)
-                    await event_queue.enqueue_event(
+                    await _enqueue(
+                        event_queue,
                         TaskArtifactUpdateEvent(
                             task_id=task_id,
                             context_id=context_id,
@@ -201,11 +241,12 @@ class _TacoAgentExecutor(AgentExecutor):
                                 name=f"{task_type}-stream-chunk",
                             ),
                             append=True,
-                        )
+                        ),
                     )
 
                 if collected_parts:
-                    await event_queue.enqueue_event(
+                    await _enqueue(
+                        event_queue,
                         TaskArtifactUpdateEvent(
                             task_id=task_id,
                             context_id=context_id,
@@ -214,7 +255,7 @@ class _TacoAgentExecutor(AgentExecutor):
                                 name=f"{task_type}-stream-result",
                             ),
                             append=False,
-                        )
+                        ),
                     )
                 await self._emit_completed(event_queue, task_id, context_id)
             except Exception as exc:
@@ -237,21 +278,23 @@ class _TacoAgentExecutor(AgentExecutor):
         """Handle task cancellation."""
         task_id = context.task_id or str(uuid.uuid4())
         context_id = context.context_id or str(uuid.uuid4())
-        await event_queue.enqueue_event(
+        await _enqueue(
+            event_queue,
             TaskStatusUpdateEvent(
                 task_id=task_id,
                 context_id=context_id,
                 status=TaskStatus(state=TaskState.canceled),
                 final=True,
-            )
+            ),
         )
 
 
 class A2AServer:
     """Reusable FastAPI application implementing the A2A protocol.
 
-    Wraps the official A2A SDK server infrastructure while maintaining
-    TACO's handler registration API.
+    Wraps the official A2A SDK v1 server primitives (``LegacyRequestHandler``
+    plus ``create_jsonrpc_routes``) while exposing the v0.3 JSON-RPC wire
+    format unchanged.
     """
 
     def __init__(
@@ -269,25 +312,28 @@ class A2AServer:
         self._start_time = time.monotonic()
         self._admin_auth_token = admin_auth_token
 
-        # Convert TACO AgentCard to A2A SDK AgentCard for the app
-        self._a2a_card = self._to_a2a_sdk_card(agent_card)
-
+        # Build the protobuf AgentCard the v1 SDK requires, then construct
+        # the request handler around our executor.
+        self._a2a_card_pb = self._to_protobuf_card(agent_card)
         self._task_store = task_store or InMemoryTaskStore()
-        request_handler = DefaultRequestHandler(
+        self._request_handler = LegacyRequestHandler(
             agent_executor=self._executor,
             task_store=self._task_store,
-        )
-        self._a2a_app = A2AFastAPIApplication(
-            agent_card=self._a2a_card,
-            http_handler=request_handler,
+            agent_card=self._a2a_card_pb,
         )
 
-        self.app = self._a2a_app.build(
-            agent_card_url="/.well-known/agent.json",
+        # Build the FastAPI app and mount the v1 JSON-RPC routes (with v0.3
+        # compat enabled so legacy method names like ``message/send`` still
+        # dispatch on the same endpoint).
+        self.app = FastAPI(title=agent_card.name)
+        self.app.router.routes.extend(
+            create_jsonrpc_routes(
+                request_handler=self._request_handler,
+                rpc_url="/",
+                enable_v0_3_compat=True,
+            )
         )
-        self.app.title = agent_card.name
 
-        # CORS: only add middleware when explicitly provided
         if cors_origins is not None:
             self.app.add_middleware(
                 CORSMiddleware,
@@ -296,13 +342,12 @@ class A2AServer:
                 allow_headers=["*"],
             )
 
-        # Health endpoint
+        # TACO serves its own card (with the x-construction extension) at
+        # both the new v0.3+ path and the legacy path.
+        self.app.get("/.well-known/agent-card.json")(self._serve_agent_card)
+        self.app.get("/.well-known/agent.json")(self._serve_agent_card)
         self.app.get("/health")(self._health)
 
-        # Also serve the new standard path
-        self.app.get("/.well-known/agent-card.json")(self._serve_agent_card)
-
-        # Admin endpoints (opt-in)
         if enable_admin:
             if not admin_auth_token:
                 logger.warning(
@@ -312,38 +357,38 @@ class A2AServer:
             self.app.delete("/admin/skills/{skill_id}")(self._remove_skill)
             self.app.get("/admin/skills")(self._list_skills)
 
-        # Agent Monitor (opt-in) — mounts at /monitor on this app
         if enable_monitor:
             from .monitor import enable_monitor as _enable_monitor
 
             _enable_monitor(server=self, agent_name=agent_card.name)
 
     @staticmethod
-    def _to_a2a_sdk_card(card: AgentCard):
-        """Convert TACO AgentCard to upstream a2a.types.AgentCard."""
-        from a2a.types import (
+    def _to_protobuf_card(card: AgentCard):
+        """Convert TACO AgentCard to the v1 protobuf form via the v0_3 compat path."""
+        from a2a.compat.v0_3.types import (
             AgentCapabilities as A2ACapabilities,
         )
-        from a2a.types import (
+        from a2a.compat.v0_3.types import (
             AgentCard as A2AAgentCard,
         )
-        from a2a.types import (
+        from a2a.compat.v0_3.types import (
             AgentSkill as A2AAgentSkill,
         )
 
         skills = []
         for s in card.skills:
-            a2a_skill = A2AAgentSkill(
-                id=s.id,
-                name=s.name,
-                description=s.description,
-                tags=s.tags or [],
-                input_modes=s.input_modes,
-                output_modes=s.output_modes,
+            skills.append(
+                A2AAgentSkill(
+                    id=s.id,
+                    name=s.name,
+                    description=s.description,
+                    tags=s.tags or [],
+                    input_modes=s.input_modes,
+                    output_modes=s.output_modes,
+                )
             )
-            skills.append(a2a_skill)
 
-        return A2AAgentCard(
+        compat_card = A2AAgentCard(
             name=card.name,
             description=card.description,
             url=card.url,
@@ -355,6 +400,7 @@ class A2AServer:
             ),
             skills=skills,
         )
+        return conversions.to_core_agent_card(compat_card)
 
     def register_handler(self, task_type: str, handler: TaskHandler) -> None:
         """Register an async handler for a TACO task type.
@@ -408,10 +454,11 @@ class A2AServer:
     # ------------------------------------------------------------------
 
     def _sync_a2a_card(self) -> None:
-        """Re-sync the A2A SDK card after TACO agent_card mutations."""
-        self._a2a_card = self._to_a2a_sdk_card(self.agent_card)
-        self._a2a_app.agent_card = self._a2a_card
-        self._a2a_app.handler.agent_card = self._a2a_card
+        """Re-sync the protobuf AgentCard after TACO agent_card mutations."""
+        self._a2a_card_pb = self._to_protobuf_card(self.agent_card)
+        # LegacyRequestHandler keeps the card on a private attribute; refresh
+        # it so dynamic skill registration shows up in subsequent dispatches.
+        self._request_handler._agent_card = self._a2a_card_pb  # type: ignore[attr-defined]
 
     # ------------------------------------------------------------------
     # Admin auth helper

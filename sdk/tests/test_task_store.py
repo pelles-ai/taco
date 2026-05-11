@@ -6,6 +6,7 @@ import json
 import os
 
 import pytest
+from a2a.compat.v0_3 import conversions
 
 from taco.task_store import JsonFileTaskStore
 from taco.types import Task, TaskState, TaskStatus
@@ -19,6 +20,11 @@ def _make_task(task_id: str = "task-1", state: TaskState = TaskState.completed) 
     )
 
 
+def _as_compat(pb_task) -> Task | None:
+    """Convert a protobuf task back to v0_3 Pydantic for inspection."""
+    return conversions.to_compat_task(pb_task) if pb_task is not None else None
+
+
 @pytest.fixture()
 def store_path(tmp_path) -> str:
     return str(tmp_path / "tasks.json")
@@ -30,7 +36,7 @@ class TestSaveAndGet:
         task = _make_task("t1")
         await store.save(task)
 
-        result = await store.get("t1")
+        result = _as_compat(await store.get("t1"))
         assert result is not None
         assert result.id == "t1"
         assert result.status.state == TaskState.completed
@@ -48,7 +54,7 @@ class TestSaveAndGet:
         task2 = _make_task("t1", state=TaskState.completed)
         await store.save(task2)
 
-        result = await store.get("t1")
+        result = _as_compat(await store.get("t1"))
         assert result is not None
         assert result.status.state == TaskState.completed
 

@@ -13,9 +13,11 @@ from __future__ import annotations
 
 from typing import Literal
 
+# A2A SDK v1.0+ moved the wire-format types to protobuf. The Pydantic
+# v0.3-shaped types we still rely on live at ``a2a.compat.v0_3.types``;
+# re-exporting them here keeps the rest of TACO unaware of the shim.
 from a2a._base import A2ABaseModel
-from a2a.server.tasks import InMemoryTaskStore, TaskStore  # noqa: F401 — re-export
-from a2a.types import (  # noqa: F401 — re-exports
+from a2a.compat.v0_3.types import (  # noqa: F401 — re-exports
     AgentCapabilities,
     Artifact,
     DataPart,
@@ -35,26 +37,16 @@ from a2a.types import (  # noqa: F401 — re-exports
     TaskStatusUpdateEvent,
     TextPart,
 )
+from a2a.server.tasks import InMemoryTaskStore, TaskStore  # noqa: F401 — re-export
 from pydantic import Field
 
 # ---------------------------------------------------------------------------
-# _V1_COMPAT: a2a-sdk v1.0 migration notes
-#
-# When a2a-sdk ships v1.0, it switches from Pydantic models to protobuf
-# messages. Key changes:
-#
-#   Part(text="hello")            replaces Part(root=TextPart(text="hello"))
-#   TaskState.TASK_STATE_COMPLETED replaces TaskState.completed
-#   Role.ROLE_USER                 replaces Role.user
-#   AgentCard.supported_interfaces replaces AgentCard.url
-#
-# Migration path:
-#   1. Switch imports below to  from a2a.compat.v0_3.types import ...
-#      (zero behavior change — v0.3 compat layer provides same API)
-#   2. Update _compat.py helpers for new Part constructor
-#   3. Incrementally adopt native v1.0 protobuf types
-#
-# The v0.3 compat layer is at: a2a.compat.v0_3.types
+# v1.0 migration: TACO is now on a2a-sdk >=1.0.2 via the v0_3 compat layer.
+# The next migration step (taco/V1_MIGRATION.md Phase 3) drops the compat
+# shim and adopts native protobuf types — at that point this re-export
+# block flips to ``from a2a.types import …``, the Part constructor
+# flattens (``Part(text=…)`` instead of ``Part(root=TextPart(text=…))``),
+# and enum literals upper-case (``TaskState.TASK_STATE_COMPLETED``).
 # ---------------------------------------------------------------------------
 
 # Backward-compat alias

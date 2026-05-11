@@ -1,19 +1,15 @@
 """Compatibility helpers for constructing A2A SDK types.
 
 These functions simplify Part/Message/Artifact construction, smoothing
-the transition from TACO 0.1 (flat Part fields) to 0.2 (A2A SDK
-discriminated union types).
+the transition between TACO releases and A2A SDK versions.
 
-Re-exports upstream ``a2a.utils`` helpers for convenience. TACO's own
-``make_*`` / ``extract_*`` functions have different signatures from the
-upstream equivalents and are kept for backward compatibility.
-
-v1.0 migration notes:
-    - ``make_text_part`` / ``make_data_part``: Part constructor changes
-      from ``Part(root=TextPart(text=...))`` to ``Part(text=...)``.
-    - ``extract_text`` / ``extract_structured_data``: access changes
-      from ``part.root.text`` to ``part.text``.
-    - Upstream ``a2a.utils`` helpers will be updated by the SDK.
+In a2a-sdk v1.0 the upstream ``a2a.utils.message`` / ``a2a.utils.parts``
+/ ``a2a.utils.artifact`` modules were removed and replaced with
+protobuf-shaped helpers in ``a2a.helpers.proto_helpers``. While TACO is
+still on the v0.3 wire format (via ``a2a.compat.v0_3.types``) we keep
+Pydantic-shaped versions of the previously re-exported helpers here so
+the public ``taco.*`` surface does not change. They will be retired
+together with the v0_3 compat shim in a later phase.
 """
 
 from __future__ import annotations
@@ -21,31 +17,14 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from a2a.types import (
+from a2a.compat.v0_3.types import (
     Artifact,
     DataPart,
+    FilePart,
     Message,
     Part,
     Role,
     TextPart,
-)
-from a2a.utils.artifact import (  # noqa: F401
-    new_data_artifact,
-    new_text_artifact,
-)
-from a2a.utils.message import (  # noqa: F401
-    get_message_text,
-    new_agent_parts_message,
-    new_agent_text_message,
-)
-
-# ---------------------------------------------------------------------------
-# Re-exports from a2a.utils (upstream helpers)
-# ---------------------------------------------------------------------------
-from a2a.utils.parts import (  # noqa: F401
-    get_data_parts,
-    get_file_parts,
-    get_text_parts,
 )
 
 
@@ -103,3 +82,72 @@ def extract_structured_data(part: Part) -> dict[str, Any] | None:
     if isinstance(part.root, DataPart):
         return part.root.data
     return None
+
+
+# ---------------------------------------------------------------------------
+# Pydantic-shaped equivalents of the helpers ``a2a.utils`` used to expose.
+# Re-implemented locally because v1.0 removed those modules; we still want
+# the public ``taco.*`` surface (and existing user code) to keep working.
+# ---------------------------------------------------------------------------
+
+
+def get_text_parts(parts: list[Part]) -> list[str]:
+    """Return the text payloads of every ``TextPart`` in ``parts``."""
+    return [p.root.text for p in parts if isinstance(p.root, TextPart)]
+
+
+def get_data_parts(parts: list[Part]) -> list[dict[str, Any]]:
+    """Return the data payloads of every ``DataPart`` in ``parts``."""
+    return [p.root.data for p in parts if isinstance(p.root, DataPart)]
+
+
+def get_file_parts(parts: list[Part]) -> list[FilePart]:
+    """Return every ``FilePart`` in ``parts``."""
+    return [p.root for p in parts if isinstance(p.root, FilePart)]
+
+
+def get_message_text(message: Message, separator: str = "\n") -> str:
+    """Concatenate the text of every ``TextPart`` in ``message.parts``."""
+    return separator.join(get_text_parts(message.parts))
+
+
+def new_agent_text_message(text: str, *, message_id: str | None = None) -> Message:
+    """Create an agent-role ``Message`` with a single ``TextPart``."""
+    return make_message("agent", [make_text_part(text)], message_id=message_id)
+
+
+def new_agent_parts_message(
+    parts: list[Part],
+    *,
+    message_id: str | None = None,
+) -> Message:
+    """Create an agent-role ``Message`` with the given parts."""
+    return make_message("agent", parts, message_id=message_id)
+
+
+def new_text_artifact(
+    *,
+    name: str,
+    text: str,
+    description: str | None = None,
+) -> Artifact:
+    """Create an ``Artifact`` containing a single ``TextPart``."""
+    return make_artifact(
+        parts=[make_text_part(text)],
+        name=name,
+        description=description,
+    )
+
+
+def new_data_artifact(
+    *,
+    name: str,
+    data: dict[str, Any],
+    description: str | None = None,
+) -> Artifact:
+    """Create an ``Artifact`` containing a single ``DataPart``."""
+    return make_artifact(
+        parts=[make_data_part(data)],
+        name=name,
+        description=description,
+    )
