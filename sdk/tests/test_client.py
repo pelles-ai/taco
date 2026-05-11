@@ -84,6 +84,51 @@ class TestGetTask:
         assert fetched.status.state == "completed"
 
 
+class TestListTasks:
+    async def test_returns_all_tasks(self, test_client: TacoClient):
+        # Create three tasks
+        sent = []
+        for i in range(3):
+            t = await test_client.send_message("test-task", {"i": i})
+            sent.append(t.id)
+
+        tasks, cursor = await test_client.list_tasks()
+        assert {t.id for t in tasks} >= set(sent)
+        # All present in one page, no continuation cursor
+        assert cursor is None
+
+    async def test_pagination_with_limit(self, test_client: TacoClient):
+        for i in range(3):
+            await test_client.send_message("test-task", {"i": i})
+
+        first, cursor = await test_client.list_tasks(limit=2)
+        assert len(first) == 2
+        assert cursor is not None
+
+        second, cursor2 = await test_client.list_tasks(cursor=cursor, limit=2)
+        # second page should contain the remaining task(s) without
+        # overlapping the first page
+        assert {t.id for t in first}.isdisjoint({t.id for t in second})
+
+    async def test_overrides_protocol_version_header(self):
+        """list_tasks must send A2A-Version: 1.0 since ListTasks is v1-only."""
+        captured: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured.append(request)
+            return httpx.Response(
+                200,
+                json={"jsonrpc": "2.0", "id": "1", "result": {"tasks": []}},
+            )
+
+        transport = httpx.MockTransport(handler)
+        http_client = httpx.AsyncClient(transport=transport, base_url="http://test")
+        async with TacoClient(agent_url="http://test", http_client=http_client) as client:
+            await client.list_tasks()
+
+        assert captured[0].headers.get("a2a-version") == "1.0"
+
+
 class TestCancelTask:
     async def test_cancel_completed_task_raises(self, test_client: TacoClient):
         """A2A SDK correctly rejects cancellation of completed tasks."""

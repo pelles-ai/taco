@@ -123,6 +123,76 @@ class TestHealthCommand:
         assert "estimate" in captured.out
 
 
+class TestListTasksCommand:
+    @patch("taco.cli._get_http_client")
+    def test_list_tasks_prints_table(self, mock_get_client, capsys):
+        mock_httpx = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "jsonrpc": "2.0",
+            "id": "cli-1",
+            "result": {
+                "tasks": [
+                    {"id": "t-1", "contextId": "c-1", "status": {"state": "completed"}},
+                    {"id": "t-2", "contextId": "c-1", "status": {"state": "working"}},
+                ],
+                "nextPageToken": "cursor-xyz",
+            },
+        }
+        mock_httpx.post.return_value = mock_resp
+        mock_get_client.return_value = mock_httpx
+
+        main(["list-tasks", "http://localhost:8001", "--limit", "2"])
+
+        captured = capsys.readouterr()
+        assert "t-1" in captured.out
+        assert "completed" in captured.out
+        assert "t-2" in captured.out
+        assert "Next page cursor: cursor-xyz" in captured.out
+
+        # Verify the v1 ListTasks method and v1 header were used
+        call_args = mock_httpx.post.call_args
+        assert call_args[1]["json"]["method"] == "ListTasks"
+        assert call_args[1]["json"]["params"]["pageSize"] == 2
+        assert call_args[1]["headers"]["A2A-Version"] == "1.0"
+
+    @patch("taco.cli._get_http_client")
+    def test_list_tasks_handles_empty(self, mock_get_client, capsys):
+        mock_httpx = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "jsonrpc": "2.0",
+            "id": "cli-1",
+            "result": {"tasks": []},
+        }
+        mock_httpx.post.return_value = mock_resp
+        mock_get_client.return_value = mock_httpx
+
+        main(["list-tasks", "http://localhost:8001"])
+
+        captured = capsys.readouterr()
+        assert "(no tasks)" in captured.out
+
+    @patch("taco.cli._get_http_client")
+    def test_list_tasks_json_flag(self, mock_get_client, capsys):
+        mock_httpx = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "jsonrpc": "2.0",
+            "id": "cli-1",
+            "result": {"tasks": [{"id": "t-1"}]},
+        }
+        mock_httpx.post.return_value = mock_resp
+        mock_get_client.return_value = mock_httpx
+
+        main(["list-tasks", "http://localhost:8001", "--json"])
+
+        captured = capsys.readouterr()
+        # --json prints the raw RPC result; should be valid JSON
+        parsed = json.loads(captured.out)
+        assert parsed["tasks"][0]["id"] == "t-1"
+
+
 class TestSendCommand:
     @patch("taco.cli._get_http_client")
     def test_send_with_empty_input(self, mock_get_client, capsys):

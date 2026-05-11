@@ -146,6 +146,58 @@ def _cmd_health(args: argparse.Namespace) -> None:
         print(f"Handlers: {', '.join(handlers)}")
 
 
+def _cmd_list_tasks(args: argparse.Namespace) -> None:
+    httpx = _get_http_client()
+    url = args.url.rstrip("/")
+    params: dict = {}
+    if args.cursor:
+        params["pageToken"] = args.cursor
+    if args.limit:
+        params["pageSize"] = args.limit
+    if args.context_id:
+        params["contextId"] = args.context_id
+
+    payload = {
+        "jsonrpc": "2.0",
+        "id": "cli-1",
+        "method": "ListTasks",
+        "params": params,
+    }
+    # ListTasks is a v1-only method; override the default A2A-Version: 0.3.
+    resp = httpx.post(
+        f"{url}/",
+        json=payload,
+        timeout=args.timeout,
+        headers={"A2A-Version": "1.0"},
+    )
+    resp.raise_for_status()
+    body = resp.json()
+    if body.get("error"):
+        err = body["error"]
+        print(f"Error: {err.get('message', err)}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.json:
+        print(json.dumps(body.get("result", {}), indent=2))
+        return
+
+    result = body.get("result", {})
+    tasks = result.get("tasks", [])
+    if not tasks:
+        print("(no tasks)")
+        return
+    print(f"{len(tasks)} task(s):")
+    for t in tasks:
+        tid = t.get("id", "?")
+        state = t.get("status", {}).get("state", "?")
+        ctx = t.get("contextId", "")
+        print(f"  - {tid}  state={state}  context={ctx}")
+    next_token = result.get("nextPageToken")
+    if next_token:
+        print()
+        print(f"Next page cursor: {next_token}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="taco",
@@ -172,6 +224,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_health = sub.add_parser("health", help="Check agent /health endpoint")
     p_health.add_argument("url", help="Agent base URL")
 
+    p_list = sub.add_parser("list-tasks", help="List tasks via the v1 ListTasks RPC")
+    p_list.add_argument("url", help="Agent base URL")
+    p_list.add_argument("--cursor", default=None, help="Pagination cursor from a previous call")
+    p_list.add_argument(
+        "--limit", type=int, default=None, help="Page size (server may apply its own cap)"
+    )
+    p_list.add_argument(
+        "--context-id", default=None, help="Filter to tasks in this conversation context"
+    )
+    p_list.add_argument(
+        "--json", action="store_true", help="Print the raw JSON-RPC result instead of a table"
+    )
+
     return parser
 
 
@@ -188,6 +253,7 @@ def main(argv: list[str] | None = None) -> None:
         "inspect": _cmd_inspect,
         "send": _cmd_send,
         "health": _cmd_health,
+        "list-tasks": _cmd_list_tasks,
     }
     try:
         commands[args.command](args)
