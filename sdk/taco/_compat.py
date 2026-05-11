@@ -43,13 +43,23 @@ def make_message(
     parts: list[Part],
     *,
     message_id: str | None = None,
+    reference_task_ids: list[str] | None = None,
 ) -> Message:
-    """Create an A2A Message with auto-generated message_id."""
-    return Message(
-        role=Role(role),
-        parts=parts,
-        message_id=message_id or str(uuid.uuid4()),
-    )
+    """Create an A2A Message with auto-generated message_id.
+
+    ``reference_task_ids`` lists prior tasks this message logically
+    follows up on (A2A v1 spec). TACO uses it to thread RFI responses
+    back to the originating RFI task, change-order approvals back to
+    the proposal task, etc.
+    """
+    kwargs: dict[str, Any] = {
+        "role": Role(role),
+        "parts": parts,
+        "message_id": message_id or str(uuid.uuid4()),
+    }
+    if reference_task_ids:
+        kwargs["reference_task_ids"] = list(reference_task_ids)
+    return Message(**kwargs)
 
 
 def make_artifact(

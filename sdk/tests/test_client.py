@@ -129,6 +129,57 @@ class TestListTasks:
         assert captured[0].headers.get("a2a-version") == "1.0"
 
 
+class TestReferenceTaskIds:
+    """``reference_task_ids`` threads follow-up tasks back to their predecessors."""
+
+    async def test_message_params_includes_reference_task_ids(self):
+        params = TacoClient._message_params(
+            "rfi-response",
+            {"answer": "use copper"},
+            reference_task_ids=["t-rfi-original"],
+        )
+        msg = params["message"]
+        # Pydantic alias serializes snake_case → camelCase
+        assert msg["referenceTaskIds"] == ["t-rfi-original"]
+
+    async def test_message_params_omits_field_when_absent(self):
+        params = TacoClient._message_params("rfi-response", {"x": 1})
+        assert "referenceTaskIds" not in params["message"]
+
+    async def test_send_message_forwards_reference_task_ids(self):
+        captured: list[dict] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            import json
+
+            payload = json.loads(request.content)
+            captured.append(payload)
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "1",
+                    "result": {
+                        "id": "t-new",
+                        "contextId": "c-1",
+                        "status": {"state": "completed"},
+                    },
+                },
+            )
+
+        transport = httpx.MockTransport(handler)
+        http_client = httpx.AsyncClient(transport=transport, base_url="http://test")
+        async with TacoClient(agent_url="http://test", http_client=http_client) as client:
+            await client.send_message(
+                "rfi-response",
+                {"answer": "yes"},
+                reference_task_ids=["t-orig"],
+            )
+
+        sent_msg = captured[0]["params"]["message"]
+        assert sent_msg["referenceTaskIds"] == ["t-orig"]
+
+
 class TestCancelTask:
     async def test_cancel_completed_task_raises(self, test_client: TacoClient):
         """A2A SDK correctly rejects cancellation of completed tasks."""
