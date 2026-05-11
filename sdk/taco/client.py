@@ -184,6 +184,50 @@ class TacoClient:
         params = self._message_params(task_type, input_data)
         return await self._rpc_call("message/send", params, headers=headers)
 
+    async def list_tasks(
+        self,
+        *,
+        cursor: str | None = None,
+        limit: int | None = None,
+        context_id: str | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> tuple[list[Task], str | None]:
+        """List tasks visible to this caller via the v1 ``ListTasks`` RPC.
+
+        Returns ``(tasks, next_cursor)``. Pass ``next_cursor`` back as
+        ``cursor`` on a subsequent call to fetch the next page; a
+        ``None`` cursor means there are no more results.
+
+        ``ListTasks`` was added in A2A v1.0, so this method overrides
+        the default ``A2A-Version: 0.3`` header with ``1.0`` for the
+        request — v0.3-only peers will reject it.
+        """
+        params: dict[str, Any] = {}
+        if cursor is not None:
+            params["pageToken"] = cursor
+        if limit is not None:
+            params["pageSize"] = limit
+        if context_id is not None:
+            params["contextId"] = context_id
+
+        merged_headers: dict[str, str] = {"A2A-Version": "1.0"}
+        if headers:
+            merged_headers.update(headers)
+
+        result = await self._rpc_call("ListTasks", params, headers=merged_headers)
+        # The v1 wire format returns SCREAMING_SNAKE enums; round-trip
+        # through protobuf to get back our v0.3-shaped Pydantic Task.
+        from a2a.compat.v0_3 import conversions
+        from a2a.types.a2a_pb2 import Task as TaskPb
+        from google.protobuf.json_format import ParseDict
+
+        tasks: list[Task] = []
+        for raw in result.get("tasks", []):
+            pb = ParseDict(raw, TaskPb(), ignore_unknown_fields=True)
+            tasks.append(conversions.to_compat_task(pb))
+        next_cursor = result.get("nextPageToken") or None
+        return tasks, next_cursor
+
     # -- streaming --
 
     async def stream_message(

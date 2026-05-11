@@ -11,6 +11,8 @@ Versions are auto-published to PyPI on every push to `main`.
 - **`JsonFileTaskStore`** — lightweight JSON-file-backed `TaskStore` implementation with atomic writes, suitable for single-process agents that need persistence without a database
 - **`TaskStore` re-export** — available via `from taco import TaskStore`
 - **`A2A-Version` request header** — `TacoClient`, `AgentRegistry`, and the CLI now send `A2A-Version: 0.3` on every request so v1 peers can negotiate. Constant exposed as `taco.client.A2A_PROTOCOL_VERSION`. Caller-supplied headers override the default.
+- **`TacoClient.list_tasks()`** — wraps the v1 `ListTasks` RPC with cursor-based pagination. Returns `(tasks, next_cursor)`; pass the cursor back to fetch the next page. Sends `A2A-Version: 1.0` since `ListTasks` is v1-only.
+- **`taco list-tasks <url>`** — new CLI subcommand with `--cursor`, `--limit`, `--context-id`, and `--json` flags. Prints a one-line-per-task table or raw JSON-RPC result.
 
 ### Changed
 - **Bumped `a2a-sdk` to `>=1.0.2,<2`** — adopt the v1 SDK via the v0.3 compat layer. `taco.types` re-exports from `a2a.compat.v0_3.types` (Pydantic) and `taco.server.A2AServer` now wraps `LegacyRequestHandler` plus `create_jsonrpc_routes(enable_v0_3_compat=True)` instead of the removed `A2AFastAPIApplication`. On-the-wire JSON for the agent card, `message/send`, `message/stream`, `tasks/get`, and `tasks/cancel` is byte-identical to TACO 0.3.x — existing clients require no changes.
