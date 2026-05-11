@@ -2,6 +2,36 @@
 
 TACO extends the standard A2A Agent Card with construction-specific metadata using the `x-construction` extension field. These fields are optional — any A2A client that does not understand them will simply ignore them per the A2A specification.
 
+## Canonical Extension URI
+
+A2A v1 added `AgentCapabilities.extensions[]` — a formal way for agents to advertise which protocol extensions they implement, identified by URI. TACO declares its construction extension under:
+
+```
+https://taco.construction/extensions/x-construction/v1
+```
+
+A TACO agent card carrying the inline `x-construction` field **also** lists this URI under `capabilities.extensions[]`, so A2A v1 clients can discover support via capability negotiation without parsing the inline field:
+
+```json
+{
+  "capabilities": {
+    "streaming": false,
+    "extensions": [
+      {
+        "uri": "https://taco.construction/extensions/x-construction/v1",
+        "description": "TACO construction-domain agent metadata: trade, CSI divisions, project types, certifications, data formats, integrations, security.",
+        "required": false
+      }
+    ]
+  },
+  "x-construction": { "...": "..." }
+}
+```
+
+In Python the constant is exposed as `taco.X_CONSTRUCTION_EXTENSION_URI`, and `taco.apply_construction_extension_declaration(card)` mutates a card so it carries the declaration (idempotent — `ConstructionAgentCard.to_a2a()` calls it automatically).
+
+The inline `x-construction` field is preserved for back-compatibility with readers that ignore the `extensions[]` array.
+
 ## Top-Level Extension: `x-construction`
 
 Added to the root of the Agent Card.

@@ -9,6 +9,7 @@ from .types import (
     AgentSkill,
     SkillConstructionExt,
     Trade,
+    apply_construction_extension_declaration,
 )
 
 
@@ -101,8 +102,13 @@ class ConstructionAgentCard:
         self.skills = skills or []
 
     def to_a2a(self) -> AgentCard:
-        """Convert to a standard A2A AgentCard with x-construction extension."""
-        return AgentCard(
+        """Convert to a standard A2A AgentCard with x-construction extension.
+
+        Also declares the formal ``x-construction`` extension URI in
+        ``capabilities.extensions[]`` so A2A v1 clients can detect support
+        via capability negotiation in addition to reading the inline field.
+        """
+        card = AgentCard(
             name=self.name,
             description=self.description,
             url=self.url,
@@ -118,6 +124,7 @@ class ConstructionAgentCard:
                 integrations=self.integrations,
             ),
         )
+        return apply_construction_extension_declaration(card)
 
     def serve(self, *, host: str = "0.0.0.0", port: int = 8080) -> None:
         """Start an A2A-compliant server for this agent.

@@ -19,6 +19,7 @@ from typing import Literal
 from a2a._base import A2ABaseModel
 from a2a.compat.v0_3.types import (  # noqa: F401 — re-exports
     AgentCapabilities,
+    AgentExtension,
     Artifact,
     DataPart,
     FilePart,
@@ -215,6 +216,48 @@ def get_construction_ext(card: AgentCard) -> AgentConstructionExt | None:
 def get_skill_construction_ext(skill: AgentSkill) -> SkillConstructionExt | None:
     """Extract x-construction extension from a TACO AgentSkill."""
     return skill.x_construction
+
+
+# ---------------------------------------------------------------------------
+# Formal A2A v1 extension declaration for x-construction
+# ---------------------------------------------------------------------------
+
+#: Canonical URI for the TACO ``x-construction`` agent-card extension.
+#:
+#: A2A v1 added ``AgentCapabilities.extensions[]`` — a formal way for
+#: agents to advertise which protocol extensions they implement, identified
+#: by URI. Cards carrying the inline ``x-construction`` field should also
+#: list this URI under capabilities so v1-aware clients can negotiate.
+X_CONSTRUCTION_EXTENSION_URI = "https://taco.construction/extensions/x-construction/v1"
+
+_X_CONSTRUCTION_EXTENSION_DESCRIPTION = (
+    "TACO construction-domain agent metadata: trade, CSI divisions, project "
+    "types, certifications, data formats, integrations, security."
+)
+
+
+def apply_construction_extension_declaration(card: AgentCard) -> AgentCard:
+    """Ensure ``card.capabilities.extensions[]`` advertises ``x-construction``.
+
+    Mutates and returns ``card``. No-op if ``card.x_construction`` is ``None``
+    or if the URI is already declared (idempotent — safe to call repeatedly).
+    """
+    if card.x_construction is None:
+        return card
+    if card.capabilities is None:
+        card.capabilities = AgentCapabilities(streaming=False)
+    existing = card.capabilities.extensions or []
+    if any(ext.uri == X_CONSTRUCTION_EXTENSION_URI for ext in existing):
+        return card
+    card.capabilities.extensions = [
+        *existing,
+        AgentExtension(
+            uri=X_CONSTRUCTION_EXTENSION_URI,
+            description=_X_CONSTRUCTION_EXTENSION_DESCRIPTION,
+            required=False,
+        ),
+    ]
+    return card
 
 
 # ---------------------------------------------------------------------------

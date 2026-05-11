@@ -65,9 +65,11 @@ from .schemas import (
     ScheduleV1,
 )
 from .types import (
+    X_CONSTRUCTION_EXTENSION_URI,
     AgentCapabilities,
     AgentCard,
     AgentConstructionExt,
+    AgentExtension,
     AgentSkill,
     Artifact,
     Availability,
@@ -99,6 +101,7 @@ from .types import (
     TaskStore,
     TextPart,
     Trade,
+    apply_construction_extension_declaration,
     get_construction_ext,
     get_skill_construction_ext,
 )
@@ -108,6 +111,7 @@ __all__ = [
     "AgentCapabilities",
     "AgentCard",
     "AgentConstructionExt",
+    "AgentExtension",
     "AgentSkill",
     "Artifact",
     "Availability",
@@ -138,6 +142,8 @@ __all__ = [
     "TaskStore",
     "TextPart",
     "Trade",
+    "X_CONSTRUCTION_EXTENSION_URI",
+    "apply_construction_extension_declaration",
     "get_construction_ext",
     "get_skill_construction_ext",
     # Compatibility helpers (TACO)
