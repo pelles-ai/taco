@@ -141,3 +141,49 @@ class TestConstructionAgentCard:
         restored = AgentCard.model_validate(data)
         assert restored.name == "Round Trip Agent"
         assert restored.x_construction.trade == "structural"
+
+
+class TestExtensionDeclaration:
+    """``to_a2a()`` advertises the formal x-construction URI alongside the inline field."""
+
+    def test_capabilities_extensions_declares_uri(self):
+        from taco import X_CONSTRUCTION_EXTENSION_URI
+
+        card = ConstructionAgentCard(
+            name="A",
+            trade="mechanical",
+            csi_divisions=["23"],
+        ).to_a2a()
+        assert card.capabilities is not None
+        uris = [ext.uri for ext in (card.capabilities.extensions or [])]
+        assert X_CONSTRUCTION_EXTENSION_URI in uris
+
+    def test_apply_construction_extension_declaration_is_idempotent(self):
+        from taco import X_CONSTRUCTION_EXTENSION_URI, apply_construction_extension_declaration
+
+        card = ConstructionAgentCard(name="A", trade="mechanical", csi_divisions=["23"]).to_a2a()
+        before = len(card.capabilities.extensions or [])
+        apply_construction_extension_declaration(card)
+        apply_construction_extension_declaration(card)
+        after = len(card.capabilities.extensions or [])
+        assert before == after == 1
+        assert card.capabilities.extensions[0].uri == X_CONSTRUCTION_EXTENSION_URI
+
+    def test_no_declaration_when_x_construction_absent(self):
+        from taco import AgentCard, apply_construction_extension_declaration
+
+        plain = AgentCard(name="Plain", description="plain", url="http://plain")
+        apply_construction_extension_declaration(plain)
+        # No capabilities, or no extensions list — either way, no URI added.
+        extensions = (plain.capabilities.extensions if plain.capabilities else None) or []
+        assert extensions == []
+
+    def test_extension_serialized_in_json(self):
+        from taco import X_CONSTRUCTION_EXTENSION_URI
+
+        card = ConstructionAgentCard(name="A", trade="mechanical", csi_divisions=["23"]).to_a2a()
+        j = card.model_dump(by_alias=True, exclude_none=True)
+        extensions = j.get("capabilities", {}).get("extensions", [])
+        assert any(e.get("uri") == X_CONSTRUCTION_EXTENSION_URI for e in extensions)
+        # The inline field is preserved for back-compat with non-v1 readers.
+        assert "x-construction" in j
