@@ -34,7 +34,12 @@ from a2a.server.agent_execution import AgentExecutor
 from a2a.server.events import EventQueue
 from a2a.server.request_handlers import LegacyRequestHandler
 from a2a.server.routes import create_jsonrpc_routes
-from a2a.server.tasks import InMemoryTaskStore, TaskStore
+from a2a.server.tasks import (
+    InMemoryPushNotificationConfigStore,
+    InMemoryTaskStore,
+    PushNotificationConfigStore,
+    TaskStore,
+)
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -302,6 +307,7 @@ class A2AServer:
         agent_card: AgentCard,
         *,
         task_store: TaskStore | None = None,
+        push_config_store: PushNotificationConfigStore | None = None,
         cors_origins: list[str] | None = None,
         enable_admin: bool = False,
         admin_auth_token: str | None = None,
@@ -313,13 +319,21 @@ class A2AServer:
         self._admin_auth_token = admin_auth_token
 
         # Build the protobuf AgentCard the v1 SDK requires, then construct
-        # the request handler around our executor.
+        # the request handler around our executor. When the card advertises
+        # push_notifications, plug in an InMemoryPushNotificationConfigStore
+        # by default so callers can register webhooks out of the box.
         self._a2a_card_pb = self._to_protobuf_card(agent_card)
         self._task_store = task_store or InMemoryTaskStore()
+        if push_config_store is None and (
+            agent_card.capabilities is not None and agent_card.capabilities.push_notifications
+        ):
+            push_config_store = InMemoryPushNotificationConfigStore()
+        self._push_config_store = push_config_store
         self._request_handler = LegacyRequestHandler(
             agent_executor=self._executor,
             task_store=self._task_store,
             agent_card=self._a2a_card_pb,
+            push_config_store=push_config_store,
         )
 
         # Build the FastAPI app and mount the v1 JSON-RPC routes (with v0.3
@@ -397,6 +411,11 @@ class A2AServer:
             default_output_modes=card.default_output_modes,
             capabilities=A2ACapabilities(
                 streaming=card.capabilities.streaming if card.capabilities else False,
+                push_notifications=(
+                    card.capabilities.push_notifications
+                    if card.capabilities and card.capabilities.push_notifications is not None
+                    else False
+                ),
             ),
             skills=skills,
         )

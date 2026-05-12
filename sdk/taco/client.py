@@ -16,7 +16,7 @@ except ImportError:
     ) from None
 
 from ._compat import make_data_part, make_message
-from .types import AgentCard, Task
+from .types import AgentCard, PushNotificationConfig, Task
 
 _log = logging.getLogger("taco.client")
 
@@ -262,6 +262,90 @@ class TacoClient:
             tasks.append(conversions.to_compat_task(pb))
         next_cursor = result.get("nextPageToken") or None
         return tasks, next_cursor
+
+    # -- push notification configs (A2A v1: multiple per task) --
+
+    async def create_push_config(
+        self,
+        task_id: str,
+        url: str,
+        *,
+        token: str | None = None,
+        authentication: dict[str, Any] | None = None,
+        config_id: str | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> PushNotificationConfig:
+        """Subscribe a webhook to receive push events for ``task_id``.
+
+        A task can carry multiple push configs in A2A v1 — pass distinct
+        ``config_id`` values to register multiple subscribers (e.g. one
+        for the project owner's dashboard, another for an audit log).
+        """
+        config = PushNotificationConfig(
+            id=config_id,
+            url=url,
+            token=token,
+            authentication=authentication,
+        )
+        params = {
+            "taskId": task_id,
+            "pushNotificationConfig": config.model_dump(
+                mode="json", by_alias=True, exclude_none=True
+            ),
+        }
+        result = await self._rpc_call("tasks/pushNotificationConfig/set", params, headers=headers)
+        # v0.3 response wraps the config inside TaskPushNotificationConfig
+        cfg_payload = result.get("pushNotificationConfig", result)
+        return PushNotificationConfig.model_validate(cfg_payload)
+
+    async def list_push_configs(
+        self,
+        task_id: str,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> list[PushNotificationConfig]:
+        """Return every push config currently registered for ``task_id``."""
+        result = await self._rpc_call(
+            "tasks/pushNotificationConfig/list",
+            {"id": task_id},
+            headers=headers,
+        )
+        items = result if isinstance(result, list) else result.get("configs", [])
+        configs: list[PushNotificationConfig] = []
+        for raw in items:
+            cfg_payload = raw.get("pushNotificationConfig", raw) if isinstance(raw, dict) else raw
+            configs.append(PushNotificationConfig.model_validate(cfg_payload))
+        return configs
+
+    async def get_push_config(
+        self,
+        task_id: str,
+        config_id: str,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> PushNotificationConfig:
+        """Fetch a single push config by its id."""
+        result = await self._rpc_call(
+            "tasks/pushNotificationConfig/get",
+            {"id": task_id, "pushNotificationConfigId": config_id},
+            headers=headers,
+        )
+        cfg_payload = result.get("pushNotificationConfig", result)
+        return PushNotificationConfig.model_validate(cfg_payload)
+
+    async def delete_push_config(
+        self,
+        task_id: str,
+        config_id: str,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        """Unsubscribe a webhook from ``task_id``. No-op if already gone."""
+        await self._rpc_call(
+            "tasks/pushNotificationConfig/delete",
+            {"id": task_id, "pushNotificationConfigId": config_id},
+            headers=headers,
+        )
 
     # -- streaming --
 
