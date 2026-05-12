@@ -178,19 +178,26 @@ class TacoAgent:
         *,
         context_id: str | None = None,
         reference_task_ids: list[str] | None = None,
+        return_immediately: bool = False,
         headers: dict[str, str] | None = None,
     ) -> Task:
         """Send a message to whichever peer agent handles *task_type*.
 
         Looks up the peer by skill ID/tag match, gets or creates a pooled
-        :class:`TacoClient`, and calls ``send_message()``.
+        :class:`TacoClient`, and calls ``send_message()``. When
+        ``return_immediately`` is ``True``, the peer returns the Task as
+        soon as it accepts the message rather than waiting for the
+        terminal state — useful for long-running estimates and
+        schedules where the caller plans to poll or watch via the
+        Monitor UI.
 
         ``reference_task_ids`` (A2A v1) links this outbound call to prior
         tasks — natural fit for RFI → response or proposal → approval
         construction workflows.
 
         Returns:
-            The resulting :class:`Task` with artifacts.
+            The resulting :class:`Task` with artifacts (or just the
+            accepted task object when ``return_immediately`` is True).
 
         Raises:
             ValueError: No peers configured or no peer has the skill.
@@ -210,6 +217,7 @@ class TacoAgent:
             input_data,
             context_id=context_id,
             reference_task_ids=reference_task_ids,
+            return_immediately=return_immediately,
             headers=headers,
         )
 

@@ -246,6 +246,50 @@ class TestMessageParams:
         assert "contextId" not in params
 
 
+class TestReturnImmediately:
+    """``return_immediately`` flips ``configuration.blocking=false`` on the wire."""
+
+    def test_default_omits_configuration(self):
+        params = TacoClient._message_params("estimate", {"x": 1})
+        assert "configuration" not in params
+
+    def test_true_sets_blocking_false(self):
+        params = TacoClient._message_params("estimate", {"x": 1}, return_immediately=True)
+        assert params["configuration"] == {"blocking": False}
+
+    async def test_send_message_forwards_flag(self):
+        captured: list[dict] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            import json
+
+            captured.append(json.loads(request.content))
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "1",
+                    "result": {
+                        "id": "t-1",
+                        "contextId": "c-1",
+                        "status": {"state": "submitted"},
+                    },
+                },
+            )
+
+        transport = httpx.MockTransport(handler)
+        http_client = httpx.AsyncClient(transport=transport, base_url="http://test")
+        async with TacoClient(agent_url="http://test", http_client=http_client) as client:
+            await client.send_message(
+                "long-running",
+                {"x": 1},
+                return_immediately=True,
+            )
+
+        sent = captured[0]["params"]
+        assert sent["configuration"] == {"blocking": False}
+
+
 class TestProtocolHeaders:
     """Verify A2A-Version is sent on every request."""
 

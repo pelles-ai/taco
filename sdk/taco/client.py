@@ -140,6 +140,7 @@ class TacoClient:
         input_data: dict[str, Any],
         context_id: str | None = None,
         reference_task_ids: list[str] | None = None,
+        return_immediately: bool = False,
     ) -> dict[str, Any]:
         """Build the common params dict for message/send and message/stream."""
         msg = make_message(
@@ -153,6 +154,11 @@ class TacoClient:
         }
         if context_id is not None:
             params["contextId"] = context_id
+        if return_immediately:
+            # v1's ``returnImmediately`` maps to v0.3's
+            # ``configuration.blocking=false`` on the wire: tell the
+            # server not to wait for a terminal task state.
+            params["configuration"] = {"blocking": False}
         return params
 
     async def send_message(
@@ -162,6 +168,7 @@ class TacoClient:
         *,
         context_id: str | None = None,
         reference_task_ids: list[str] | None = None,
+        return_immediately: bool = False,
         headers: dict[str, str] | None = None,
     ) -> Task:
         """Send a message to the agent and return the resulting Task.
@@ -169,8 +176,18 @@ class TacoClient:
         ``reference_task_ids`` (A2A v1) links this message to prior
         tasks — e.g. an RFI response references the originating RFI
         task, a change-order approval references the proposal task.
+
+        When ``return_immediately`` is ``True``, the server returns the
+        Task as soon as it accepts the message (typically in
+        ``submitted`` / ``working`` state) rather than waiting for the
+        terminal state. Useful for fire-and-forget workflows where the
+        caller plans to poll via :meth:`get_task` / :meth:`list_tasks`,
+        or where progress is observed elsewhere (push notifications,
+        the Monitor UI, an event bus).
         """
-        params = self._message_params(task_type, input_data, context_id, reference_task_ids)
+        params = self._message_params(
+            task_type, input_data, context_id, reference_task_ids, return_immediately
+        )
         result = await self._rpc_call("message/send", params, headers=headers)
         return Task.model_validate(result)
 
@@ -190,10 +207,16 @@ class TacoClient:
         task_type: str,
         input_data: dict[str, Any],
         reference_task_ids: list[str] | None = None,
+        return_immediately: bool = False,
         headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Legacy convenience — send a message and return raw result dict."""
-        params = self._message_params(task_type, input_data, reference_task_ids=reference_task_ids)
+        params = self._message_params(
+            task_type,
+            input_data,
+            reference_task_ids=reference_task_ids,
+            return_immediately=return_immediately,
+        )
         return await self._rpc_call("message/send", params, headers=headers)
 
     async def list_tasks(
