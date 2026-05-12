@@ -139,9 +139,14 @@ class TacoClient:
         task_type: str,
         input_data: dict[str, Any],
         context_id: str | None = None,
+        reference_task_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         """Build the common params dict for message/send and message/stream."""
-        msg = make_message("user", [make_data_part(input_data)])
+        msg = make_message(
+            "user",
+            [make_data_part(input_data)],
+            reference_task_ids=reference_task_ids,
+        )
         params: dict[str, Any] = {
             "message": msg.model_dump(mode="json", by_alias=True, exclude_none=True),
             "metadata": {"taskType": task_type},
@@ -156,10 +161,16 @@ class TacoClient:
         input_data: dict[str, Any],
         *,
         context_id: str | None = None,
+        reference_task_ids: list[str] | None = None,
         headers: dict[str, str] | None = None,
     ) -> Task:
-        """Send a message to the agent and return the resulting Task."""
-        params = self._message_params(task_type, input_data, context_id)
+        """Send a message to the agent and return the resulting Task.
+
+        ``reference_task_ids`` (A2A v1) links this message to prior
+        tasks — e.g. an RFI response references the originating RFI
+        task, a change-order approval references the proposal task.
+        """
+        params = self._message_params(task_type, input_data, context_id, reference_task_ids)
         result = await self._rpc_call("message/send", params, headers=headers)
         return Task.model_validate(result)
 
@@ -178,10 +189,11 @@ class TacoClient:
         *,
         task_type: str,
         input_data: dict[str, Any],
+        reference_task_ids: list[str] | None = None,
         headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Legacy convenience — send a message and return raw result dict."""
-        params = self._message_params(task_type, input_data)
+        params = self._message_params(task_type, input_data, reference_task_ids=reference_task_ids)
         return await self._rpc_call("message/send", params, headers=headers)
 
     async def list_tasks(
@@ -236,13 +248,15 @@ class TacoClient:
         input_data: dict[str, Any],
         *,
         context_id: str | None = None,
+        reference_task_ids: list[str] | None = None,
         headers: dict[str, str] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Send a streaming message and yield SSE event dicts.
 
         Each yielded dict has ``event`` (str) and ``data`` (parsed JSON).
+        ``reference_task_ids`` (A2A v1) links this message to prior tasks.
         """
-        params = self._message_params(task_type, input_data, context_id)
+        params = self._message_params(task_type, input_data, context_id, reference_task_ids)
         payload = self._rpc_request("message/stream", params)
         async with self._client.stream(
             "POST",

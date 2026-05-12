@@ -177,12 +177,17 @@ class TacoAgent:
         input_data: dict[str, Any],
         *,
         context_id: str | None = None,
+        reference_task_ids: list[str] | None = None,
         headers: dict[str, str] | None = None,
     ) -> Task:
         """Send a message to whichever peer agent handles *task_type*.
 
         Looks up the peer by skill ID/tag match, gets or creates a pooled
         :class:`TacoClient`, and calls ``send_message()``.
+
+        ``reference_task_ids`` (A2A v1) links this outbound call to prior
+        tasks — natural fit for RFI → response or proposal → approval
+        construction workflows.
 
         Returns:
             The resulting :class:`Task` with artifacts.
@@ -204,6 +209,7 @@ class TacoAgent:
             task_type,
             input_data,
             context_id=context_id,
+            reference_task_ids=reference_task_ids,
             headers=headers,
         )
 
@@ -213,12 +219,14 @@ class TacoAgent:
         input_data: dict[str, Any],
         *,
         context_id: str | None = None,
+        reference_task_ids: list[str] | None = None,
         headers: dict[str, str] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream a message from whichever peer agent handles *task_type*.
 
         Same lookup logic as :meth:`send_to_peer` but returns an SSE
-        event iterator.
+        event iterator. ``reference_task_ids`` is forwarded onto the
+        outbound stream request.
 
         Raises:
             ValueError: No peers configured or no peer has the skill.
@@ -237,6 +245,7 @@ class TacoAgent:
             task_type,
             input_data,
             context_id=context_id,
+            reference_task_ids=reference_task_ids,
             headers=headers,
         ):
             yield event
