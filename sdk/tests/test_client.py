@@ -84,6 +84,127 @@ class TestGetTask:
         assert fetched.status.state == "completed"
 
 
+class TestPushNotificationConfigs:
+    """CRUD over the v0.3 task/pushNotificationConfig RPCs."""
+
+    @staticmethod
+    def _make_mock_client(handler):
+        transport = httpx.MockTransport(handler)
+        http_client = httpx.AsyncClient(transport=transport, base_url="http://test")
+        return TacoClient(agent_url="http://test", http_client=http_client)
+
+    async def test_create_push_config_sends_correct_payload(self):
+        captured: list[dict] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            import json
+
+            captured.append(json.loads(request.content))
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "1",
+                    "result": {
+                        "taskId": "t-1",
+                        "pushNotificationConfig": {
+                            "id": "dashboard",
+                            "url": "https://example.com/hook",
+                        },
+                    },
+                },
+            )
+
+        async with self._make_mock_client(handler) as c:
+            cfg = await c.create_push_config(
+                "t-1",
+                url="https://example.com/hook",
+                config_id="dashboard",
+            )
+
+        payload = captured[0]
+        assert payload["method"] == "tasks/pushNotificationConfig/set"
+        assert payload["params"]["taskId"] == "t-1"
+        assert payload["params"]["pushNotificationConfig"]["id"] == "dashboard"
+        assert payload["params"]["pushNotificationConfig"]["url"] == "https://example.com/hook"
+        assert cfg.id == "dashboard"
+        assert cfg.url == "https://example.com/hook"
+
+    async def test_list_push_configs_parses_array(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "1",
+                    "result": [
+                        {
+                            "taskId": "t-1",
+                            "pushNotificationConfig": {"id": "a", "url": "https://a"},
+                        },
+                        {
+                            "taskId": "t-1",
+                            "pushNotificationConfig": {"id": "b", "url": "https://b"},
+                        },
+                    ],
+                },
+            )
+
+        async with self._make_mock_client(handler) as c:
+            configs = await c.list_push_configs("t-1")
+
+        assert [cfg.id for cfg in configs] == ["a", "b"]
+        assert [cfg.url for cfg in configs] == ["https://a", "https://b"]
+
+    async def test_get_push_config_by_id(self):
+        captured: list[dict] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            import json
+
+            captured.append(json.loads(request.content))
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "1",
+                    "result": {
+                        "taskId": "t-1",
+                        "pushNotificationConfig": {"id": "audit", "url": "https://x"},
+                    },
+                },
+            )
+
+        async with self._make_mock_client(handler) as c:
+            cfg = await c.get_push_config("t-1", "audit")
+
+        payload = captured[0]
+        assert payload["method"] == "tasks/pushNotificationConfig/get"
+        assert payload["params"]["id"] == "t-1"
+        assert payload["params"]["pushNotificationConfigId"] == "audit"
+        assert cfg.id == "audit"
+
+    async def test_delete_push_config(self):
+        captured: list[dict] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            import json
+
+            captured.append(json.loads(request.content))
+            return httpx.Response(
+                200,
+                json={"jsonrpc": "2.0", "id": "1", "result": None},
+            )
+
+        async with self._make_mock_client(handler) as c:
+            await c.delete_push_config("t-1", "audit")
+
+        payload = captured[0]
+        assert payload["method"] == "tasks/pushNotificationConfig/delete"
+        assert payload["params"]["id"] == "t-1"
+        assert payload["params"]["pushNotificationConfigId"] == "audit"
+
+
 class TestListTasks:
     async def test_returns_all_tasks(self, test_client: TacoClient):
         # Create three tasks
