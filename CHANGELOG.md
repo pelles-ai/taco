@@ -7,6 +7,10 @@ Versions are auto-published to PyPI on every push to `main`.
 ## [Unreleased]
 
 ### Added
+- **v1 auth-flow advertisement flags on `SecurityExt`** — three new optional booleans on `x-construction.security` so a registry or orchestrator can quickly filter agents by auth modality without parsing the full `securitySchemes` block: `mtlsSupported` (mTLS client cert support), `pkceRequired` (Authorization Code flow requires PKCE — RFC 7636), `deviceCodeSupported` (OAuth Device Authorization Grant — RFC 8628). All default to `None` so existing cards serialize byte-identically.
+- **`AuthorizationCodeOAuthFlowV1`** — v1-shaped OAuth Authorization Code flow with an optional `pkceRequired` field. The v0.3 compat layer's flow model lacks this field, so TACO ships a Pydantic mirror that survives serialization round-trips and will become a direct pass-through to `a2a.types` after the v1 wire cutover (epic).
+- **`DeviceCodeOAuthFlow`** — Pydantic mirror of A2A v1's OAuth 2.0 Device Authorization Grant flow (RFC 8628). Carries `deviceAuthorizationUrl`, `tokenUrl`, `refreshUrl`, `scopes`. Lets agents declare device-code support today even though the v0.3 wire `OAuthFlows` model has no `deviceCode` slot.
+- **`MutualTLSSecurityScheme` re-export** — convenience re-export at `taco.MutualTLSSecurityScheme` (from the A2A v0.3 compat layer) so users can declare mTLS-only deployments without reaching into `a2a.compat.v0_3.types`. Same goes for `APIKeySecurityScheme`, `HTTPAuthSecurityScheme`, `OAuth2SecurityScheme`, `OpenIdConnectSecurityScheme`, `OAuthFlows`, `AuthorizationCodeOAuthFlow`, `ClientCredentialsOAuthFlow`, `ImplicitOAuthFlow`, `PasswordOAuthFlow`.
 - **Task persistence** — `A2AServer` and `TacoAgent` accept an optional `task_store` parameter for pluggable task persistence (defaults to `InMemoryTaskStore`)
 - **`JsonFileTaskStore`** — lightweight JSON-file-backed `TaskStore` implementation with atomic writes, suitable for single-process agents that need persistence without a database
 - **`TaskStore` re-export** — available via `from taco import TaskStore`
