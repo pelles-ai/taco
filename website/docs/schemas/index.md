@@ -4,13 +4,19 @@ title: Data Schemas
 description: Typed JSON schemas for construction artifacts — bom-v1, rfi-v1, estimate-v1, schedule-v1, quote-v1, change-order-v1.
 ---
 
+import SchemaGraph from '@site/src/components/SchemaGraph';
+
 # Data Schemas
 
 TACO defines typed JSON schemas for construction artifacts. These schemas ensure that the output from one agent is valid input for the next — enabling multi-agent workflows without custom integration code.
 
 All schemas follow [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/schema) and use camelCase field names in their JSON representation. The Python SDK provides Pydantic models with snake_case Python attributes that serialize to the correct camelCase JSON.
 
-## Available Schemas
+## How the schemas relate
+
+<SchemaGraph />
+
+## Available schemas
 
 | Schema | Status | Description |
 |--------|--------|-------------|
@@ -21,18 +27,27 @@ All schemas follow [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/s
 | [`schedule-v1`](./schedule-v1) | **Defined** | Project Schedule — activities, dependencies, milestones |
 | [`change-order-v1`](./change-order-v1) | **Defined** | Change Order — impact analysis, cost/schedule deltas |
 
-## Schema Design Principles
+Every schema page includes a live JSON validator. Paste your data, see the errors highlighted.
+
+## Schema design principles
 
 1. **Flat where possible.** Schemas avoid deep nesting. A BOM is a flat list of line items with metadata.
 2. **Required fields are minimal.** Only fields that every instance must have are required. Everything else is optional.
 3. **Confidence scores.** Schemas include a `confidence` field (0-1) in metadata so downstream agents can assess reliability.
 4. **Provenance.** Every schema includes `generatedBy` and `generatedAt` in metadata for traceability.
 
-## JSON Schema Files
+## JSON Schema files
 
-The canonical JSON Schema definitions live in the repository at [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas).
+The canonical JSON Schema definitions live in the repository at [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas) and are also served directly from this site for tooling:
 
-## Python SDK Models
+- [`/schemas/bom-v1.json`](/schemas/bom-v1.json)
+- [`/schemas/rfi-v1.json`](/schemas/rfi-v1.json)
+- [`/schemas/estimate-v1.json`](/schemas/estimate-v1.json)
+- [`/schemas/quote-v1.json`](/schemas/quote-v1.json)
+- [`/schemas/schedule-v1.json`](/schemas/schedule-v1.json)
+- [`/schemas/change-order-v1.json`](/schemas/change-order-v1.json)
+
+## Python SDK models
 
 The SDK provides Pydantic v2 models for all defined schemas:
 
