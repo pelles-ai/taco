@@ -148,16 +148,16 @@ function TheProblemSection() {
     <FadeIn>
       <section className="section">
         <div className="container">
+          <span className="section__eyebrow">Status Quo</span>
           <Heading as="h2" className="section__heading">
-            The Problem
+            Construction agents are being built in isolation
           </Heading>
           <div className="what-is-taco">
             <p>
-              Construction AI agents are being built in isolation.
               Different APIs, different schemas, no shared vocabulary.
-              Every integration is custom — <strong>REST, gRPC, SOAP,
-              GraphQL, WebSocket</strong> — with no way for agents to
-              discover each other, exchange typed data, or establish trust.
+              Every integration is custom — <strong>REST, gRPC, GraphQL,
+              vendor SDKs</strong> — with no way for agents to discover
+              each other, exchange typed data, or establish trust.
             </p>
           </div>
           <div className="problem-grid">
@@ -234,8 +234,9 @@ function StandardizationSection() {
     <FadeIn>
       <section className="section section--alt">
         <div className="container">
+          <span className="section__eyebrow">The Layer</span>
           <Heading as="h2" className="section__heading">
-            What TACO Standardizes
+            What TACO standardizes
           </Heading>
           <p className="section__subheading">
             A2A provides the transport. TACO adds construction semantics at every layer.
@@ -310,6 +311,7 @@ function ProtocolStackSection() {
     <FadeIn>
       <section className="section section--alt" id="protocol-stack">
         <div className="container">
+          <span className="section__eyebrow">The Stack</span>
           <Heading as="h2" className="section__heading">
             How TACO fits with A2A and MCP
           </Heading>
@@ -433,13 +435,15 @@ function SearchIcon() {
 function FeaturesSection() {
   return (
     <FadeIn>
-      <section className="section section--alt">
+      <section className="section">
         <div className="container">
+          <span className="section__eyebrow">Three Pillars</span>
           <Heading as="h2" className="section__heading">
-            Three Pillars
+            Everything a construction agent needs to interoperate
           </Heading>
           <p className="section__subheading">
-            Everything a construction agent needs to interoperate.
+            Task types, data schemas, and discovery — built as additive
+            extensions to A2A, so every TACO agent is a valid A2A agent.
           </p>
           <div className="features">
             <div className="feature-card feature-card--task-types">
@@ -498,13 +502,15 @@ function FeaturesSection() {
 function HowItWorksSection() {
   return (
     <FadeIn>
-      <section className="section">
+      <section className="section section--alt">
         <div className="container">
+          <span className="section__eyebrow">Three Steps</span>
           <Heading as="h2" className="section__heading">
-            How It Works
+            Define. Discover. Communicate.
           </Heading>
           <p className="section__subheading">
-            Define. Discover. Communicate. Three steps to agent interoperability.
+            Define your agent. Find peers in the registry. Exchange typed
+            artifacts. The whole loop is under a hundred lines of Python.
           </p>
           <HowItWorks />
         </div>
@@ -520,10 +526,11 @@ function HowItWorksSection() {
 function DiagramSection() {
   return (
     <FadeIn>
-      <section className="section section--alt">
+      <section className="section">
         <div className="container">
+          <span className="section__eyebrow">Architecture</span>
           <Heading as="h2" className="section__heading">
-            Architecture
+            One shared layer across every trade and platform
           </Heading>
           <div className="diagram-container">
             <ArchitectureDiagram />
@@ -616,13 +623,14 @@ function InstallTabs() {
 function QuickStartSection() {
   return (
     <FadeIn>
-      <section className="section">
+      <section className="section section--alt">
         <div className="container">
+          <span className="section__eyebrow">Quick Start</span>
           <Heading as="h2" className="section__heading">
-            Quick Start
+            Up and running in under a minute
           </Heading>
           <p className="section__subheading">
-            Get up and running in under a minute.
+            Two patterns: expose your own agent, or discover and call others.
           </p>
           <div className="code-section">
             <Tabs>
@@ -662,12 +670,10 @@ function AudienceSection() {
     <FadeIn>
       <section className="section section--alt">
         <div className="container">
+          <span className="section__eyebrow">Pick Your Path</span>
           <Heading as="h2" className="section__heading">
-            Get Started
+            Choose the entry point that fits your role
           </Heading>
-          <p className="section__subheading">
-            Choose the path that fits your role.
-          </p>
           <AudiencePaths />
         </div>
       </section>
@@ -707,6 +713,7 @@ function PrinciplesSection() {
     <FadeIn>
       <section className="section">
         <div className="container">
+          <span className="section__eyebrow">Foundations</span>
           <Heading as="h2" className="section__heading">
             Design Principles
           </Heading>
