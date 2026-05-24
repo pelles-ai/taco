@@ -68,6 +68,10 @@ function HeroSection() {
         <p className="hero__subtitle">
           The superintendent's vocabulary, machine-readable
         </p>
+        <p className="hero__tldr">
+          If every piece of construction software could understand each other,
+          this is the language they'd speak.
+        </p>
         <p className="hero__oneliner">
           TACO is an open-source construction ontology built on the{' '}
           <a href="https://a2a-protocol.org">A2A protocol</a> (Linux Foundation).
@@ -267,41 +271,124 @@ function StandardizationSection() {
 }
 
 /* ============================================================
-   Ecosystem Positioning
+   How TACO fits with MCP and A2A
+   — analogy-led explainer for non-technical readers
    ============================================================ */
 
-function EcosystemSection() {
+const stackAnalogies = [
+  {
+    badge: 'A2A',
+    badgeColor: 'a2a',
+    title: 'How agents talk to each other',
+    analogy: 'The jobsite radio.',
+    body: 'A2A is the protocol that lets one agent send a task to another. Like a two-way radio, it does not care what trade you are — only that the channel is open.',
+    href: 'https://a2a-protocol.org',
+    hrefLabel: 'A2A Protocol',
+  },
+  {
+    badge: 'MCP',
+    badgeColor: 'mcp',
+    title: 'How an agent reaches its tools',
+    analogy: 'The toolbox.',
+    body: 'MCP is how a single agent picks up tools and reaches into data — Procore, AutoCAD, a database, a calculator. Each agent has its own toolbox.',
+    href: 'https://modelcontextprotocol.io',
+    hrefLabel: 'Model Context Protocol',
+  },
+  {
+    badge: 'TACO',
+    badgeColor: 'taco',
+    title: 'What construction agents know',
+    analogy: 'The trade vocabulary.',
+    body: 'TACO is the shared dictionary every construction agent uses — what a takeoff is, what a BOM looks like, what division 23 means. It sits on top of A2A.',
+    href: '/docs/protocol-stack',
+    hrefLabel: 'Protocol Stack',
+  },
+];
+
+function ProtocolStackSection() {
   return (
     <FadeIn>
-      <section className="section section--alt">
+      <section className="section section--alt" id="protocol-stack">
         <div className="container">
           <Heading as="h2" className="section__heading">
-            Where TACO Fits
+            How TACO fits with A2A and MCP
           </Heading>
           <p className="section__subheading">
-            A2A handles communication. MCP connects tools. TACO adds
-            construction intelligence.
+            Three protocols, three jobs. Plain language first; the technical
+            details come after.
           </p>
-          <div className="ecosystem-stack">
-            <div className="ecosystem-layer ecosystem-layer--taco">
-              <div className="ecosystem-layer__label">TACO</div>
-              <div className="ecosystem-layer__desc">
-                Task types, data schemas, agent discovery
+
+          <div className="stack-analogies">
+            {stackAnalogies.map((s) => (
+              <div className={`stack-card stack-card--${s.badgeColor}`} key={s.badge}>
+                <div className="stack-card__badge">{s.badge}</div>
+                <div className="stack-card__title">{s.title}</div>
+                <div className="stack-card__analogy">{s.analogy}</div>
+                <p className="stack-card__body">{s.body}</p>
+                <a
+                  className="stack-card__link"
+                  href={s.href}
+                  {...(s.href.startsWith('http')
+                    ? {target: '_blank', rel: 'noopener noreferrer'}
+                    : {})}>
+                  {s.hrefLabel} &rarr;
+                </a>
+              </div>
+            ))}
+          </div>
+
+          <div className="stack-diagram" aria-hidden="true">
+            <div className="stack-diagram__row">
+              <div className="stack-node stack-node--agent">
+                <span className="stack-node__label">Agent A</span>
+                <span className="stack-node__sub">Mechanical estimator</span>
+              </div>
+              <div className="stack-diagram__a2a">
+                <span className="stack-diagram__a2a-label">A2A</span>
+                <svg viewBox="0 0 120 12" className="stack-diagram__line">
+                  <line x1="4" y1="6" x2="116" y2="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 3" />
+                  <polyline points="110,2 116,6 110,10" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                  <polyline points="10,2 4,6 10,10" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+                <span className="stack-diagram__a2a-sub">Speaks TACO</span>
+              </div>
+              <div className="stack-node stack-node--agent">
+                <span className="stack-node__label">Agent B</span>
+                <span className="stack-node__sub">Supplier quoter</span>
               </div>
             </div>
-            <div className="ecosystem-layer ecosystem-layer--a2a">
-              <div className="ecosystem-layer__label">A2A Protocol</div>
-              <div className="ecosystem-layer__desc">
-                Agent-to-agent messaging, task lifecycle, streaming
+            <div className="stack-diagram__row stack-diagram__row--mcp">
+              <div className="stack-diagram__mcp-leg">
+                <span className="stack-diagram__mcp-label">MCP</span>
+                <svg viewBox="0 0 12 60" className="stack-diagram__vline">
+                  <line x1="6" y1="4" x2="6" y2="56" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 3" />
+                  <polyline points="2,50 6,56 10,50" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              </div>
+              <div />
+              <div className="stack-diagram__mcp-leg">
+                <span className="stack-diagram__mcp-label">MCP</span>
+                <svg viewBox="0 0 12 60" className="stack-diagram__vline">
+                  <line x1="6" y1="4" x2="6" y2="56" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 3" />
+                  <polyline points="2,50 6,56 10,50" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
               </div>
             </div>
-            <div className="ecosystem-layer ecosystem-layer--transport">
-              <div className="ecosystem-layer__label">HTTP / JSON-RPC</div>
-              <div className="ecosystem-layer__desc">
-                Transport layer
+            <div className="stack-diagram__row">
+              <div className="stack-node stack-node--tool">
+                <span className="stack-node__label">Procore · AutoCAD · DB</span>
+              </div>
+              <div />
+              <div className="stack-node stack-node--tool">
+                <span className="stack-node__label">ERP · pricing API · catalog</span>
               </div>
             </div>
           </div>
+
+          <p className="stack-diagram-caption">
+            A2A moves the message between agents. MCP lets each agent reach its own tools.
+            TACO is the shared construction vocabulary the message is written in.
+          </p>
         </div>
       </section>
     </FadeIn>
@@ -686,8 +773,8 @@ export default function Home() {
       <LogoStrip />
       <main>
         <TheProblemSection />
+        <ProtocolStackSection />
         <StandardizationSection />
-        <EcosystemSection />
         <FeaturesSection />
         <HowItWorksSection />
         <DiagramSection />

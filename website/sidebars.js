@@ -5,6 +5,7 @@ const sidebars = {
   docsSidebar: [
     'why-taco',
     'intro',
+    'protocol-stack',
     'core-concepts',
     {
       type: 'category',
