@@ -181,6 +181,11 @@ const config = {
             position: 'left',
           },
           {
+            to: '/sandbox',
+            label: 'Sandbox',
+            position: 'left',
+          },
+          {
             href: 'https://github.com/pelles-ai/taco/tree/main/spec',
             label: 'Spec',
             position: 'left',

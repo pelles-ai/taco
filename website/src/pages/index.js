@@ -11,6 +11,7 @@ import CopyButton from '@site/src/components/CopyButton';
 import CountUpStats from '@site/src/components/CountUpStats';
 import HowItWorks from '@site/src/components/HowItWorks';
 import AudiencePaths from '@site/src/components/AudiencePaths';
+import RegistryFilter from '@site/src/components/RegistryFilter';
 
 function useScrollFadeIn() {
   const ref = useRef(null);
@@ -620,6 +621,30 @@ function InstallTabs() {
   );
 }
 
+/* ============================================================
+   Interactive Registry Filter — try the discovery model
+   ============================================================ */
+
+function RegistrySection() {
+  return (
+    <FadeIn>
+      <section className="section">
+        <div className="container">
+          <span className="section__eyebrow">Try it</span>
+          <Heading as="h2" className="section__heading">
+            Discover agents by trade, division, and trust
+          </Heading>
+          <p className="section__subheading">
+            Live demo of the TACO registry. Filter a sample set of agents the
+            way you would over the wire — the CLI command updates as you go.
+          </p>
+          <RegistryFilter />
+        </div>
+      </section>
+    </FadeIn>
+  );
+}
+
 function QuickStartSection() {
   return (
     <FadeIn>
@@ -785,6 +810,7 @@ export default function Home() {
         <FeaturesSection />
         <HowItWorksSection />
         <DiagramSection />
+        <RegistrySection />
         <QuickStartSection />
         <StatsSection />
         <PrinciplesSection />
