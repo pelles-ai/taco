@@ -1,12 +1,41 @@
 // @ts-check
 
+import {execFileSync} from 'node:child_process';
 import {themes as prismThemes} from 'prism-react-renderer';
+
+/**
+ * Single source of truth for the displayed SDK version.
+ * Reads the latest semver git tag (e.g. `v0.3.11`) at build time and falls back
+ * to a hardcoded constant when git is unavailable (sandbox, fresh tarball).
+ */
+function readSdkVersion() {
+  const fallback = '0.3.11';
+  try {
+    const tag = execFileSync(
+      'git',
+      ['describe', '--tags', '--abbrev=0', '--match', 'v*'],
+      {stdio: ['ignore', 'pipe', 'ignore']},
+    )
+      .toString()
+      .trim();
+    return tag.startsWith('v') ? tag.slice(1) : tag;
+  } catch {
+    return fallback;
+  }
+}
+
+const SDK_VERSION = readSdkVersion();
+const SDK_VERSION_MAJOR_MINOR = SDK_VERSION.split('.').slice(0, 2).join('.');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'TACO',
   tagline: 'The A2A Construction Open-standard',
   favicon: 'img/favicon.ico',
+
+  customFields: {
+    sdkVersion: SDK_VERSION,
+  },
 
   future: {
     v4: true,
@@ -69,7 +98,7 @@ const config = {
         applicationCategory: 'DeveloperApplication',
         operatingSystem: 'Cross-platform',
         license: 'https://opensource.org/licenses/Apache-2.0',
-        version: '0.2.5',
+        softwareVersion: SDK_VERSION,
         codeRepository: 'https://github.com/pelles-ai/taco',
         url: 'https://taco-protocol.com',
       }),
@@ -98,6 +127,23 @@ const config = {
         theme: {
           customCss: './src/css/custom.css',
         },
+      }),
+    ],
+  ],
+
+  themes: [
+    [
+      '@easyops-cn/docusaurus-search-local',
+      /** @type {import('@easyops-cn/docusaurus-search-local').PluginOptions} */
+      ({
+        hashed: true,
+        indexBlog: true,
+        indexDocs: true,
+        indexPages: false,
+        docsRouteBasePath: '/docs',
+        highlightSearchTermsOnTargetPage: true,
+        explicitSearchResultPath: true,
+        searchBarShortcutHint: false,
       }),
     ],
   ],
@@ -152,8 +198,7 @@ const config = {
           {
             type: 'html',
             position: 'right',
-            value:
-              '<a href="https://pypi.org/project/taco-agent/" target="_blank" rel="noopener noreferrer" class="navbar__version-badge">v0.2</a>',
+            value: `<a href="https://pypi.org/project/taco-agent/" target="_blank" rel="noopener noreferrer" class="navbar__version-badge" title="taco-agent ${SDK_VERSION}">v${SDK_VERSION_MAJOR_MINOR}</a>`,
           },
           {
             href: 'https://github.com/pelles-ai/taco',

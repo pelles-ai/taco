@@ -1,6 +1,7 @@
 ---
 sidebar_position: 2
 title: Task Types
+description: The verbs of the TACO ecosystem — takeoff, estimate, rfi-generation, schedule-coordination, and 14 more construction workflows agents can advertise.
 ---
 
 # Task Types

@@ -444,6 +444,17 @@ function DiagramSection() {
           <p className="diagram-caption">
             Different companies. Different AI models. One shared language.
           </p>
+          <div className="diagram-deepdive">
+            <a href="/taco-architecture-overview.html" className="diagram-deepdive__link">
+              Full architecture overview &rarr;
+            </a>
+            <a href="/taco-auth-flow.html" className="diagram-deepdive__link">
+              Authentication flow &rarr;
+            </a>
+            <a href="/taco-security-model.html" className="diagram-deepdive__link">
+              Security model &rarr;
+            </a>
+          </div>
         </div>
       </section>
     </FadeIn>

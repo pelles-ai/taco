@@ -1,6 +1,7 @@
 ---
 sidebar_position: 7
 title: CLI Reference
+description: The `taco` command — discover agents, inspect capabilities, send tasks, and check health straight from the terminal.
 ---
 
 # CLI Reference

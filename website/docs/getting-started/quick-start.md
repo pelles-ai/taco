@@ -1,6 +1,7 @@
 ---
 sidebar_position: 0
 title: Quick Start
+description: Run a TACO agent in under two minutes with `pip install taco-agent`. No API keys, no configuration.
 ---
 
 # Quick Start

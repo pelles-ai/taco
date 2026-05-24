@@ -1,6 +1,7 @@
 ---
 sidebar_position: 6
 title: SDK Reference
+description: The TACO Python SDK — models, A2A server framework, async client, agent registry, and CLI for building construction agents.
 ---
 
 # SDK Reference

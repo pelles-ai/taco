@@ -482,6 +482,25 @@ h1, h2, h3, h4 {
   font-size: 0.95rem;
 }
 
+.diagram-deepdive {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem 2rem;
+  margin-top: 1.25rem;
+}
+
+.diagram-deepdive__link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--taco-gold);
+  text-decoration: none;
+}
+
+.diagram-deepdive__link:hover {
+  text-decoration: underline;
+}
+
 .diagram-mobile-note {
   display: none;
   text-align: center;
@@ -1618,6 +1637,27 @@ div[class*='announcementBar'] a {
   gap: 1rem;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+/* ============================================================
+   Accessibility — focus rings
+   ============================================================ */
+
+:where(
+  .button--accent,
+  .button--outline-light,
+  .copy-btn,
+  .install-tabs__tab,
+  .feature-card__link,
+  .audience-card,
+  .diagram-deepdive__link,
+  .hero__github-badge,
+  .navbar__version-badge,
+  .logo-strip__link
+):focus-visible {
+  outline: 2px solid var(--taco-gold);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
 /* ============================================================

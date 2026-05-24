@@ -1,11 +1,16 @@
 ---
 sidebar_position: 2
 title: Core Concepts
+description: The key abstractions in TACO — Agent Cards, Skills, Tasks, Messages, Parts, and Artifacts — and how they fit together.
 ---
 
 # Core Concepts
 
 This page explains the key abstractions in TACO and how they fit together. Understanding these concepts makes the rest of the documentation easier to follow.
+
+:::tip Visual deep dive
+For an interactive walkthrough of the protocol layers, agent interactions, and data flow, see the [Architecture Overview diagram](pathname:///taco-architecture-overview.html).
+:::
 
 ## Overview
 

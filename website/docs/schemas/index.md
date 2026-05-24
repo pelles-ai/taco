@@ -1,6 +1,7 @@
 ---
 sidebar_position: 4
 title: Data Schemas
+description: Typed JSON schemas for construction artifacts — bom-v1, rfi-v1, estimate-v1, schedule-v1, quote-v1, change-order-v1.
 ---
 
 # Data Schemas
