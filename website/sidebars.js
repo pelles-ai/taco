@@ -54,6 +54,27 @@ const sidebars = {
         'cli',
         {
           type: 'category',
+          label: 'SDK Reference',
+          link: {
+            type: 'doc',
+            id: 'sdk-reference/index',
+          },
+          collapsed: true,
+          items: [
+            'sdk-reference/agent-cards',
+            'sdk-reference/server',
+            'sdk-reference/client',
+            'sdk-reference/agent',
+            'sdk-reference/registry',
+            'sdk-reference/tasks-and-messages',
+            'sdk-reference/helpers',
+            'sdk-reference/persistence',
+            'sdk-reference/push-notifications',
+            'sdk-reference/enums',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Data Schemas',
           link: {
             type: 'doc',

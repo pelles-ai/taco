@@ -2505,6 +2505,91 @@ div[class*='announcementBar'] a:hover {
 }
 
 /* ============================================================
+   Auto-generated SDK Reference pages (/docs/sdk-reference/*)
+   ============================================================ */
+
+/* Class/symbol header */
+article :where(.markdown) > h2 > code:first-child {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  background: var(--taco-gold-dim);
+  color: var(--taco-gold);
+  padding: 0.15rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid rgba(234, 179, 8, 0.25);
+}
+
+/* Method headers (h3 with `name()` code) */
+article :where(.markdown) > h3 > code:first-child {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--taco-surface-quiet);
+  color: var(--taco-text);
+  padding: 0.1rem 0.5rem;
+  border-radius: 5px;
+  border: 1px solid var(--taco-border-hairline);
+}
+
+/* "Constructor" / "Methods" sub-headings */
+article :where(.markdown) > h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--taco-tracking-eyebrow);
+  color: var(--taco-text-secondary);
+  margin: 1.5rem 0 0.65rem;
+  font-family: var(--ifm-font-family-monospace);
+}
+
+/* "Source on GitHub" line — show inline, subtle */
+article :where(.markdown) p > a[href*="github.com/pelles-ai/taco/blob"]:only-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.18rem 0.55rem;
+  border-radius: 4px;
+  background: var(--taco-surface-quiet);
+  color: var(--taco-text-secondary);
+  border: 1px solid var(--taco-border-hairline);
+  text-decoration: none;
+}
+
+article :where(.markdown) p > a[href*="github.com/pelles-ai/taco/blob"]:only-child:hover {
+  border-color: var(--taco-gold);
+  color: var(--taco-gold);
+}
+
+/* "Extends:" line */
+article :where(.markdown) p > em:first-child + code,
+article :where(.markdown) p > strong:first-child:has(+ code) {
+  font-family: var(--ifm-font-family-monospace);
+}
+
+/* Tighter code-block density in reference pages */
+article :where(.markdown) pre[class*="language-python"] {
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+/* Anchor target highlight when navigated to a method */
+article :where(.markdown) h3:target,
+article :where(.markdown) h2:target {
+  scroll-margin-top: 90px;
+}
+
+article :where(.markdown) h3:target > code:first-child,
+article :where(.markdown) h2:target > code:first-child {
+  outline: 2px solid var(--taco-gold);
+  outline-offset: 3px;
+}
+
+/* ============================================================
    Audience landing pages (/for/*)
    ============================================================ */
 
