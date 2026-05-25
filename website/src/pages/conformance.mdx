@@ -1,0 +1,63 @@
+---
+title: TACO Conformance
+description: Paste a TACO agent URL and run a live conformance check from your browser. Validates the Agent Card, construction extension, advertised skills, schemas, and security declarations.
+---
+
+import Heading from '@theme/Heading';
+import Conformance from '@site/src/components/Conformance';
+
+<header className="audience-hero">
+  <div className="container">
+    <span className="audience-hero__role">Conformance</span>
+    <Heading as="h1" className="audience-hero__title">
+      Test your agent against the TACO spec
+    </Heading>
+    <p className="audience-hero__subtitle">
+      A live conformance runner. Paste any agent URL, optionally add a bearer
+      token, and the page fetches its Agent Card and validates structure,
+      construction extension, advertised skills, schema references, and
+      security declarations — all in your browser.
+    </p>
+  </div>
+</header>
+
+<div className="container conformance-page">
+
+<Conformance />
+
+## What we check
+
+1. **Agent card reachable** — `GET /.well-known/agent-card.json` (preferred) or `/.well-known/agent.json` (legacy fallback) returns valid JSON.
+2. **Required card fields** — `name`, `version`, `url` are present at the top level.
+3. **Advertises at least one skill** — `skills[]` is non-empty.
+4. **Declares the TACO construction extension** — either an inline `x-construction` object or the canonical extension URI in `capabilities.extensions[]`.
+5. **Recognized trade** — `x-construction.trade` is one of the recognized TACO trades.
+6. **Valid CSI divisions** — every entry in `csiDivisions[]` is a 2-digit MasterFormat division.
+7. **Recognized task types** — each skill's `taskType` is one of the 18 published TACO task types (or a proposed one).
+8. **Recognized schema references** — every `inputSchema` / `outputSchema` is either a known TACO schema name (e.g. `bom-v1`) or a fully-qualified URL.
+9. **Security consistency** — if `security[]` requirements are declared, every referenced scheme exists in `securitySchemes`.
+10. **Health endpoint** — optional; `GET /health` returns 200.
+
+## What we *don't* check (yet)
+
+- **End-to-end task calls.** We don't construct a sample payload, send it to the agent, and validate the returned artifact. That's the natural next step — track [the conformance issue](https://github.com/pelles-ai/taco/issues) for progress.
+- **Performance.** Latency, throughput, streaming behavior — out of scope.
+- **Long-running task semantics.** `submitted` → `working` → `completed` lifecycle correctness needs a real task to be observable.
+- **Mutual TLS.** Browsers don't expose client-certificate handling to JavaScript; mTLS conformance has to be tested out-of-band.
+
+## CORS and same-origin
+
+The browser will block requests to your agent unless your agent's CORS policy allows this origin (`taco-protocol.com`). If a check fails with "blocked by CORS", you have two options:
+
+- **Whitelist us.** Add `Access-Control-Allow-Origin: https://taco-protocol.com` (or `*` for public agents) to your agent's CORS configuration.
+- **Run locally.** The browser fetch is roughly equivalent to `curl -fsSL <url>/.well-known/agent-card.json | jq .`. The CORS-failure detail in the report includes the exact curl invocation.
+
+## What conformance is for
+
+A green report means the agent's *advertised surface* is structurally valid TACO. It does **not** mean every claim is true — only that the agent is internally consistent and uses the protocol vocabulary correctly.
+
+For RFP-grade attestation, future work includes:
+- A persistent badge ("conformance-checked YYYY-MM-DD")
+- End-to-end task-call testing per advertised skill
+- A CI-integrated CLI variant (`taco conform <url>`) that runs the same checks
+</div>

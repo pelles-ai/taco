@@ -98,6 +98,7 @@ const sidebars = {
       collapsed: true,
       items: [
         'roadmap',
+        'changelog',
         'ecosystem',
         'compare',
         'standards',

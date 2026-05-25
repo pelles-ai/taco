@@ -118,6 +118,8 @@ const config = {
         docs: {
           sidebarPath: './sidebars.js',
           editUrl: 'https://github.com/pelles-ai/taco/tree/main/website/',
+          showLastUpdateTime: true,
+          showLastUpdateAuthor: true,
         },
         blog: {
           showReadingTime: true,
@@ -205,6 +207,11 @@ const config = {
           {
             to: '/sandbox',
             label: 'Sandbox',
+            position: 'left',
+          },
+          {
+            to: '/conformance',
+            label: 'Conformance',
             position: 'left',
           },
           {

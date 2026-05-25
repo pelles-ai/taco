@@ -43,6 +43,7 @@ function deriveSection(routePath) {
   if (routePath.startsWith('/for/')) return 'By Role';
   if (routePath.startsWith('/blog')) return 'Blog';
   if (routePath.startsWith('/sandbox')) return 'Sandbox';
+  if (routePath.startsWith('/conformance')) return 'Conformance';
   return 'TACO';
 }
 
