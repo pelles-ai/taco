@@ -149,8 +149,30 @@ The example above uses *cheapest within a lead-time ceiling*. Real procurement t
 - **Combine with [Schedule-Aware Procurement](./schedule-aware-procurement).** Cross-check the winning lead time against the activity's planned start date before committing.
 - **Cache and re-level.** Persist quotes with their `validUntil`, re-level next time the BOM changes.
 
+## Common mistakes
+
+**No concurrency cap.** `asyncio.gather` with N=50 suppliers is a great way to get rate-limited (or banned) from your supplier ecosystem. Wrap each `quote_one` call in a `asyncio.Semaphore(8)` (or whatever feels neighborly). Most suppliers will silently start dropping requests above some threshold without telling you why.
+
+**Picking the cheapest quote, full stop.** The cheapest quote is often the wrong one — wrong lead time, wrong terms, wrong substitution allowed. Encode the project's actual policy (cheapest with lead < 7d AND preferred-supplier-bonus AND no exclusions). The code is the policy; document it.
+
+**Forgetting `validUntil`.** Suppliers price for a window; a quote received Tuesday might be invalid by Friday. Persist quotes with their `validUntil` and re-quote (or auto-decline) when stale.
+
+**Caching quotes too aggressively.** A BOM that changes by one line item invalidates every cached quote. If you cache, key by a hash of the normalized BOM, not by `projectId`.
+
+**Ignoring the supplier's `flaggedItems`.** A supplier returning a quote with `flaggedItems: [{itemId: "L-001", reason: "discontinued"}]` is telling you something important. Surface this in your selection logic before "the cheapest one won."
+
+## Debugging
+
+**Print the leveled comparison before selecting.** The table the example prints (`Supplier · Total · Max lead`) is exactly what a project manager wants to see in audit logs — not just the winner. Log all of it; the selection rationale is part of your defense in a procurement dispute.
+
+**Cap parallelism in dev, not just prod.** Hitting `asyncio.gather` with 8 supplier agents on your laptop will routinely hit local file descriptor limits or DNS rate limits, depending on the OS. Set the semaphore at 4 in dev to avoid mysterious "Connection refused" errors that aren't actually about supplier capacity.
+
+**When a supplier fails silently, instrument the timeout.** A supplier that responds slowly but eventually is different from a supplier that hangs. Use `asyncio.wait_for(quote_one(...), timeout=30)` to bound each call and tag failures with which timeout fired.
+
 ## See also
 
 - [`bom-v1`](../schemas/bom-v1) · [`quote-v1`](../schemas/quote-v1)
 - [`AgentRegistry`](/docs/sdk#agentregistry)
 - [Task type: `material-procurement`](../task-types)
+- [Best Practices](../best-practices)
+- [Common Pitfalls](../pitfalls)

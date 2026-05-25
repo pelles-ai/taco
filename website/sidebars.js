@@ -28,6 +28,7 @@ const sidebars = {
         'getting-started/multi-agent',
         'getting-started/integrate-platform',
         'best-practices',
+        'pitfalls',
         'examples',
       ],
     },
@@ -45,6 +46,18 @@ const sidebars = {
         'cookbook/bom-to-quote-marketplace',
         'cookbook/change-order-impact',
         'cookbook/schedule-aware-procurement',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Case Studies',
+      collapsed: true,
+      link: {
+        type: 'doc',
+        id: 'case-studies/index',
+      },
+      items: [
+        'case-studies/oakridge-medical-week',
       ],
     },
     {
@@ -113,6 +126,9 @@ const sidebars = {
             'decisions/sidecar-pattern',
             'decisions/in-memory-registry-first',
             'decisions/schema-versioning',
+            'decisions/v1-wire-cutover',
+            'decisions/pyodide-sandbox',
+            'decisions/extension-uri-naming',
           ],
         },
         'ecosystem',

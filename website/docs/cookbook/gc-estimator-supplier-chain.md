@@ -120,8 +120,32 @@ The estimator returns an [`estimate-v1`](../schemas/estimate-v1), the supplier r
 - **Cross-check against schedule.** See [Schedule-Aware Procurement](./schedule-aware-procurement) — reject quotes whose lead time exceeds the activity's planned start.
 - **Streaming progress.** Replace `send_message` with `stream_message` and watch each agent's `TaskStatusUpdate` events as they work. Useful for long-running takeoffs.
 
+## Common mistakes
+
+**Sending the estimate (instead of the BOM) to the supplier.** The estimator's job is to *price* a BOM; the supplier's job is to *quote* a BOM. Both consume `bom-v1`. A common beginner mistake is to chain the supplier off the estimator's output as if it were a transformation pipeline — but suppliers want the unit/quantity information from the BOM, not the rolled-up cost from the estimate.
+
+**Forwarding the orchestrator's full-scope token to the supplier.** The supplier only needs `taco:task:material-procurement taco:project:PRJ-0042:write`. Forwarding the orchestrator's broader token means a supplier compromise leaks more than it should. Use [Token Exchange](/docs/security) at every hop.
+
+**Treating timeout as failure.** A 90-second supplier call is not necessarily broken; some pricing systems just take that long. Size each hop's `timeout` to the downstream's documented SLO, not to your patience.
+
+**Discarding the BOM's `metadata.generatedBy`.** When the estimator hands the BOM forward to the supplier (or persists it for audit), preserve provenance. Future change-order disputes hinge on knowing which agent produced the source data.
+
+**Hardcoding the agent URLs.** It works in dev. In prod, agents move hosts during routine deploys and your orchestrator silently sends requests into the void. Always route through `AgentRegistry.find(...)` so URL changes are caught at discovery time, not at request time. See [the lessons-from-production post](/blog/three-hop-chain-lessons).
+
+## Debugging
+
+**Inspect the BOM mid-chain.** Add a `print(json.dumps(bom, indent=2))` between the takeoff and the estimator call. The most common bug — wrong `csiDivision` or empty `lineItems` — is visible in five seconds.
+
+**Use the Monitor UI on each agent.** `A2AServer(card, enable_monitor=True)` exposes `/monitor`. Watch a request flow through all three agents in real time. The visual is more useful than logs when debugging task lifecycle issues.
+
+**Run the conformance runner against each agent.** [`/conformance`](/conformance) catches a surprising fraction of chain bugs at the source: an estimator that doesn't declare `inputSchema: "bom-v1"` won't be discoverable by `registry.find(input_schema="bom-v1")`, which means future orchestrators won't find it even though it works fine for yours.
+
+**Tag every log line with the task ID and context ID.** Multi-agent chains produce logs in three places. The two correlation handles from A2A are `task.id` (per-request) and `task.context_id` (per-conversation). Tag every log line with both, plus the agent's name — tracing a problem across three agents becomes a single grep.
+
 ## See also
 
 - [Core Concepts: Tasks, Messages, Artifacts](../core-concepts)
 - [`bom-v1`](../schemas/bom-v1) · [`estimate-v1`](../schemas/estimate-v1) · [`quote-v1`](../schemas/quote-v1)
 - [Agent-to-Agent Communication](../getting-started/multi-agent)
+- [Best Practices](../best-practices)
+- [Common Pitfalls](../pitfalls)

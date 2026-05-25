@@ -117,8 +117,28 @@ The `category` and `priority` enums are part of [`rfi-v1`](../schemas/rfi-v1) �
 - **Streaming.** Use `stream_message` to surface partial responses in a chat-style UI while the designer agent is still composing.
 - **Add a triage agent.** Insert a third agent between auditor and responder that classifies, deduplicates, or prioritizes incoming RFIs before they hit the design team.
 
+## Common mistakes
+
+**Routing every RFI to the same responder.** Construction RFIs split cleanly by `category` (`design-conflict` → architect/engineer; `code-compliance` → AHJ liaison; `clarification` → spec writer). A single "design responder" agent handling all of them ends up being a bottleneck and producing low-quality responses for categories outside its expertise. Filter on `category` before dispatching.
+
+**Treating priority as decorative.** `priority: "critical"` should trigger a different routing path than `priority: "low"` — escalation, SLA timers, owner notification. If your responder treats all RFIs identically, the typed priority field is doing nothing for you.
+
+**Putting actual base64 image data in `references.markup`.** Inline base64 markup balloons RFI payloads to megabytes; this kills task queues and breaks audit logs. Use a file reference (URL or content-addressed hash) instead, and let the responder agent fetch the markup separately when it needs to.
+
+**Failing the task when the responder needs more info.** If the design responder can't answer without further clarification, returning `state: "failed"` is wrong — that's a *typed clarification request*, not a system failure. Return a `state: "completed"` artifact with `status: "needs-clarification"` and a typed follow-up question. See [Best Practices on error handling](../best-practices#error-handling).
+
+## Debugging
+
+**Log the RFI's references before sending.** Drawing-sheet IDs are the most error-prone field — a typo (`M-201` vs `M-021`) makes the RFI unanswerable. A pre-send validation that the sheet IDs match a known drawing list catches this at the source.
+
+**Use `reference_task_ids` to link the response back to the original.** When the responder returns its typed reply, set `reference_task_ids=[original_rfi_task_id]` on its response. Later, querying for "all responses to this RFI" becomes a single registry call, not a manual lookup.
+
+**Subscribe via push notification for slow responses.** If responder turnaround is hours-long, don't block — use the [push notification config](../sdk-reference/push-notifications) API so the responder calls back when ready instead of the orchestrator polling.
+
 ## See also
 
 - [`rfi-v1`](../schemas/rfi-v1)
 - [Task types: `rfi-generation`, `rfi-response`](../task-types)
 - [Agent-to-Agent Communication](../getting-started/multi-agent)
+- [Best Practices](../best-practices)
+- [Common Pitfalls](../pitfalls)

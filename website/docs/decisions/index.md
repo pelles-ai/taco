@@ -27,6 +27,9 @@ The format follows the [Michael Nygard ADR template](https://github.com/joelpark
 | [0004](./sidecar-pattern) | Sidecar pattern for platform integration | Accepted |
 | [0005](./in-memory-registry-first) | In-memory registry first, hosted registry second | Accepted |
 | [0006](./schema-versioning) | Schema versioning: additive within a major, rename for breaking | Accepted |
+| [0007](./v1-wire-cutover) | Phased A2A v1 wire cutover (compat → features → wire flip) | Accepted (in flight) |
+| [0008](./pyodide-sandbox) | Pyodide for the in-browser sandbox | Accepted |
+| [0009](./extension-uri-naming) | Construction extension URI naming convention | Accepted |
 
 ## When to write a new ADR
 

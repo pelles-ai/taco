@@ -162,8 +162,30 @@ Without the schedule cross-check, a procurement chain is one supplier away from 
 - **Re-plan instead of holding.** When items are late, push the activities out and re-emit the schedule via the scheduler agent (its `schedule-coordination` skill can also produce updated schedules).
 - **Subscribe to slack.** Push the typed decision back as a notification when slack drops below a threshold during the project lifecycle.
 
+## Common mistakes
+
+**Slack of 0 days = "on time."** A line item delivered the morning of an activity start is technically on-time and operationally a disaster. Set your slack threshold to at least 2 days — preferably more depending on receiving/staging logistics on the jobsite. The example uses `slack >= 2`; tune it.
+
+**Hardcoding the BOM→activity mapping.** `LINE_TO_ACTIVITY` in the example is a fixture for clarity. In real projects, mapping line items to activities is its own coordination problem — sometimes the takeoff agent should emit it (`bom-v1.lineItems[].activityId`), sometimes a separate work-package planner agent owns it. Decide where the mapping lives; don't bury it in the procurement coordinator.
+
+**Ignoring weekends and holidays.** Calendar days vs working days is a real issue. A supplier's "5-day lead time" usually means business days; your schedule's `startDate` is calendar date. Convert to the same basis before comparing.
+
+**Reconciling once and forgetting.** Schedules drift. A reconciliation that was "on time" on Monday might be "late" by Friday because preceding activities slipped. Re-reconcile on a cadence (daily, weekly) or on schedule-update events from the scheduler agent.
+
+**Holding a PO indefinitely on "late" status.** Late items need *action*, not just a flag. Either escalate to an expediter agent that finds an alternate supplier, OR re-plan the schedule to accommodate the late delivery, OR escalate to a human. "Late" sitting in a database for two weeks helps nobody.
+
+## Debugging
+
+**Dump the reconciliation payload, not just the summary.** The `decision` dict in the example has `slackDays`, `activityStart`, and `leadTimeDays` per item. Log the full structured record — when a procurement dispute happens, this is the audit trail.
+
+**Verify timezone alignment.** Schedules carry ISO timestamps; suppliers quote in business days. If the schedule's `startDate` is in UTC and your project is in EDT, "today" might be different. The example uses `datetime.utcnow()`; in production normalize everything to the project's site timezone.
+
+**Test with an obviously-late item.** A test fixture where the lead time exceeds the time-to-activity by a large margin catches reconciliation logic bugs immediately. Don't just test the happy path.
+
 ## See also
 
 - [`bom-v1`](../schemas/bom-v1) · [`quote-v1`](../schemas/quote-v1) · [`schedule-v1`](../schemas/schedule-v1)
 - [Task types: `material-procurement`, `schedule-coordination`](../task-types)
 - [Change Order Impact](./change-order-impact) — sibling cross-schema recipe
+- [Best Practices](../best-practices)
+- [Common Pitfalls](../pitfalls)

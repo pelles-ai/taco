@@ -175,7 +175,29 @@ A change order is binding. If the analyzer used a stale snapshot of the estimate
 - **Substitution analysis.** Add a value-engineering hop before the analyzer — the VE agent proposes alternates that reduce cost impact.
 - **Notify downstream.** Once the CO is computed, push it to subscribing agents via the [push notifications](/docs/sdk) channel.
 
+## Common mistakes
+
+**Caching the baseline estimate or schedule.** A change order is a binding artifact. If the analyzer computed the delta against a six-hour-old snapshot, accepted RFIs and prior change orders since then are not reflected — and the project manager's spreadsheet won't match your typed delta. **Always pull live baselines.** The cost of two extra agent calls is dwarfed by the cost of one disputed change order.
+
+**Computing cost without a real pricing call.** The example uses toy pricing (`* 14.50`) for brevity. In production, the cost delta should come from the same estimator agent that produced the baseline — call it again with the proposed scope as a `bom-v1` and use its returned `estimate-v1` for the delta math. This way the change order inherits the estimator's actual pricing model, including labor rates and material markups.
+
+**Forgetting to record `baselineSources`.** `change-order-v1.metadata.baselineSources` is what makes the delta defensible later. Without it, when someone in 2028 asks "what schedule version did this change order target?", the answer is a shrug.
+
+**Setting `status: "approved"` directly from the analyzer.** Change orders need human approval. The analyzer should emit `status: "proposed"`; an approval workflow (often human-in-the-loop) flips it to `status: "approved"` with a signature. Skipping this skips the contract law.
+
+**Mixing trades in one CO without distinguishing.** A change order that adds HVAC zoning AND moves an electrical panel needs per-trade cost rolls. Track impact by trade so the GC can chase the right sub for each scope item.
+
+## Debugging
+
+**Run the analyzer twice and diff.** If the baseline estimate is volatile (it shouldn't be, but reality), running the analyzer twice and diffing the outputs catches non-deterministic pricing. The delta should be identical for identical inputs; if it isn't, you have a downstream determinism bug.
+
+**Log `baselineSources` agent names + their `generatedAt`.** When a stakeholder challenges the CO, the trail of "which agent, at what time" makes triage instant. Without it you're guessing.
+
+**Make the analyzer's task type `change-order-analysis` (not just `estimate`).** A common mistake is reusing the estimator for change orders. They produce different artifacts (`estimate-v1` vs `change-order-v1`) and have different audit requirements. Separate agents, separate skills.
+
 ## See also
 
 - [`estimate-v1`](../schemas/estimate-v1) · [`schedule-v1`](../schemas/schedule-v1) · [`change-order-v1`](../schemas/change-order-v1)
 - [Task type: `change-order-analysis`](../task-types)
+- [Best Practices](../best-practices)
+- [Common Pitfalls](../pitfalls)
