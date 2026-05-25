@@ -5,6 +5,8 @@ sidebar_position: 1
 ---
 
 import SequenceDiagram from '@site/src/components/SequenceDiagram';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # GC → Estimator → Supplier chain
 
@@ -41,9 +43,18 @@ Each agent advertises itself with a [Construction Agent Card](/docs/agent-card-e
   ]}
 />
 
-## Full Python
+## Full code
 
-This runs against a live `taco-agent` install. Each agent is a separate process; the orchestrator finds them via the registry and chains the calls.
+Each agent is a separate process; the orchestrator finds them via the registry and chains the calls.
+
+<p>
+  <a className="sandbox-open-link" href="/sandbox?preset=gc-estimator-supplier-chain">
+    ▶ Open this recipe in the in-browser sandbox →
+  </a>
+</p>
+
+<Tabs groupId="lang">
+<TabItem value="python" label="Python (taco-agent)" default>
 
 ```python
 import asyncio
@@ -106,6 +117,121 @@ async def main() -> None:
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+</TabItem>
+<TabItem value="ts" label="TypeScript (wire format, no SDK)">
+
+```typescript
+// TACO doesn't ship a TypeScript SDK yet, but the wire format is plain
+// JSON-RPC over HTTP. Everything here is fetch + standard types.
+
+type AgentCard = {
+  name: string;
+  url: string;
+  skills: Array<{id: string; taskType?: string; inputSchema?: string; outputSchema?: string}>;
+  'x-construction'?: {trade?: string; csiDivisions?: string[]};
+};
+
+type Task = {
+  id: string;
+  status: {state: string};
+  artifacts: Array<{parts: Array<{kind: string; data?: unknown; text?: string}>}>;
+};
+
+async function discoverAgent(baseUrl: string): Promise<AgentCard> {
+  const res = await fetch(`${baseUrl.replace(/\/$/, '')}/.well-known/agent-card.json`);
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching agent card`);
+  return res.json();
+}
+
+async function sendMessage(
+  agentUrl: string,
+  taskType: string,
+  payload: unknown,
+): Promise<Task> {
+  const res = await fetch(agentUrl.replace(/\/$/, '') + '/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: crypto.randomUUID(),
+      method: 'message/send',
+      params: {
+        message: {
+          role: 'user',
+          parts: [{kind: 'data', data: payload}],
+        },
+        metadata: {taskType},
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const {result, error} = await res.json();
+  if (error) throw new Error(error.message ?? String(error));
+  return result as Task;
+}
+
+const PROJECT_ID = 'PRJ-2026-OAKRIDGE-MEDICAL';
+
+async function main() {
+  // Discover agents by their well-known URLs (no hosted registry yet —
+  // see the in-process AgentRegistry in Python for the SDK pattern)
+  const estimator = await discoverAgent('http://estimator.example.com:8001');
+  const supplier = await discoverAgent('http://pipeworks.example.com:8002');
+
+  const bom = {
+    projectId: PROJECT_ID,
+    trade: 'mechanical',
+    csiDivision: '23',
+    lineItems: [
+      {id: 'L-001', description: 'Copper pipe, type L', quantity: 120, unit: 'LF', size: '3/4"'},
+      {id: 'L-002', description: '90° elbow, type L', quantity: 24, unit: 'EA', size: '3/4"'},
+    ],
+    metadata: {generatedBy: 'gc-orchestrator-ts-v1', generatedAt: new Date().toISOString()},
+  };
+
+  // Estimator hop
+  const estTask = await sendMessage(estimator.url, 'estimate', bom);
+  const estimate = estTask.artifacts[0].parts[0].data as {
+    summary: {total: number};
+    currency: string;
+  };
+  console.log(`Estimator says total: $${estimate.summary.total.toLocaleString()} ${estimate.currency}`);
+
+  // Supplier hop — note the BOM (not the estimate) is sent
+  const quoteTask = await sendMessage(supplier.url, 'material-procurement', bom);
+  const quote = quoteTask.artifacts[0].parts[0].data as {
+    supplier: {name: string};
+    items: Array<{sku: string; unitPrice: number; quantity: number; leadTimeDays: number}>;
+    validUntil: string;
+  };
+
+  console.log(`\nSupplier quote from ${quote.supplier.name}:`);
+  for (const item of quote.items) {
+    const lineTotal = item.unitPrice * item.quantity;
+    console.log(
+      `  ${item.sku.padEnd(10)} qty=${String(item.quantity).padEnd(4)}  ` +
+      `unit=$${item.unitPrice.toFixed(2)}  →  $${lineTotal.toFixed(2)}  ` +
+      `(lead ${item.leadTimeDays}d)`,
+    );
+  }
+  console.log(`\nQuote valid until: ${quote.validUntil}`);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+```
+
+:::info Where's the TypeScript SDK?
+A typed TS SDK with auto-generated types from the JSON Schemas is on the
+[roadmap](/docs/roadmap). The wire format shown above is stable; code
+written against it now will keep working once the SDK lands.
+:::
+
+</TabItem>
+</Tabs>
 
 ## Typed data flowing through
 

@@ -45,6 +45,12 @@ The two upstream calls fan out in parallel; the analyzer joins them before compu
 
 ## Full Python
 
+<p>
+  <a className="sandbox-open-link" href="/sandbox?preset=change-order-impact">
+    ▶ Open this recipe in the in-browser sandbox →
+  </a>
+</p>
+
 ```python
 import asyncio
 from taco import (

@@ -66,19 +66,10 @@ function HeroSection() {
           <br />
           construction agents
         </Heading>
-        <p className="hero__subtitle">
-          Typed, discoverable, vendor-independent — built on A2A
-        </p>
         <p className="hero__tldr">
           Your project runs ten platforms. Each one's API is a custom integration.
           TACO is the open standard that lets construction agents and platforms
           actually talk to each other.
-        </p>
-        <p className="hero__oneliner">
-          Built on the{' '}
-          <a href="https://a2a-protocol.org">A2A protocol</a> (Linux Foundation).
-          Apache 2.0. 6 typed schemas, 18 task types, a live conformance runner,
-          and a Python SDK shipping today.
         </p>
 
         <div className="hero__install">
@@ -96,6 +87,21 @@ function HeroSection() {
             className="button button--lg button--outline-light"
             href="https://github.com/pelles-ai/taco">
             GitHub
+          </Link>
+        </div>
+
+        <div className="hero__proof-row">
+          <Link className="hero__proof-chip" to="/sandbox">
+            <span className="hero__proof-glyph">▶</span>
+            Try it in your browser
+          </Link>
+          <Link className="hero__proof-chip" to="/conformance">
+            <span className="hero__proof-glyph">✓</span>
+            Test your agent live
+          </Link>
+          <Link className="hero__proof-chip" to="/docs/cookbook/">
+            <span className="hero__proof-glyph">●</span>
+            5 recipes · 6 schemas · 18 task types
           </Link>
         </div>
       </div>

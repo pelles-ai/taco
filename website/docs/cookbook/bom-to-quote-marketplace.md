@@ -48,6 +48,12 @@ The three `send_message` calls are dispatched concurrently with `asyncio.gather`
 
 ## Full Python
 
+<p>
+  <a className="sandbox-open-link" href="/sandbox?preset=bom-to-quote-marketplace">
+    ▶ Open this recipe in the in-browser sandbox →
+  </a>
+</p>
+
 ```python
 import asyncio
 from taco import (

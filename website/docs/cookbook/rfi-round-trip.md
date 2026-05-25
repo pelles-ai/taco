@@ -5,6 +5,8 @@ sidebar_position: 2
 ---
 
 import SequenceDiagram from '@site/src/components/SequenceDiagram';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # RFI Round-trip
 
@@ -37,7 +39,16 @@ Turn a design-coordination conflict into a typed, machine-readable RFI and a typ
   ]}
 />
 
-## Full Python
+## Full code
+
+<p>
+  <a className="sandbox-open-link" href="/sandbox?preset=rfi-round-trip">
+    ▶ Open this recipe in the in-browser sandbox →
+  </a>
+</p>
+
+<Tabs groupId="lang">
+<TabItem value="python" label="Python (taco-agent)" default>
 
 ```python
 import asyncio
@@ -87,6 +98,77 @@ async def main() -> None:
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+</TabItem>
+<TabItem value="ts" label="TypeScript (wire format, no SDK)">
+
+```typescript
+// Plain fetch — TACO's wire format is JSON-RPC over HTTP.
+// See the GC chain recipe for the shared helpers (sendMessage, discoverAgent).
+
+async function sendMessage(agentUrl: string, taskType: string, payload: unknown) {
+  const res = await fetch(agentUrl.replace(/\/$/, '') + '/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: crypto.randomUUID(),
+      method: 'message/send',
+      params: {
+        message: {role: 'user', parts: [{kind: 'data', data: payload}]},
+        metadata: {taskType},
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const {result, error} = await res.json();
+  if (error) throw new Error(error.message ?? String(error));
+  return result;
+}
+
+async function main() {
+  const responderUrl = 'http://design-responder.example.com:8003';
+
+  const rfi = {
+    projectId: 'PRJ-2026-OAKRIDGE-MEDICAL',
+    subject: 'Pipe routing conflict at column line C/4',
+    question:
+      'Detail M-201 shows a 4" hot water supply routed through the structural beam at column line C/4. ' +
+      'S-201 shows the beam as continuous with no penetration. Please clarify the intended routing or ' +
+      'confirm a beam penetration is acceptable.',
+    category: 'design-conflict',
+    priority: 'high',
+    references: [
+      {sheetId: 'M-201', area: 'grid C4'},
+      {sheetId: 'S-201', area: 'grid C4'},
+    ],
+    metadata: {
+      generatedBy: 'drawing-auditor-ts-v1',
+      generatedAt: new Date().toISOString(),
+    },
+  };
+
+  const task = await sendMessage(responderUrl, 'rfi-response', rfi);
+  const response = task.artifacts[0].parts[0].data as {
+    response?: string;
+    respondedBy?: string;
+    status?: string;
+  };
+
+  console.log(`RFI "${rfi.subject}" → response:`);
+  console.log(response.response ?? '(no response text)');
+  console.log(`\nResponder: ${response.respondedBy ?? 'unknown'}`);
+  console.log(`Status: ${response.status ?? 'unknown'}`);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+```
+
+</TabItem>
+</Tabs>
 
 ## What the typed RFI looks like
 

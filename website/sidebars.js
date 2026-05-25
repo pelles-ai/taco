@@ -114,6 +114,19 @@ const sidebars = {
       label: 'Protocol & Community',
       collapsed: true,
       items: [
+        {
+          type: 'category',
+          label: 'Specification',
+          link: {type: 'doc', id: 'spec/index'},
+          collapsed: true,
+          items: [
+            'spec/SPEC-001-agent-cards',
+            'spec/SPEC-002-task-types',
+            'spec/SPEC-003-data-schemas',
+            'spec/SPEC-004-security',
+            'spec/SPEC-005-conformance',
+          ],
+        },
         'roadmap',
         'changelog',
         'rfp-template',

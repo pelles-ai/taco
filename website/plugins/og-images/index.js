@@ -37,6 +37,7 @@ function deriveSection(routePath) {
   if (routePath.startsWith('/docs/getting-started')) return 'Getting Started';
   if (routePath.startsWith('/docs/case-studies')) return 'Case Study';
   if (routePath.startsWith('/docs/decisions')) return 'Architecture Decision';
+  if (routePath.startsWith('/docs/spec')) return 'Specification';
   if (routePath.startsWith('/docs/')) return 'Documentation';
   if (routePath.startsWith('/for/general-contractor')) return 'For General Contractors';
   if (routePath.startsWith('/for/owner')) return 'For Owners';

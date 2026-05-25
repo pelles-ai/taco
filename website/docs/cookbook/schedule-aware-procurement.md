@@ -43,6 +43,13 @@ Make procurement decisions that respect the project schedule — automatically �
 
 ## Full Python
 
+<p>
+  <a className="sandbox-open-link" href="/sandbox?preset=gc-estimator-supplier-chain">
+    ▶ Open a related preset in the sandbox →
+  </a>
+  &nbsp;<small>(this exact recipe uses asyncio + multiple agents — the sandbox shim is sync, so the GC chain preset is the closest in-browser approximation)</small>
+</p>
+
 ```python
 import asyncio
 from datetime import datetime, timedelta
