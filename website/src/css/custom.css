@@ -2505,6 +2505,297 @@ div[class*='announcementBar'] a:hover {
 }
 
 /* ============================================================
+   Glossary
+   ============================================================ */
+
+.glossary {
+  margin: 1.5rem 0;
+}
+
+.glossary__controls {
+  position: sticky;
+  top: var(--ifm-navbar-height, 64px);
+  z-index: 5;
+  background: var(--taco-surface-card);
+  border: 1px solid var(--taco-border-hairline);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  flex-wrap: wrap;
+  box-shadow: var(--taco-shadow-card);
+}
+
+.glossary__search {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--taco-surface);
+  border: 1px solid var(--taco-border);
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.glossary__search:focus-within {
+  border-color: var(--taco-gold);
+  box-shadow: 0 0 0 3px var(--taco-gold-dim);
+}
+
+.glossary__search-icon {
+  width: 16px;
+  height: 16px;
+  stroke: var(--taco-text-tertiary);
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.glossary__search input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 0.92rem;
+  color: var(--taco-text);
+  font-family: var(--ifm-font-family-base);
+  padding: 0;
+}
+
+.glossary__clear {
+  background: none;
+  border: none;
+  color: var(--taco-text-tertiary);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+
+.glossary__clear:hover {
+  color: var(--taco-text);
+}
+
+.glossary__tabs {
+  display: flex;
+  gap: 0.2rem;
+  background: var(--taco-surface);
+  padding: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--taco-border-hairline);
+}
+
+.glossary__tab {
+  background: none;
+  border: 1px solid transparent;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  color: var(--taco-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.glossary__tab:hover {
+  color: var(--taco-text);
+}
+
+.glossary__tab--active {
+  background: var(--taco-surface-card);
+  border-color: var(--taco-border);
+  color: var(--taco-text);
+  font-weight: 600;
+}
+
+.glossary__count {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--taco-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--taco-tracking-eyebrow);
+  margin-bottom: 0.85rem;
+}
+
+.glossary__empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--taco-text-secondary);
+  background: var(--taco-surface);
+  border: 1px dashed var(--taco-border);
+  border-radius: 10px;
+}
+
+.glossary__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.glossary-entry {
+  background: var(--taco-surface-card);
+  border: 1px solid var(--taco-border-hairline);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem 1rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  scroll-margin-top: 90px;
+}
+
+.glossary-entry:target {
+  border-color: var(--taco-gold);
+  box-shadow: 0 0 0 3px var(--taco-gold-dim);
+}
+
+.glossary-entry__title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.glossary-entry__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--taco-text);
+  margin: 0;
+  font-family: var(--ifm-font-family-base);
+}
+
+.glossary-entry__anchor {
+  color: inherit;
+  text-decoration: none;
+}
+
+.glossary-entry__anchor:hover {
+  color: var(--taco-gold);
+  text-decoration: none;
+}
+
+.glossary-entry__anchor::before {
+  content: '#';
+  color: var(--taco-text-tertiary);
+  margin-right: 0.2rem;
+  font-family: var(--ifm-font-family-monospace);
+  font-weight: 400;
+  font-size: 0.85em;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.glossary-entry:hover .glossary-entry__anchor::before {
+  opacity: 1;
+}
+
+.glossary-entry__audience {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: var(--taco-tracking-eyebrow);
+  text-transform: uppercase;
+  padding: 0.18rem 0.5rem;
+  border-radius: 4px;
+}
+
+.glossary-entry__audience--construction {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.glossary-entry__audience--protocol {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.glossary-entry__audience--both {
+  background: var(--taco-gold-dim);
+  color: var(--taco-gold);
+}
+
+.glossary-entry__full {
+  font-size: 0.8rem;
+  color: var(--taco-text-secondary);
+  margin-top: 0.15rem;
+  font-style: italic;
+}
+
+.glossary-entry__aliases {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.7rem;
+  color: var(--taco-text-tertiary);
+  margin-top: 0.3rem;
+}
+
+.glossary-entry__short {
+  font-size: 0.95rem;
+  color: var(--taco-text);
+  line-height: 1.6;
+  margin: 0.75rem 0 0;
+}
+
+.glossary-entry__long {
+  font-size: 0.88rem;
+  color: var(--taco-text-secondary);
+  line-height: 1.6;
+  margin: 0.55rem 0 0;
+}
+
+.glossary-entry__see-also {
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--taco-border-hairline);
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.glossary-entry__see-also-label {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: var(--taco-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--taco-text-tertiary);
+}
+
+.glossary-entry__see-also-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  font-size: 0.85rem;
+}
+
+.glossary-entry__see-also-items a {
+  color: var(--taco-gold);
+  text-decoration: none;
+}
+
+.glossary-entry__see-also-items a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .glossary__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .glossary__tabs {
+    overflow-x: auto;
+  }
+}
+
+/* ============================================================
    Auto-generated SDK Reference pages (/docs/sdk-reference/*)
    ============================================================ */
 

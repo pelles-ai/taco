@@ -100,6 +100,8 @@ const sidebars = {
         'roadmap',
         'ecosystem',
         'compare',
+        'standards',
+        'glossary',
       ],
     },
   ],
