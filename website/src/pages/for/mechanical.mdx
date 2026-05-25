@@ -1,0 +1,129 @@
+---
+title: TACO for Mechanical Trades
+description: How mechanical contractors use TACO — typed BOMs across copper, ducting, and equipment; estimator agents that read drawings, not portals; supplier quotes that round-trip with lead times your scheduler can act on.
+---
+
+import AudienceHero from '@site/src/components/AudienceHero';
+import {Capability, CapabilityGrid} from '@site/src/components/Capability';
+import RecipeRail from '@site/src/components/RecipeRail';
+import SequenceDiagram from '@site/src/components/SequenceDiagram';
+
+<AudienceHero
+  role="Mechanical Trades"
+  title="HVAC, plumbing, and fire-protection — typed end to end"
+  subtitle="Your scope spans CSI divisions 21, 22, and 23. Every drawing, BOM, and quote has to round-trip across designers, GCs, and supplier networks with shape integrity. TACO gives you the typed surface to participate without writing a per-GC integration."
+  primaryCta={{label: 'Build a mechanical agent', to: '/docs/getting-started/build-agent'}}
+  secondaryCta={{label: 'The chain recipe', to: '/docs/cookbook/gc-estimator-supplier-chain'}}
+/>
+
+## Where TACO fits your scope
+
+Mechanical work cuts across CSI divisions **21 (Fire Suppression)**, **22 (Plumbing)**, and **23 (HVAC)**. Each has its own takeoff conventions, equipment vocabularies, and supplier ecosystems. TACO's `bom-v1` and `estimate-v1` schemas were designed with mechanical line-item complexity in mind: copper pipe with size and material specs, packaged units with tonnage and SEER ratings, valves with cut-off points and trim materials, alternates and substitutions tracked per line item.
+
+The handoffs that matter:
+
+<CapabilityGrid>
+  <Capability
+    title="Takeoff → estimate, both directions"
+    description="Your takeoff agent emits bom-v1; your estimator (or the GC's) consumes it. Same handoff works whether you're providing the takeoff to the GC, receiving it from a takeoff vendor, or building both yourself."
+    link={{label: 'GC → Estimator → Supplier', to: '/docs/cookbook/gc-estimator-supplier-chain'}}
+  />
+  <Capability
+    title="Supplier quote loops with real lead times"
+    description="Quote agents return quote-v1 with per-item leadTimeDays. Your shop's procurement workflow can finally trust those numbers — they came from the supplier's system, not a sales rep's estimate."
+    link={{label: 'BOM-to-Quote Marketplace', to: '/docs/cookbook/bom-to-quote-marketplace'}}
+  />
+  <Capability
+    title="RFI generation against coordinated BIM"
+    description="An audit agent reads your trade's portion of the coordinated model, flags clashes with structural or electrical, and emits typed rfi-v1 to the designer. Faster turnaround means fewer schedule risks attributable to your scope."
+    link={{label: 'RFI Round-trip', to: '/docs/cookbook/rfi-round-trip'}}
+  />
+  <Capability
+    title="Schedule-aware procurement"
+    description="The schedule-aware reconciliation recipe catches lead-time slips before they become PO commitments — a critical guard when mechanical sequence drives every floor above."
+    link={{label: 'Schedule-Aware Procurement', to: '/docs/cookbook/schedule-aware-procurement'}}
+  />
+</CapabilityGrid>
+
+## Schema fit for mechanical
+
+The `bom-v1` line item fields map directly to mechanical takeoff practice:
+
+| Field | Mechanical example |
+|------|---------------------|
+| `description` | `"Copper pipe, Type L, hard-drawn"` |
+| `quantity` | `850` |
+| `unit` | `LF` (linear feet) — also `EA`, `TON`, `SF`, `LS` for equipment, ductwork, hangers |
+| `size` | `"3/4 inch"` |
+| `material` | `"copper"` — also `"PVC"`, `"steel"`, `"cast-iron"`, `"PEX"`, etc. |
+| `specSection` | `"23 21 13"` — MasterFormat spec section for hydronic piping |
+| `sourceSheet` | `"M-201"` — the drawing this item was taken from |
+| `location` | `"Level 12-22 risers"` |
+| `alternates[]` | acceptable equivalents (e.g., uponor PEX in place of copper) |
+
+The `flaggedItems[]` in `bom-v1.metadata` is where your takeoff agent surfaces items needing human review — unusual tonnages, conflicting spec references, unfamiliar manufacturers. Treat it as a triage queue, not a comment field.
+
+## A typical mechanical chain
+
+<SequenceDiagram
+  actors={[
+    {id: 'gc', label: 'GC Orchestrator', sub: 'project owner'},
+    {id: 'takeoff', label: 'Takeoff Agent', sub: 'reads drawings'},
+    {id: 'estimator', label: 'Mech Estimator', sub: 'your shop'},
+    {id: 'supplier', label: 'Supplier', sub: 'mech distributor'},
+  ]}
+  messages={[
+    {from: 'gc', to: 'takeoff', label: 'takeoff request', schema: 'bom-v1'},
+    {from: 'takeoff', to: 'gc', label: 'returns BOM', schema: 'bom-v1', kind: 'return'},
+    {from: 'gc', to: 'estimator', label: 'estimate', schema: 'bom-v1'},
+    {from: 'estimator', to: 'gc', label: 'returns estimate', schema: 'estimate-v1', kind: 'return'},
+    {from: 'gc', to: 'supplier', label: 'price the long-lead items', schema: 'bom-v1'},
+    {from: 'supplier', to: 'gc', label: 'returns quote', schema: 'quote-v1', kind: 'return'},
+  ]}
+/>
+
+Your shop sits at the estimator hop. The GC's orchestrator finds your agent via `registry.find(trade="mechanical", task_type="estimate")` and sends the typed BOM. Your handler is whatever your existing pricing logic is — an LLM, a spreadsheet, an internal API — wrapped to return a typed `estimate-v1`.
+
+## Platforms typically integrated
+
+Mechanical contractors usually have one or more of these in their stack. TACO sidecars (see [ADR-0004](/docs/decisions/sidecar-pattern)) let any of them participate without rewrites:
+
+- **Estimating** — Trimble Accubid, FastDUCT, FastPIPE, McCormick, ConWize
+- **Design** — Revit MEP, AutoCAD MEP, Bentley OpenBuildings
+- **Coordination** — Navisworks, Revizto, Trimble Connect
+- **Project management** — Procore, ACC, Bluebeam Studio, CMiC
+
+Declare any of these on your agent card's `integrations[]` so the GC's registry filter (`integrations: ["procore"]`) finds you when they need a mechanical agent that already speaks their PM system.
+
+## Common mechanical-specific pitfalls
+
+**Unit ambiguity for ductwork.** Sheet metal is sometimes priced by weight (`LB`), sometimes by surface area (`SF`), sometimes per linear foot at a given size. The `bom-v1` `unit` enum supports all three — pick consistently within a project. Mixed units in the same BOM produce nonsense estimates.
+
+**Equipment vs. line-item granularity.** A 25-ton rooftop unit is one line item (`EA`); the copper that connects it is many line items (`LF`). Decide your granularity convention and document it on the agent card or in `metadata.notes`.
+
+**Spec section drift.** `specSection: "23 21 13"` is precise; `specSection: "23 21"` (truncated) breaks downstream filtering. Use the full 4-6 digit MasterFormat section; the conformance runner will eventually catch malformed ones.
+
+## Curated for mechanical readers
+
+<RecipeRail
+  slugs={[
+    'gc-estimator-supplier-chain',
+    'bom-to-quote-marketplace',
+    'schedule-aware-procurement',
+    'rfi-round-trip',
+  ]}
+/>
+
+## How to start
+
+1. **Build a stub estimator.** Follow [Build a Custom Agent](/docs/getting-started/build-agent). Declare `trade: "mechanical"`, `csi_divisions: ["22", "23"]`, one `estimate` skill.
+2. **Wire to your existing pricing logic.** Whether that's Accubid via API, an in-house spreadsheet model, or an LLM that knows your historical bids — same handler shape.
+3. **Run the conformance runner.** [`/conformance`](/conformance) catches the most common agent-card issues before any GC sees them.
+4. **Publish your card.** Once stable at a known URL, any GC's orchestrator can discover your shop by trade and CSI division.
+
+## See also
+
+- [For Subcontractors](./subcontractor) — the cross-trade subcontractor framing
+- [Build a Custom Agent](/docs/getting-started/build-agent)
+- [Best Practices](/docs/best-practices)
+- [Common Pitfalls](/docs/pitfalls)

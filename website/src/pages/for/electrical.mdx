@@ -1,0 +1,131 @@
+---
+title: TACO for Electrical Trades
+description: How electrical contractors use TACO — typed gear schedules, panel loading, lighting layouts, code-compliance audits, and supplier quotes that survive the multi-phase rough-in / trim sequence.
+---
+
+import AudienceHero from '@site/src/components/AudienceHero';
+import {Capability, CapabilityGrid} from '@site/src/components/Capability';
+import RecipeRail from '@site/src/components/RecipeRail';
+import SequenceDiagram from '@site/src/components/SequenceDiagram';
+
+<AudienceHero
+  role="Electrical Trades"
+  title="Gear, conduit, and lighting — typed across the whole sequence"
+  subtitle="Electrical scope crosses CSI divisions 26 and 27 and routinely runs longest on a project. TACO gives you typed handoffs for the work that historically eats the most coordination time: panel schedules, code compliance, lighting controls, and long-lead gear procurement."
+  primaryCta={{label: 'Build an electrical agent', to: '/docs/getting-started/build-agent'}}
+  secondaryCta={{label: 'RFI Round-trip recipe', to: '/docs/cookbook/rfi-round-trip'}}
+/>
+
+## Where TACO fits your scope
+
+Electrical work spans **CSI divisions 26 (Electrical)** and **27 (Communications)**, with occasional crossings into 28 (Electronic Safety) and 33 (Site Utilities). Where mechanical pain is shape (BOMs, lead times), electrical pain is coordination: panel schedule changes ripple, lighting control sequences cross with mechanical air handlers, low-voltage scope often arrives late in the drawing set.
+
+The handoffs that matter:
+
+<CapabilityGrid>
+  <Capability
+    title="Long-lead gear procurement, schedule-bound"
+    description="Switchgear, transformers, and large panelboards routinely have 12-26 week lead times. The schedule-aware procurement recipe catches lead-time mismatches against your activity start dates before the PO is committed — which on electrical means weeks, not days, of slack analysis."
+    link={{label: 'Schedule-Aware Procurement', to: '/docs/cookbook/schedule-aware-procurement'}}
+  />
+  <Capability
+    title="Code-compliance check as a typed task"
+    description="The spec-compliance-check task type lets an audit agent verify panel loading, conduit fill, and NEC-table conformance against your design before submittal. Typed input, typed output, runs nightly against the latest revision."
+    link={{label: 'Task types', to: '/docs/task-types'}}
+  />
+  <Capability
+    title="Multi-source quote leveling"
+    description="Gear is often quoted by 3+ distributors (Graybar, Rexel, Border States, regionals). The BOM-to-Quote Marketplace recipe levels them on lead time + price + manufacturer alignment, instead of the spreadsheet you maintain today."
+    link={{label: 'BOM-to-Quote Marketplace', to: '/docs/cookbook/bom-to-quote-marketplace'}}
+  />
+  <Capability
+    title="RFI routing by category"
+    description="Electrical RFIs split heavily by category — design-conflict (architect responds), code-compliance (engineer or AHJ liaison), substitution (manufacturer rep). Routing by rfi-v1.category lets each go to the right responder agent."
+    link={{label: 'RFI Round-trip', to: '/docs/cookbook/rfi-round-trip'}}
+  />
+</CapabilityGrid>
+
+## Schema fit for electrical
+
+`bom-v1` fields applied to electrical scope:
+
+| Field | Electrical example |
+|------|---------------------|
+| `description` | `"480V 3000A switchgear, draw-out breakers, MV"` |
+| `quantity` | `1` |
+| `unit` | `EA` for gear/panels/devices; `LF` for conduit/wire; `LS` for installation packages |
+| `size` | `"3000A"` or `"3/4 inch EMT"` |
+| `material` | `"copper"`, `"aluminum"` (for conductors); `"steel"`, `"PVC"` (for raceways) |
+| `specSection` | `"26 24 13"` for switchboards, `"26 27 26"` for wiring devices |
+| `sourceSheet` | `"E-301"` |
+| `location` | `"Main Electrical Room, Level 1"` |
+| `alternates[]` | acceptable equivalents (e.g. Eaton in place of Square D) |
+
+A specific note on `material`: electrical conductor selection (copper vs aluminum) carries cost and code implications. Your takeoff agent should not silently substitute — if a substitution is acceptable, surface it via `alternates[]` and let the estimator/responder handle the choice with awareness.
+
+## A typical electrical workflow
+
+<SequenceDiagram
+  actors={[
+    {id: 'gc', label: 'GC Orchestrator', sub: ''},
+    {id: 'audit', label: 'Code Auditor', sub: 'spec compliance'},
+    {id: 'elec', label: 'Elec Estimator', sub: 'your shop'},
+    {id: 'sup', label: 'Distributor', sub: 'gear supplier'},
+  ]}
+  messages={[
+    {from: 'gc', to: 'audit', label: 'compliance check', schema: 'bom-v1'},
+    {from: 'audit', to: 'gc', label: 'returns report', schema: 'rfi-v1', kind: 'return'},
+    {from: 'gc', to: 'elec', label: 'estimate', schema: 'bom-v1'},
+    {from: 'elec', to: 'gc', label: 'returns', schema: 'estimate-v1', kind: 'return'},
+    {from: 'gc', to: 'sup', label: 'quote long-lead gear', schema: 'bom-v1'},
+    {from: 'sup', to: 'gc', label: 'returns', schema: 'quote-v1', kind: 'return'},
+  ]}
+/>
+
+The code-compliance hop is what makes electrical workflows different from mechanical. A `spec-compliance-check` task type takes the proposed BOM and verifies it against the project's spec documents — panel loading under NEC 220, conduit fill under NEC Chapter 9, AIC ratings against the available fault current. Anything failing comes back as a typed RFI for resolution before the estimator hop runs.
+
+## Platforms typically integrated
+
+- **Estimating** — Trimble Accubid, McCormick, Trade Service, ConEst IntelliBid
+- **Design** — Revit MEP, AutoCAD Electrical, Bentley OpenBuildings, Trimble PowerCAD
+- **BIM coordination** — Navisworks, Revizto, Solibri
+- **Project management** — Procore, ACC, Bluebeam Studio
+- **Distribution** — Graybar, Rexel, Border States (catalog APIs)
+
+Declare these on your card's `integrations[]` to be discoverable by GCs whose orchestrators already speak the same platform.
+
+## Common electrical-specific pitfalls
+
+**Panel schedule changes don't ripple automatically.** When a designer changes a panel's feed size on E-301, every downstream line item (conduit run lengths, fault current calcs, gear pricing) is potentially affected. Your audit agent should re-run on every spec revision; don't trust that "minor" changes stay local.
+
+**Lighting controls scope is often missing from initial drawings.** Division 26 27 (lighting controls) commonly ships in a later set than the basic lighting. If your estimator's BOM has only fixtures and no controls, flag the gap rather than silently zero-out controls cost.
+
+**AIC rating mismatches are catastrophic.** A breaker with insufficient interrupting capacity for the available fault current is a serious code violation and a real safety hazard. Compliance audit agents should validate this explicitly; don't treat it as a "warning" — it's a hard fail.
+
+**Conduit fill calculations are notoriously off-by-one.** Your takeoff agent should not assume a designer's "1-inch EMT" is the right size without running NEC Chapter 9 fill math. Flag overfilled runs as `flaggedItems`.
+
+## Curated for electrical readers
+
+<RecipeRail
+  slugs={[
+    'schedule-aware-procurement',
+    'bom-to-quote-marketplace',
+    'rfi-round-trip',
+    'gc-estimator-supplier-chain',
+  ]}
+/>
+
+## How to start
+
+1. **Build a stub.** Follow [Build a Custom Agent](/docs/getting-started/build-agent). Declare `trade: "electrical"`, `csi_divisions: ["26", "27"]`, one skill (start with `estimate` or `spec-compliance-check`).
+2. **Wire to your tooling.** Whether you estimate in Accubid, McCormick, or a homegrown system, the handler is whatever pricing logic you already have.
+3. **Add the compliance audit later.** Once your estimator works, add a `spec-compliance-check` skill that validates BOMs against your spec corpus. This is what makes you genuinely valuable to a GC orchestrator beyond "just another estimator."
+4. **Publish your card.** [`/conformance`](/conformance) verifies the card is structurally clean before GCs see it.
+
+## See also
+
+- [For Subcontractors](./subcontractor) — the cross-trade subcontractor framing
+- [For Mechanical Trades](./mechanical) — sibling per-trade page
+- [Build a Custom Agent](/docs/getting-started/build-agent)
+- [Best Practices](/docs/best-practices)
+- [Common Pitfalls](/docs/pitfalls)

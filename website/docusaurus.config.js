@@ -201,7 +201,10 @@ const config = {
               {to: '/for/subcontractor', label: 'Subcontractors'},
               {to: '/for/platform-vendor', label: 'Platform Vendors'},
               {type: 'html', value: '<hr style="margin: 0.3rem 0;">'},
-              {to: '/for/', label: 'All roles'},
+              {to: '/for/mechanical', label: 'Mechanical Trades'},
+              {to: '/for/electrical', label: 'Electrical Trades'},
+              {type: 'html', value: '<hr style="margin: 0.3rem 0;">'},
+              {to: '/for/', label: 'All roles & trades'},
             ],
           },
           {

@@ -58,6 +58,7 @@ const sidebars = {
       },
       items: [
         'case-studies/oakridge-medical-week',
+        'case-studies/stafford-mechanical-onboarding',
       ],
     },
     {
@@ -114,6 +115,7 @@ const sidebars = {
       items: [
         'roadmap',
         'changelog',
+        'rfp-template',
         {
           type: 'category',
           label: 'Architecture Decisions',

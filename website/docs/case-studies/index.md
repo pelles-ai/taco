@@ -10,7 +10,8 @@ These narratives show TACO in motion across a full project workflow. They're fic
 
 ## Available
 
-- [**A typical week on the Oakridge Medical project**](./oakridge-medical-week) — five days, six agents, every recipe in motion across an RFI round-trip, takeoff-to-procurement chain, schedule reconciliation, change order, and bid leveling.
+- [**A typical week on the Oakridge Medical project**](./oakridge-medical-week) — *steady-state at scale*. Five days, six agents, every recipe in motion across a 50-story medical project's mechanical rough-in phase.
+- [**Stafford Mechanical's first TACO deployment**](./stafford-mechanical-onboarding) — *adoption-mode at small scale*. Three weeks following a regional mechanical sub's path from "what is TACO" to discoverable by every GC on their roster.
 
 ## What case studies are for
 

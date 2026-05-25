@@ -40,6 +40,8 @@ function deriveSection(routePath) {
   if (routePath.startsWith('/for/owner')) return 'For Owners';
   if (routePath.startsWith('/for/subcontractor')) return 'For Subcontractors';
   if (routePath.startsWith('/for/platform-vendor')) return 'For Platform Vendors';
+  if (routePath.startsWith('/for/mechanical')) return 'For Mechanical Trades';
+  if (routePath.startsWith('/for/electrical')) return 'For Electrical Trades';
   if (routePath.startsWith('/for/')) return 'By Role';
   if (routePath.startsWith('/blog')) return 'Blog';
   if (routePath.startsWith('/sandbox')) return 'Sandbox';
