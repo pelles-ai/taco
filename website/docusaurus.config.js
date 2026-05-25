@@ -30,7 +30,7 @@ const SDK_VERSION_MAJOR_MINOR = SDK_VERSION.split('.').slice(0, 2).join('.');
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'TACO',
-  tagline: 'The A2A Construction Open-standard',
+  tagline: 'The protocol for construction agents',
   favicon: 'img/favicon.ico',
 
   customFields: {

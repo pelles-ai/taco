@@ -5,6 +5,7 @@ const sidebars = {
   docsSidebar: [
     'why-taco',
     'intro',
+    'scope',
     {
       type: 'category',
       label: 'Concepts',
@@ -26,6 +27,7 @@ const sidebars = {
         'getting-started/build-agent',
         'getting-started/multi-agent',
         'getting-started/integrate-platform',
+        'best-practices',
         'examples',
       ],
     },
@@ -99,6 +101,20 @@ const sidebars = {
       items: [
         'roadmap',
         'changelog',
+        {
+          type: 'category',
+          label: 'Architecture Decisions',
+          link: {type: 'doc', id: 'decisions/index'},
+          collapsed: true,
+          items: [
+            'decisions/build-on-a2a',
+            'decisions/json-schema-source-of-truth',
+            'decisions/construction-shaped-scopes',
+            'decisions/sidecar-pattern',
+            'decisions/in-memory-registry-first',
+            'decisions/schema-versioning',
+          ],
+        },
         'ecosystem',
         'compare',
         'standards',

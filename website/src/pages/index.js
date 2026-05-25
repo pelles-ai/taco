@@ -62,22 +62,23 @@ function HeroSection() {
         </a>
 
         <Heading as="h1" className="hero__title">
-          One Language for Every
+          The protocol for
           <br />
-          Construction Agent
+          construction agents
         </Heading>
         <p className="hero__subtitle">
-          The superintendent's vocabulary, machine-readable
+          Typed, discoverable, vendor-independent — built on A2A
         </p>
         <p className="hero__tldr">
-          If every piece of construction software could understand each other,
-          this is the language they'd speak.
+          Your project runs ten platforms. Each one's API is a custom integration.
+          TACO is the open standard that lets construction agents and platforms
+          actually talk to each other.
         </p>
         <p className="hero__oneliner">
-          TACO is an open-source construction ontology built on the{' '}
+          Built on the{' '}
           <a href="https://a2a-protocol.org">A2A protocol</a> (Linux Foundation).
-          It gives every agent — autonomous or sidecar — a common language for
-          tasks, data, and discovery.
+          Apache 2.0. 6 typed schemas, 18 task types, a live conformance runner,
+          and a Python SDK shipping today.
         </p>
 
         <div className="hero__install">
@@ -149,16 +150,17 @@ function TheProblemSection() {
     <FadeIn>
       <section className="section">
         <div className="container">
-          <span className="section__eyebrow">Status Quo</span>
+          <span className="section__eyebrow">The Problem</span>
           <Heading as="h2" className="section__heading">
-            Construction agents are being built in isolation
+            Every construction tool ships a different vocabulary
           </Heading>
           <div className="what-is-taco">
             <p>
-              Different APIs, different schemas, no shared vocabulary.
-              Every integration is custom — <strong>REST, gRPC, GraphQL,
-              vendor SDKs</strong> — with no way for agents to discover
-              each other, exchange typed data, or establish trust.
+              Procore's RFI doesn't fit Autodesk's RFI. Your estimator's BOM
+              doesn't match your supplier's BOM. Every integration is a
+              custom mapping — <strong>REST, gRPC, GraphQL, vendor SDKs</strong>
+              — with no way for agents to discover each other, exchange typed
+              data, or narrow trust across organizational boundaries.
             </p>
           </div>
           <div className="problem-grid">
@@ -799,7 +801,7 @@ function CTASection() {
 export default function Home() {
   return (
     <Layout
-      title="One Language for Every Construction Agent"
+      title="The protocol for construction agents"
       description="TACO is an open standard for AI agent communication in the built environment. Task types, data schemas, and agent discovery for construction.">
       <HeroSection />
       <LogoStrip />
