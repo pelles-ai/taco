@@ -131,6 +131,10 @@ const config = {
     ],
   ],
 
+  plugins: [
+    './plugins/og-images',
+  ],
+
   themes: [
     [
       '@easyops-cn/docusaurus-search-local',
