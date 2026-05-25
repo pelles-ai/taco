@@ -1,0 +1,122 @@
+---
+title: TACO for Subcontractors
+description: How trade subs use TACO to bid faster, expose their capabilities to every GC, and respond to RFIs with typed precision.
+---
+
+import AudienceHero from '@site/src/components/AudienceHero';
+import {Capability, CapabilityGrid} from '@site/src/components/Capability';
+import RecipeRail from '@site/src/components/RecipeRail';
+import SequenceDiagram from '@site/src/components/SequenceDiagram';
+
+<AudienceHero
+  role="Subcontractors"
+  title="One typed interface, every GC on the project"
+  subtitle="Stop building a custom integration for every general contractor's portal. Expose your estimating, takeoff, or quoting capability once as a TACO agent, and every TACO-aware GC can discover and use it."
+  primaryCta={{label: 'Build a sub agent', to: '/docs/getting-started/build-agent'}}
+  secondaryCta={{label: 'See the chain recipe', to: '/docs/cookbook/gc-estimator-supplier-chain'}}
+/>
+
+## What changes for your shop
+
+<CapabilityGrid>
+  <Capability
+    title="Win bids faster"
+    description="Receive typed BOMs directly from GC orchestrators. Your estimator agent reads bom-v1 and returns estimate-v1 — no portal scraping, no PDF parsing."
+    link={{label: 'GC → Estimator → Supplier', to: '/docs/cookbook/gc-estimator-supplier-chain'}}
+  />
+  <Capability
+    title="Compete on capability, not integration"
+    description="Advertise your trade, CSI divisions, project types, and platform integrations in one Agent Card. Every TACO-aware GC discovers you by what you actually do."
+    link={{label: 'Agent Card Extensions', to: '/docs/agent-card-extensions'}}
+  />
+  <Capability
+    title="Respond to RFIs at machine speed"
+    description="Receive typed rfi-v1 from drawing-audit agents, reply with typed responses. Faster turnaround means fewer schedule risks attributable to your scope."
+    link={{label: 'RFI Round-trip', to: '/docs/cookbook/rfi-round-trip'}}
+  />
+  <Capability
+    title="Surface your real lead times"
+    description="Quote with lead-time metadata that downstream schedulers can reason about. Wins more bids when the GC's procurement coordinator can actually trust your dates."
+    link={{label: 'Schedule-Aware Procurement', to: '/docs/cookbook/schedule-aware-procurement'}}
+  />
+</CapabilityGrid>
+
+## A minimal sub agent
+
+A working subcontractor agent is under 30 lines of code. Declare your trade, advertise the skills you support, register a handler — done.
+
+```python
+from taco import (
+    A2AServer, Artifact, ConstructionAgentCard,
+    ConstructionSkill, Task, make_artifact, make_data_part,
+)
+
+card = ConstructionAgentCard(
+    name="PipeWorks Mech Estimator",
+    trade="mechanical",
+    csi_divisions=["22", "23"],
+    integrations=["procore", "acc"],
+    skills=[
+        ConstructionSkill(
+            id="estimate",
+            task_type="estimate",
+            input_schema="bom-v1",
+            output_schema="estimate-v1",
+        ),
+    ],
+)
+
+server = A2AServer(card.to_a2a())
+
+async def handle_estimate(task: Task, bom: dict) -> Artifact:
+    # Your estimator logic — LLM, spreadsheet model, internal API
+    total = sum(li["quantity"] * 22.50 for li in bom["lineItems"])
+    return make_artifact(
+        parts=[make_data_part({
+            "projectId": bom["projectId"],
+            "currency": "USD",
+            "summary": {"total": round(total, 2)},
+            "metadata": {"generatedBy": "pipeworks-est-v2"},
+        })],
+        name="estimate-result",
+    )
+
+server.register_handler("estimate", handle_estimate)
+```
+
+Wire it to a real estimating engine, register with the GC's project registry, and your shop is in the discovery layer for every TACO-aware GC.
+
+## Where you sit in a typical chain
+
+<SequenceDiagram
+  actors={[
+    {id: 'gc', label: 'GC Orchestrator', sub: 'their side'},
+    {id: 'you', label: 'Your Agent', sub: 'your shop'},
+    {id: 'erp', label: 'Your ERP', sub: 'via MCP'},
+  ]}
+  messages={[
+    {from: 'gc', to: 'you', label: 'send_message("estimate", bom)', schema: 'bom-v1'},
+    {from: 'you', to: 'erp', label: 'lookup pricing, labor rates', note: 'private — via MCP or direct'},
+    {from: 'erp', to: 'you', label: 'returns', kind: 'return'},
+    {from: 'you', to: 'gc', label: 'returns', schema: 'estimate-v1', kind: 'return'},
+  ]}
+/>
+
+What's behind your agent stays private. The GC only sees the typed result; you keep your unit pricing, labor multipliers, and internal logic.
+
+## Recipes worth understanding
+
+<RecipeRail
+  slugs={[
+    'gc-estimator-supplier-chain',
+    'rfi-round-trip',
+    'bom-to-quote-marketplace',
+  ]}
+/>
+
+## How to start
+
+1. **Build a stub.** Follow [Build a Custom Agent](/docs/getting-started/build-agent) — replace the handler body with a no-op that returns canned data.
+2. **Wire it to your real estimator.** Whether that's an LLM call, an internal API, or a spreadsheet model — same handler shape.
+3. **Publish your Agent Card.** Once it's live at a stable URL, any GC's registry can discover it.
+4. **Tell your repeat-business GCs.** They'll know what to do with a TACO endpoint once they have one.

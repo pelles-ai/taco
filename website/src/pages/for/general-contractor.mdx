@@ -1,0 +1,81 @@
+---
+title: TACO for General Contractors
+description: How GCs use TACO to orchestrate trade contractors, run cost + schedule baselines, and price change orders against authoritative current state.
+---
+
+import AudienceHero from '@site/src/components/AudienceHero';
+import {Capability, CapabilityGrid} from '@site/src/components/Capability';
+import RecipeRail from '@site/src/components/RecipeRail';
+import SequenceDiagram from '@site/src/components/SequenceDiagram';
+
+<AudienceHero
+  role="General Contractors"
+  title="Coordinate every trade through one shared vocabulary"
+  subtitle="TACO turns the typed handoffs you already manage — takeoffs, estimates, RFIs, change orders — into agent-driven workflows you can run, audit, and replace one piece at a time."
+  primaryCta={{label: 'See the GC chain recipe', to: '/docs/cookbook/gc-estimator-supplier-chain'}}
+  secondaryCta={{label: 'Quick start', to: '/docs/getting-started/quick-start'}}
+/>
+
+## What you get
+
+<CapabilityGrid>
+  <Capability
+    title="Orchestrate vendors with typed handoffs"
+    description="Stop translating between every estimator, supplier, and engineering tool. Each one advertises typed inputs and outputs; your orchestrator just composes them."
+    link={{label: 'GC → Estimator → Supplier', to: '/docs/cookbook/gc-estimator-supplier-chain'}}
+  />
+  <Capability
+    title="Live baselines for change orders"
+    description="When scope shifts, pull the current estimate AND schedule directly from the source-of-truth agents — no stale snapshots, no spreadsheets out of sync."
+    link={{label: 'Change Order Impact recipe', to: '/docs/cookbook/change-order-impact'}}
+  />
+  <Capability
+    title="One discovery layer, many platforms"
+    description="Find every agent on the project by trade, CSI division, and capability. Procore-integrated, Autodesk-integrated, or custom — they all surface through the same registry."
+    link={{label: 'Agent Card Extensions', to: '/docs/agent-card-extensions'}}
+  />
+  <Capability
+    title="Vendor-independent project record"
+    description="Every artifact is a typed JSON schema you own — bom-v1, estimate-v1, rfi-v1, change-order-v1. The data outlives any specific tool you have today."
+    link={{label: 'Data Schemas', to: '/docs/schemas/'}}
+  />
+</CapabilityGrid>
+
+## A typical GC workflow
+
+<SequenceDiagram
+  actors={[
+    {id: 'gc', label: 'GC Orchestrator', sub: 'your control plane'},
+    {id: 'mech', label: 'Mech Estimator', sub: 'sub agent'},
+    {id: 'elec', label: 'Elec Estimator', sub: 'sub agent'},
+    {id: 'sup', label: 'Supplier', sub: 'priced material'},
+  ]}
+  messages={[
+    {from: 'gc', to: 'mech', label: 'send_message(bom, mech)', schema: 'bom-v1'},
+    {from: 'gc', to: 'elec', label: 'send_message(bom, elec)', schema: 'bom-v1'},
+    {from: 'mech', to: 'gc', label: 'returns', schema: 'estimate-v1', kind: 'return'},
+    {from: 'elec', to: 'gc', label: 'returns', schema: 'estimate-v1', kind: 'return'},
+    {from: 'gc', to: 'sup', label: 'price the long-lead items', schema: 'bom-v1'},
+    {from: 'sup', to: 'gc', label: 'returns', schema: 'quote-v1', kind: 'return'},
+  ]}
+/>
+
+The two estimator calls fan out in parallel via `asyncio.gather`. Total wall time is roughly the slowest single sub, not the sum. The supplier hop runs after the estimates clear because you may want to gate it on a budget threshold.
+
+## Curated recipes for GCs
+
+<RecipeRail
+  slugs={[
+    'gc-estimator-supplier-chain',
+    'change-order-impact',
+    'bom-to-quote-marketplace',
+    'schedule-aware-procurement',
+  ]}
+/>
+
+## How to start
+
+1. **Run the quick start.** Spin up a single TACO agent locally — your orchestrator stub. [Two minutes.](/docs/getting-started/quick-start)
+2. **Wrap your platform.** Add a TACO sidecar in front of Procore, ACC, or your homegrown system so it shows up in the registry. [Sidecar guide.](/docs/getting-started/integrate-platform)
+3. **Pick one workflow to automate.** Start with the chain recipe — it's the highest-leverage entry point because every other recipe extends it.
+4. **Bring your subs in.** Each sub agent that adopts TACO becomes interoperable across every project, not just yours.

@@ -1,0 +1,141 @@
+---
+title: TACO for Platform Vendors
+description: How construction software vendors expose their existing platform as a TACO agent — sidecar pattern, no rewrites, every TACO-aware GC and owner becomes a customer.
+---
+
+import AudienceHero from '@site/src/components/AudienceHero';
+import {Capability, CapabilityGrid} from '@site/src/components/Capability';
+import RecipeRail from '@site/src/components/RecipeRail';
+import SequenceDiagram from '@site/src/components/SequenceDiagram';
+
+<AudienceHero
+  role="Platform Vendors"
+  title="Make your platform agent-discoverable, without rewriting it"
+  subtitle="Ship a thin TACO sidecar that exposes your existing APIs as typed agent skills. Your platform shows up in every TACO registry, becomes composable with any other agent, and stops being an integration project for your customers."
+  primaryCta={{label: 'Sidecar guide', to: '/docs/getting-started/integrate-platform'}}
+  secondaryCta={{label: 'See where you fit', to: '/docs/ecosystem'}}
+/>
+
+## What the sidecar pattern does
+
+<CapabilityGrid>
+  <Capability
+    title="No rewrites, no rip-and-replace"
+    description="Your platform keeps its REST API, its UI, its database. The sidecar is a separate process that translates incoming A2A messages into your existing endpoints and shapes responses into typed TACO artifacts."
+    link={{label: 'Sidecar guide', to: '/docs/getting-started/integrate-platform'}}
+  />
+  <Capability
+    title="Discoverable to every TACO orchestrator"
+    description="Declare your platform's capabilities in a Construction Agent Card: trade, project types, supported task types, integration tags. Every orchestrator's registry can find you the same way."
+    link={{label: 'Agent Card Extensions', to: '/docs/agent-card-extensions'}}
+  />
+  <Capability
+    title="Pre-existing integration matrix becomes a feature"
+    description="If you already connect to Procore, ACC, or Bluebeam, that becomes machine-readable metadata other agents use when picking who to talk to. Compatibility becomes a discoverable property, not a sales call."
+  />
+  <Capability
+    title="Same wire format as fully-AI agents"
+    description="There's no separate 'platform' path in TACO. Your sidecar speaks the exact same A2A + typed-schemas protocol as a brand-new LLM-driven agent. Composes with both."
+  />
+</CapabilityGrid>
+
+## Where the sidecar sits
+
+<SequenceDiagram
+  actors={[
+    {id: 'orch', label: 'Orchestrator', sub: 'TACO-aware'},
+    {id: 'side', label: 'TACO Sidecar', sub: 'thin wrapper'},
+    {id: 'plat', label: 'Your Platform', sub: 'existing REST API'},
+  ]}
+  messages={[
+    {from: 'orch', to: 'side', label: 'send_message("submittal-review", payload)', schema: 'bom-v1'},
+    {from: 'side', to: 'plat', label: 'POST /api/submittals/review', note: 'your existing endpoint'},
+    {from: 'plat', to: 'side', label: 'returns native JSON', kind: 'return'},
+    {from: 'side', to: 'orch', label: 'returns', schema: 'rfi-v1', kind: 'return'},
+  ]}
+/>
+
+The sidecar's only job is translation: A2A message → your API call → response shaped into a typed TACO artifact. Run it as a sibling process to your existing platform; nothing about the platform itself has to change.
+
+## Recipes that exercise the sidecar pattern
+
+<RecipeRail
+  slugs={[
+    'rfi-round-trip',
+    'bom-to-quote-marketplace',
+    'gc-estimator-supplier-chain',
+  ]}
+/>
+
+## Implementation outline
+
+A working sidecar is typically a few hundred lines of Python. The skeleton:
+
+```python
+from taco import (
+    A2AServer, Artifact, ConstructionAgentCard,
+    ConstructionSkill, Task, make_artifact, make_data_part,
+)
+import httpx
+
+# Declare what your platform supports
+card = ConstructionAgentCard(
+    name="Acme Construction Platform",
+    trade="multi-trade",
+    integrations=["self"],  # your platform identifier
+    skills=[
+        ConstructionSkill(
+            id="submittal-review",
+            task_type="submittal-review",
+            input_schema="bom-v1",
+            output_schema="rfi-v1",
+        ),
+        # …one ConstructionSkill per platform capability you expose
+    ],
+)
+
+server = A2AServer(card.to_a2a())
+PLATFORM_BASE = "https://api.acme-construction.com"
+
+async def handle_submittal_review(task: Task, bom: dict) -> Artifact:
+    async with httpx.AsyncClient() as client:
+        # Translate the TACO request into your existing API call
+        resp = await client.post(
+            f"{PLATFORM_BASE}/api/submittals/review",
+            json={"projectId": bom["projectId"], "lineItems": bom["lineItems"]},
+            headers={"Authorization": f"Bearer {token}"},  # your auth
+        )
+        resp.raise_for_status()
+        native = resp.json()
+
+    # Shape the response into a TACO artifact
+    return make_artifact(
+        parts=[make_data_part({
+            "projectId": bom["projectId"],
+            "subject": native["summary"],
+            "question": native["question"],
+            "category": "spec-compliance",
+            "priority": "medium",
+            "references": native.get("drawingRefs", []),
+            "metadata": {"generatedBy": "acme-platform-sidecar"},
+        })],
+        name="rfi",
+    )
+
+server.register_handler("submittal-review", handle_submittal_review)
+```
+
+That's the whole pattern. Each `task_type` you support becomes one handler that calls one (or several) of your platform's existing endpoints and reshapes the response.
+
+## What this unlocks commercially
+
+- **Lead-gen via the registry.** When GCs run `taco discover --trade mechanical`, your platform shows up alongside specialized agents — sized to its actual capability advertisement, not its marketing site.
+- **A defensible answer to "do you support AI agents?"** TACO compatibility is concrete and testable. Customers can run their own conformance tests against your endpoint.
+- **Smaller integration surface per customer.** Customers stop asking you to integrate with their specific takeoff vendor, scheduling tool, or RFI router. Everything composes via TACO.
+
+## How to start
+
+1. **Read the [sidecar guide](/docs/getting-started/integrate-platform).**
+2. **Map your existing capabilities to TACO task types.** Take a look at the [Task Types page](/docs/task-types) and see which ones match what your platform already does.
+3. **Build a minimal sidecar that exposes one capability.** Pick the one most asked about — often submittal review or RFI routing.
+4. **List on the ecosystem page** once you ship: [open a PR](https://github.com/pelles-ai/taco/edit/main/website/docs/ecosystem.md).

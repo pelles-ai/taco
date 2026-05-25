@@ -2505,6 +2505,262 @@ div[class*='announcementBar'] a:hover {
 }
 
 /* ============================================================
+   Audience landing pages (/for/*)
+   ============================================================ */
+
+.audience-hero {
+  background: var(--taco-navy);
+  background-image:
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(234, 179, 8, 0.08) 0%, transparent 65%);
+  color: var(--taco-text-on-dark);
+  padding: clamp(3.5rem, 7vw, 5.5rem) 0 clamp(3rem, 6vw, 4.5rem);
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-theme='dark'] .audience-hero {
+  background: #06090f;
+}
+
+.audience-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: center center;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
+  pointer-events: none;
+}
+
+.audience-hero .container {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.audience-hero__role {
+  display: inline-block;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: var(--taco-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--taco-gold);
+  margin-bottom: 1rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: var(--taco-gold-dim);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+}
+
+.audience-hero__title {
+  font-size: clamp(2rem, 5.5vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: var(--taco-tracking-display);
+  color: #fff;
+  margin: 0 auto 1rem;
+  max-width: 18ch;
+  text-wrap: balance;
+  line-height: 1.05;
+}
+
+.audience-hero__subtitle {
+  color: var(--taco-text-on-dark-dim);
+  font-size: var(--taco-text-lead);
+  line-height: 1.55;
+  max-width: 640px;
+  margin: 0 auto 2rem;
+  text-wrap: balance;
+}
+
+.audience-hero__ctas {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Pages under /for/ get the main content max-width */
+main .container > h2,
+main .container > p,
+main .container > ol,
+main .container > ul {
+  max-width: 820px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Capability grid */
+
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2.5rem;
+}
+
+.capability {
+  background: var(--taco-surface-card);
+  border: 1px solid var(--taco-border-hairline);
+  border-radius: 12px;
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.capability:hover {
+  border-color: var(--taco-border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--taco-shadow-card);
+}
+
+.capability__title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--taco-text);
+  letter-spacing: -0.01em;
+  margin-bottom: 0.4rem;
+}
+
+.capability__desc {
+  font-size: 0.88rem;
+  color: var(--taco-text-secondary);
+  line-height: 1.55;
+  flex: 1;
+}
+
+.capability__link {
+  margin-top: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--taco-gold);
+  text-decoration: none;
+  transition: gap 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.capability__link:hover {
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+/* Recipe rail (curated cookbook subset) */
+
+.recipe-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.85rem;
+  margin: 1.25rem 0 2.5rem;
+}
+
+.recipe-rail__item {
+  background: var(--taco-surface-card);
+  border: 1px solid var(--taco-border-hairline);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.recipe-rail__item:hover {
+  text-decoration: none;
+  color: inherit;
+  border-color: var(--taco-border-strong);
+  transform: translateY(-1px);
+}
+
+.recipe-rail__title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.4rem;
+}
+
+.recipe-rail__blurb {
+  font-size: 0.85rem;
+  color: var(--taco-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+  flex: 1;
+}
+
+.recipe-rail__cta {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--taco-gold);
+}
+
+/* /for/ index tiles */
+
+.audience-index {
+  padding: clamp(2rem, 5vw, 4rem) 0;
+}
+
+.audience-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+.audience-tile {
+  background: var(--taco-surface-card);
+  border: 1px solid var(--taco-border-hairline);
+  border-radius: 14px;
+  padding: 1.75rem 1.6rem 1.5rem;
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.audience-tile:hover {
+  text-decoration: none;
+  color: inherit;
+  border-color: var(--taco-gold);
+  transform: translateY(-2px);
+  box-shadow: var(--taco-shadow-card-hover);
+}
+
+.audience-tile__role {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: var(--taco-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--taco-gold);
+  margin-bottom: 0.6rem;
+}
+
+.audience-tile__line {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin-bottom: 1.25rem;
+  flex: 1;
+  line-height: 1.3;
+}
+
+.audience-tile__cta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--taco-gold);
+}
+
+/* ============================================================
    Cookbook — recipe grid + recipe card
    ============================================================ */
 

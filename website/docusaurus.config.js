@@ -186,6 +186,19 @@ const config = {
             position: 'left',
           },
           {
+            type: 'dropdown',
+            label: 'For',
+            position: 'left',
+            items: [
+              {to: '/for/general-contractor', label: 'General Contractors'},
+              {to: '/for/owner', label: 'Owners'},
+              {to: '/for/subcontractor', label: 'Subcontractors'},
+              {to: '/for/platform-vendor', label: 'Platform Vendors'},
+              {type: 'html', value: '<hr style="margin: 0.3rem 0;">'},
+              {to: '/for/', label: 'All roles'},
+            ],
+          },
+          {
             to: '/sandbox',
             label: 'Sandbox',
             position: 'left',
