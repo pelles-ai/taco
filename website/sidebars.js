@@ -59,6 +59,7 @@ const sidebars = {
       items: [
         'case-studies/oakridge-medical-week',
         'case-studies/stafford-mechanical-onboarding',
+        'case-studies/riverbend-transit-rfp',
       ],
     },
     {

@@ -203,6 +203,8 @@ const config = {
               {type: 'html', value: '<hr style="margin: 0.3rem 0;">'},
               {to: '/for/mechanical', label: 'Mechanical Trades'},
               {to: '/for/electrical', label: 'Electrical Trades'},
+              {to: '/for/plumbing', label: 'Plumbing Trades'},
+              {to: '/for/structural', label: 'Structural Trades'},
               {type: 'html', value: '<hr style="margin: 0.3rem 0;">'},
               {to: '/for/', label: 'All roles & trades'},
             ],

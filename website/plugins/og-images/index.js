@@ -35,6 +35,8 @@ function deriveSection(routePath) {
   if (routePath.startsWith('/docs/sdk-reference')) return 'SDK Reference';
   if (routePath.startsWith('/docs/schemas')) return 'Data Schemas';
   if (routePath.startsWith('/docs/getting-started')) return 'Getting Started';
+  if (routePath.startsWith('/docs/case-studies')) return 'Case Study';
+  if (routePath.startsWith('/docs/decisions')) return 'Architecture Decision';
   if (routePath.startsWith('/docs/')) return 'Documentation';
   if (routePath.startsWith('/for/general-contractor')) return 'For General Contractors';
   if (routePath.startsWith('/for/owner')) return 'For Owners';
@@ -42,6 +44,8 @@ function deriveSection(routePath) {
   if (routePath.startsWith('/for/platform-vendor')) return 'For Platform Vendors';
   if (routePath.startsWith('/for/mechanical')) return 'For Mechanical Trades';
   if (routePath.startsWith('/for/electrical')) return 'For Electrical Trades';
+  if (routePath.startsWith('/for/plumbing')) return 'For Plumbing Trades';
+  if (routePath.startsWith('/for/structural')) return 'For Structural Trades';
   if (routePath.startsWith('/for/')) return 'By Role';
   if (routePath.startsWith('/blog')) return 'Blog';
   if (routePath.startsWith('/sandbox')) return 'Sandbox';
