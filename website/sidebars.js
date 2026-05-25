@@ -31,6 +31,22 @@ const sidebars = {
     },
     {
       type: 'category',
+      label: 'Cookbook',
+      collapsed: false,
+      link: {
+        type: 'doc',
+        id: 'cookbook/index',
+      },
+      items: [
+        'cookbook/gc-estimator-supplier-chain',
+        'cookbook/rfi-round-trip',
+        'cookbook/bom-to-quote-marketplace',
+        'cookbook/change-order-impact',
+        'cookbook/schedule-aware-procurement',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Reference',
       collapsed: false,
       items: [

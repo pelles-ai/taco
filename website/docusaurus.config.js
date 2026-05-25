@@ -181,6 +181,11 @@ const config = {
             position: 'left',
           },
           {
+            to: '/docs/cookbook/',
+            label: 'Cookbook',
+            position: 'left',
+          },
+          {
             to: '/sandbox',
             label: 'Sandbox',
             position: 'left',
