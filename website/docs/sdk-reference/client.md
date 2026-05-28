@@ -187,3 +187,9 @@ RpcError(code: 'int', message: 'str', data: 'Any' = None) -> 'None'
 ```
 
 
+## See also
+
+- [Multi-Agent Coordination](/docs/getting-started/multi-agent)
+- [SDK Guide](/docs/sdk)
+- [Cookbook: BOM → Quote marketplace](/docs/cookbook/bom-to-quote-marketplace)
+

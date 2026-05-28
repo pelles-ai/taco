@@ -54,3 +54,9 @@ Register an async streaming handler for a TACO task type.
 Handler signature: async def handler(task: Task, input_data: dict) -> AsyncIterator[Part]
 
 
+## See also
+
+- [Build a Custom Agent](/docs/getting-started/build-agent)
+- [SDK Guide](/docs/sdk)
+- [Cookbook: RFI round-trip](/docs/cookbook/rfi-round-trip)
+

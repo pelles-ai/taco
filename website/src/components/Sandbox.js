@@ -1,5 +1,8 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import BrowserOnly from '@docusaurus/BrowserOnly';
+import CodeMirror from '@uiw/react-codemirror';
+import {python} from '@codemirror/lang-python';
+import {EditorView} from '@codemirror/view';
 
 /**
  * In-browser TACO sandbox powered by Pyodide. The user writes real Python
@@ -410,11 +413,20 @@ function SandboxInner() {
       <div className="sandbox__panes">
         <div className="sandbox__pane sandbox__pane--editor">
           <div className="sandbox__pane-label">main.py</div>
-          <textarea
+          <CodeMirror
             className="sandbox__editor"
             value={code}
-            onChange={(e) => setCode(e.target.value)}
-            spellCheck={false}
+            onChange={(value) => setCode(value)}
+            theme="dark"
+            extensions={[python(), EditorView.lineWrapping]}
+            basicSetup={{
+              lineNumbers: true,
+              highlightActiveLine: true,
+              foldGutter: false,
+              autocompletion: false,
+              bracketMatching: true,
+              indentOnInput: true,
+            }}
             aria-label="Python code editor"
           />
         </div>

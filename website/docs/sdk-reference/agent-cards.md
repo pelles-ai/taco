@@ -237,3 +237,9 @@ or if the URI is already declared (idempotent — safe to call repeatedly).
 X_CONSTRUCTION_EXTENSION_URI: str = "https://taco.construction/extensions/x-construction/v1"
 ```
 
+## See also
+
+- [Build a Custom Agent](/docs/getting-started/build-agent)
+- [Agent Card Extensions concept](/docs/agent-card-extensions)
+- [Cookbook: GC → Estimator → Supplier chain](/docs/cookbook/gc-estimator-supplier-chain)
+

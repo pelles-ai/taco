@@ -82,10 +82,29 @@ function Inner() {
   }, [vote, comment]);
 
   if (submitted) {
+    const issueUrl =
+      vote === 'down'
+        ? `https://github.com/pelles-ai/taco/issues/new?title=${encodeURIComponent(
+            `Docs feedback: ${window.location.pathname}`,
+          )}&body=${encodeURIComponent(
+            `Page: ${window.location.origin}${window.location.pathname}\n\nWhat was missing or confusing:\n${
+              comment || '(no detail provided in the widget)'
+            }\n`,
+          )}&labels=docs`
+        : null;
     return (
       <div className="page-feedback page-feedback--done">
         <span className="page-feedback__done-glyph">✓</span>
         Thanks for the feedback.
+        {issueUrl ? (
+          <a
+            className="page-feedback__issue-link"
+            href={issueUrl}
+            target="_blank"
+            rel="noopener noreferrer">
+            Want us to fix this? Open an issue &rarr;
+          </a>
+        ) : null}
       </div>
     );
   }

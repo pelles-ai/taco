@@ -22,7 +22,7 @@ import inspect
 import re
 import sys
 import textwrap
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
@@ -45,12 +45,19 @@ class SymbolSpec:
 
 
 @dataclass
+class SeeAlsoLink:
+    label: str
+    to: str
+
+
+@dataclass
 class GroupSpec:
     slug: str
     label: str
     description: str
     symbols: list[SymbolSpec]
     sidebar_position: int
+    see_also: list[SeeAlsoLink] = field(default_factory=list)
 
 
 GROUPS: list[GroupSpec] = [
@@ -76,6 +83,11 @@ GROUPS: list[GroupSpec] = [
             SymbolSpec("apply_construction_extension_declaration", "function"),
             SymbolSpec("X_CONSTRUCTION_EXTENSION_URI", "constant"),
         ],
+        see_also=[
+            SeeAlsoLink("Build a Custom Agent", "/docs/getting-started/build-agent"),
+            SeeAlsoLink("Agent Card Extensions concept", "/docs/agent-card-extensions"),
+            SeeAlsoLink("Cookbook: GC → Estimator → Supplier chain", "/docs/cookbook/gc-estimator-supplier-chain"),
+        ],
     ),
     GroupSpec(
         slug="server",
@@ -87,6 +99,11 @@ GROUPS: list[GroupSpec] = [
         sidebar_position=2,
         symbols=[
             SymbolSpec("A2AServer", "class"),
+        ],
+        see_also=[
+            SeeAlsoLink("Build a Custom Agent", "/docs/getting-started/build-agent"),
+            SeeAlsoLink("SDK Guide", "/docs/sdk"),
+            SeeAlsoLink("Cookbook: RFI round-trip", "/docs/cookbook/rfi-round-trip"),
         ],
     ),
     GroupSpec(
@@ -103,6 +120,11 @@ GROUPS: list[GroupSpec] = [
             SymbolSpec("TacoClientError", "class"),
             SymbolSpec("RpcError", "class"),
         ],
+        see_also=[
+            SeeAlsoLink("Multi-Agent Coordination", "/docs/getting-started/multi-agent"),
+            SeeAlsoLink("SDK Guide", "/docs/sdk"),
+            SeeAlsoLink("Cookbook: BOM → Quote marketplace", "/docs/cookbook/bom-to-quote-marketplace"),
+        ],
     ),
     GroupSpec(
         slug="agent",
@@ -115,6 +137,11 @@ GROUPS: list[GroupSpec] = [
         symbols=[
             SymbolSpec("TacoAgent", "class"),
         ],
+        see_also=[
+            SeeAlsoLink("Multi-Agent Coordination", "/docs/getting-started/multi-agent"),
+            SeeAlsoLink("SDK Guide", "/docs/sdk"),
+            SeeAlsoLink("Cookbook: GC → Estimator → Supplier chain", "/docs/cookbook/gc-estimator-supplier-chain"),
+        ],
     ),
     GroupSpec(
         slug="registry",
@@ -126,6 +153,11 @@ GROUPS: list[GroupSpec] = [
         sidebar_position=5,
         symbols=[
             SymbolSpec("AgentRegistry", "class"),
+        ],
+        see_also=[
+            SeeAlsoLink("Multi-Agent Coordination", "/docs/getting-started/multi-agent"),
+            SeeAlsoLink("ADR-0005: In-memory registry first", "/docs/decisions/in-memory-registry-first"),
+            SeeAlsoLink("Cookbook: Schedule-aware procurement", "/docs/cookbook/schedule-aware-procurement"),
         ],
     ),
     GroupSpec(
@@ -147,6 +179,11 @@ GROUPS: list[GroupSpec] = [
             SymbolSpec("DataPart", "class"),
             SymbolSpec("FilePart", "class"),
             SymbolSpec("Artifact", "class"),
+        ],
+        see_also=[
+            SeeAlsoLink("Build a Custom Agent", "/docs/getting-started/build-agent"),
+            SeeAlsoLink("Task Types reference", "/docs/task-types"),
+            SeeAlsoLink("Cookbook: RFI round-trip", "/docs/cookbook/rfi-round-trip"),
         ],
     ),
     GroupSpec(
@@ -173,6 +210,11 @@ GROUPS: list[GroupSpec] = [
             SymbolSpec("new_agent_text_message", "function"),
             SymbolSpec("new_agent_parts_message", "function"),
         ],
+        see_also=[
+            SeeAlsoLink("Build a Custom Agent", "/docs/getting-started/build-agent"),
+            SeeAlsoLink("SDK Guide", "/docs/sdk"),
+            SeeAlsoLink("Cookbook: Change-order impact", "/docs/cookbook/change-order-impact"),
+        ],
     ),
     GroupSpec(
         slug="persistence",
@@ -184,6 +226,11 @@ GROUPS: list[GroupSpec] = [
         sidebar_position=8,
         symbols=[
             SymbolSpec("TaskStore", "class"),
+        ],
+        see_also=[
+            SeeAlsoLink("Build a Custom Agent", "/docs/getting-started/build-agent"),
+            SeeAlsoLink("ADR-0005: In-memory registry first", "/docs/decisions/in-memory-registry-first"),
+            SeeAlsoLink("SDK Guide", "/docs/sdk"),
         ],
     ),
     GroupSpec(
@@ -198,6 +245,11 @@ GROUPS: list[GroupSpec] = [
             SymbolSpec("PushNotificationConfig", "class"),
             SymbolSpec("PushNotificationAuthenticationInfo", "class"),
             SymbolSpec("TaskPushNotificationConfig", "class"),
+        ],
+        see_also=[
+            SeeAlsoLink("Integrate a Platform", "/docs/getting-started/integrate-platform"),
+            SeeAlsoLink("SDK Guide", "/docs/sdk"),
+            SeeAlsoLink("Cookbook: Change-order impact", "/docs/cookbook/change-order-impact"),
         ],
     ),
     GroupSpec(
@@ -218,6 +270,11 @@ GROUPS: list[GroupSpec] = [
             SymbolSpec("FlagSeverity", "class"),
             SymbolSpec("RFICategory", "class"),
             SymbolSpec("RFIPriority", "class"),
+        ],
+        see_also=[
+            SeeAlsoLink("Agent Card Extensions concept", "/docs/agent-card-extensions"),
+            SeeAlsoLink("Standards alignment", "/docs/standards"),
+            SeeAlsoLink("Cookbook: GC → Estimator → Supplier chain", "/docs/cookbook/gc-estimator-supplier-chain"),
         ],
     ),
 ]
@@ -490,6 +547,12 @@ def _render_group(spec: GroupSpec, taco_mod: Any) -> str:
             parts.append(_render_constant(sym.name, obj))
         else:  # "class"
             parts.append(_render_class(sym.name, obj))
+        parts.append("\n")
+
+    if spec.see_also:
+        parts.append("## See also\n\n")
+        for link in spec.see_also:
+            parts.append(f"- [{link.label}]({link.to})\n")
         parts.append("\n")
 
     return "".join(parts)

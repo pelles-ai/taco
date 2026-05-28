@@ -85,3 +85,9 @@ def remove(self, agent_url: 'str') -> 'bool'
 Remove an agent by URL. Returns True if it was present.
 
 
+## See also
+
+- [Multi-Agent Coordination](/docs/getting-started/multi-agent)
+- [ADR-0005: In-memory registry first](/docs/decisions/in-memory-registry-first)
+- [Cookbook: Schedule-aware procurement](/docs/cookbook/schedule-aware-procurement)
+

@@ -159,3 +159,9 @@ new_agent_parts_message(parts: 'list[Part]', *, message_id: 'str | None' = None)
 
 Create an agent-role ``Message`` with the given parts.
 
+## See also
+
+- [Build a Custom Agent](/docs/getting-started/build-agent)
+- [SDK Guide](/docs/sdk)
+- [Cookbook: Change-order impact](/docs/cookbook/change-order-impact)
+

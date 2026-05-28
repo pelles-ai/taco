@@ -63,3 +63,9 @@ async def save(self, task: a2a_pb2.Task, context: a2a.server.context.ServerCallC
 Saves or updates a task in the store.
 
 
+## See also
+
+- [Build a Custom Agent](/docs/getting-started/build-agent)
+- [ADR-0005: In-memory registry first](/docs/decisions/in-memory-registry-first)
+- [SDK Guide](/docs/sdk)
+

@@ -1,4 +1,5 @@
 import {Fragment} from 'react';
+import CodeBlock from '@theme/CodeBlock';
 
 const steps = [
   {
@@ -52,7 +53,7 @@ export default function HowItWorks() {
             <div className="how-it-works__title">{step.title}</div>
             <div className="how-it-works__desc">{step.desc}</div>
             <div className="how-it-works__code">
-              <code>{step.code}</code>
+              <CodeBlock language="python">{step.code}</CodeBlock>
             </div>
           </div>
           {i < steps.length - 1 && <ArrowConnector />}

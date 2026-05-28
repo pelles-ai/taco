@@ -77,6 +77,28 @@ const config = {
       },
     },
     {
+      tagName: 'link',
+      attributes: {
+        rel: 'preconnect',
+        href: 'https://fonts.googleapis.com',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preconnect',
+        href: 'https://fonts.gstatic.com',
+        crossorigin: 'anonymous',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,0..100;1,9..144,300..700,0..100&display=swap',
+      },
+    },
+    {
       tagName: 'meta',
       attributes: {
         name: 'keywords',
@@ -145,7 +167,7 @@ const config = {
         hashed: true,
         indexBlog: true,
         indexDocs: true,
-        indexPages: false,
+        indexPages: true,
         docsRouteBasePath: '/docs',
         highlightSearchTermsOnTargetPage: true,
         explicitSearchResultPath: true,

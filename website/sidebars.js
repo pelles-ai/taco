@@ -3,9 +3,12 @@
 /** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
 const sidebars = {
   docsSidebar: [
-    'why-taco',
-    'intro',
-    'scope',
+    {
+      type: 'category',
+      label: 'Overview',
+      collapsed: false,
+      items: ['why-taco', 'intro', 'scope'],
+    },
     {
       type: 'category',
       label: 'Concepts',

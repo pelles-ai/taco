@@ -115,3 +115,9 @@ Raises:
     ValueError: No peers configured or no peer has the skill.
 
 
+## See also
+
+- [Multi-Agent Coordination](/docs/getting-started/multi-agent)
+- [SDK Guide](/docs/sdk)
+- [Cookbook: GC → Estimator → Supplier chain](/docs/cookbook/gc-estimator-supplier-chain)
+

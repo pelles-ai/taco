@@ -86,3 +86,9 @@ RFICategory = Literal['design-conflict', 'missing-information', 'clarification',
 RFIPriority = Literal['low', 'medium', 'high', 'critical']
 ```
 
+## See also
+
+- [Agent Card Extensions concept](/docs/agent-card-extensions)
+- [Standards alignment](/docs/standards)
+- [Cookbook: GC → Estimator → Supplier chain](/docs/cookbook/gc-estimator-supplier-chain)
+

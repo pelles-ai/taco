@@ -154,3 +154,9 @@ Artifact(*, artifactId: str, description: str | None = None, extensions: list[st
 ```
 
 
+## See also
+
+- [Build a Custom Agent](/docs/getting-started/build-agent)
+- [Task Types reference](/docs/task-types)
+- [Cookbook: RFI round-trip](/docs/cookbook/rfi-round-trip)
+
