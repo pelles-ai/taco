@@ -20,32 +20,50 @@
 }
 
 :root {
-  /* Fonts — Fraunces variable: opt-size 9–144, weight 300–700, SOFT axis 0–100 */
+  /* Fonts — Fraunces variable for editorial body + display */
   --taco-font-display: 'Fraunces', 'Iowan Old Style', 'Cambria', Georgia, serif;
+  --taco-font-body:    'Fraunces', 'Iowan Old Style', 'Cambria', Georgia, serif;
+  --taco-font-ui:      'Inter', system-ui, -apple-system, sans-serif;
 
-  /* Core palette */
-  --taco-navy: #0f172a;
-  --taco-navy-light: #1e293b;
-  --taco-gold: #EAB308;
-  --taco-gold-hover: #FACC15;
-  --taco-gold-dim: rgba(234, 179, 8, 0.1);
-  --taco-gold-glow: rgba(234, 179, 8, 0.15);
+  /* Bold poster palette — paper + ink + cobalt + clay used confidently */
+  --taco-ink:        #1A1410;
+  --taco-ink-soft:   #2E2620;
+  --taco-paper:      #F4EFE4;
+  --taco-paper-soft: #FAF6EB;
+  --taco-paper-deep: #E8E1D2;
+  --taco-clay:       #C9461C;
+  --taco-clay-hover: #B03A14;
+  --taco-clay-soft:  rgba(201, 70, 28, 0.10);
+  --taco-cobalt:     #1E3A8A;
+  --taco-cobalt-hover:#1E40AF;
+  --taco-cobalt-soft: rgba(30, 58, 138, 0.08);
+  --taco-forest:     #2A4A38;
+  --taco-stone:      #6B5D4E;
+  --taco-stone-soft: #9B8E7C;
+
+  /* Legacy aliases (so existing rules keep working) */
+  --taco-navy: var(--taco-ink);
+  --taco-navy-light: var(--taco-ink-soft);
+  --taco-gold: var(--taco-clay);
+  --taco-gold-hover: var(--taco-clay-hover);
+  --taco-gold-dim: var(--taco-clay-soft);
+  --taco-gold-glow: rgba(184, 67, 26, 0.12);
 
   /* Text */
-  --taco-text: #0b1220;
-  --taco-text-secondary: #5b6478;
-  --taco-text-tertiary: #8a93a6;
-  --taco-text-on-dark: #f1f5f9;
-  --taco-text-on-dark-dim: rgba(241, 245, 249, 0.62);
-  --taco-text-on-dark-quiet: rgba(241, 245, 249, 0.42);
+  --taco-text: var(--taco-ink);
+  --taco-text-secondary: var(--taco-stone);
+  --taco-text-tertiary: var(--taco-stone-soft);
+  --taco-text-on-dark: var(--taco-paper);
+  --taco-text-on-dark-dim: rgba(244, 239, 228, 0.66);
+  --taco-text-on-dark-quiet: rgba(244, 239, 228, 0.42);
 
   /* Surfaces */
-  --taco-surface: #fafbfd;
-  --taco-surface-card: #ffffff;
-  --taco-surface-quiet: #f3f5f9;
-  --taco-border: #e6e9ef;
-  --taco-border-hairline: rgba(15, 23, 42, 0.08);
-  --taco-border-strong: #d8dde6;
+  --taco-surface:      var(--taco-paper);
+  --taco-surface-card: var(--taco-paper-soft);
+  --taco-surface-quiet:var(--taco-paper-deep);
+  --taco-border:           #D6CDB8;
+  --taco-border-hairline:  rgba(26, 20, 16, 0.10);
+  --taco-border-strong:    #BFB39A;
 
   /* Agent zone colors (used in arch diagram + select accents) */
   --taco-precon: #8B5CF6;
@@ -87,46 +105,96 @@
   --ifm-color-primary-lighter: #1a2650;
   --ifm-color-primary-lightest: #253566;
   --ifm-code-font-size: 95%;
-  --ifm-font-family-base: 'Inter', system-ui, -apple-system, sans-serif;
+  --ifm-font-family-base: 'Fraunces', 'Iowan Old Style', 'Cambria', Georgia, serif;
   --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
-  --ifm-heading-font-weight: 700;
-  --docusaurus-highlighted-code-line-bg: rgba(234, 179, 8, 0.1);
+  --ifm-heading-font-weight: 600;
+  --ifm-background-color: var(--taco-paper);
+  --ifm-background-surface-color: var(--taco-paper-soft);
+  --docusaurus-highlighted-code-line-bg: rgba(184, 67, 26, 0.08);
 }
 
 [data-theme='dark'] {
-  --taco-text: #e8ecf3;
-  --taco-text-secondary: #98a1b3;
-  --taco-text-tertiary: #6a7388;
-  --taco-surface: #0b0f1a;
-  --taco-surface-card: #11172a;
-  --taco-surface-quiet: #0d121e;
-  --taco-border: #1e273b;
-  --taco-border-hairline: rgba(255, 255, 255, 0.06);
-  --taco-border-strong: #2a3450;
-  --taco-gold-dim: rgba(234, 179, 8, 0.08);
-  --taco-gold-glow: rgba(234, 179, 8, 0.12);
+  /* Warm dark — ink-deep paper, cream text, brighter clay accent */
+  --taco-ink:        #0F0B08;
+  --taco-paper:      #F4EFE4;
+  --taco-clay:       #D55838;
+  --taco-clay-hover: #E76647;
+  --taco-clay-soft:  rgba(213, 88, 56, 0.10);
 
-  --taco-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.2);
-  --taco-shadow-card-hover: 0 2px 4px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.3);
+  --taco-text:           var(--taco-paper);
+  --taco-text-secondary: #B5A89A;
+  --taco-text-tertiary:  #7A6E60;
 
-  --ifm-color-primary: #EAB308;
-  --ifm-color-primary-dark: #d4a106;
-  --ifm-color-primary-darker: #c99806;
-  --ifm-color-primary-darkest: #a57d05;
-  --ifm-color-primary-light: #ecbc20;
-  --ifm-color-primary-lighter: #edc02b;
-  --ifm-color-primary-lightest: #f1cd55;
-  --ifm-background-color: #07090f;
-  --ifm-background-surface-color: #0b0f1a;
-  --docusaurus-highlighted-code-line-bg: rgba(234, 179, 8, 0.15);
+  --taco-surface:        var(--taco-ink);
+  --taco-surface-card:   #1A1410;
+  --taco-surface-quiet:  #14100C;
+  --taco-border:         #2E2620;
+  --taco-border-hairline:rgba(244, 239, 228, 0.08);
+  --taco-border-strong:  #3D3328;
+
+  --taco-gold:       var(--taco-clay);
+  --taco-gold-hover: var(--taco-clay-hover);
+  --taco-gold-dim:   var(--taco-clay-soft);
+  --taco-gold-glow:  rgba(213, 88, 56, 0.14);
+
+  --taco-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.32);
+  --taco-shadow-card-hover: 0 2px 4px rgba(0, 0, 0, 0.55), 0 12px 32px rgba(0, 0, 0, 0.4);
+
+  --ifm-color-primary: var(--taco-clay);
+  --ifm-color-primary-dark:    #C04F31;
+  --ifm-color-primary-darker:  #AC4729;
+  --ifm-color-primary-darkest: #8E3A21;
+  --ifm-color-primary-light:   #DE6747;
+  --ifm-color-primary-lighter: #E37758;
+  --ifm-color-primary-lightest:#EC9579;
+  --ifm-background-color:        var(--taco-ink);
+  --ifm-background-surface-color:#1A1410;
+  --docusaurus-highlighted-code-line-bg: rgba(213, 88, 56, 0.14);
 }
 
 /* ============================================================
-   Global typography
+   Global typography — Fraunces editorial body
    ============================================================ */
 
+html, body {
+  font-family: var(--taco-font-body);
+  font-variation-settings: 'opsz' 14, 'SOFT' 30, 'wght' 400;
+  /* Slightly looser body for serif legibility at small sizes */
+  line-height: 1.6;
+  font-feature-settings: 'liga', 'kern', 'ss01';
+}
+
 h1, h2, h3, h4 {
-  letter-spacing: -0.02em;
+  font-family: var(--taco-font-display);
+  letter-spacing: -0.025em;
+  font-variation-settings: 'opsz' 96, 'SOFT' 40, 'wght' 600;
+  font-weight: 600;
+}
+
+/* UI surfaces — buttons / nav / eyebrows stay sans for crisp legibility */
+.navbar,
+.button,
+button,
+input,
+select,
+textarea,
+.menu,
+code,
+kbd,
+pre,
+[role='button'],
+.theme-doc-sidebar-menu,
+.theme-doc-breadcrumbs,
+.breadcrumbs {
+  font-family: var(--taco-font-ui);
+  font-variation-settings: normal;
+}
+
+/* Docs body — keep Fraunces for the editorial reading experience */
+article,
+.theme-doc-markdown,
+.markdown {
+  font-family: var(--taco-font-body);
 }
 
 /* ============================================================
@@ -134,113 +202,298 @@ h1, h2, h3, h4 {
    ============================================================ */
 
 .hero--taco {
-  background: var(--taco-navy);
-  background-image:
-    radial-gradient(ellipse 70% 50% at 25% 0%, rgba(234, 179, 8, 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 55% 45% at 85% 30%, rgba(59, 130, 246, 0.05) 0%, transparent 55%);
-  color: var(--taco-text-on-dark);
-  padding: clamp(4.5rem, 8vw, 7rem) 0 clamp(3rem, 5vw, 4.5rem);
+  background: var(--taco-paper);
+  color: var(--taco-ink);
+  padding: clamp(5rem, 9vw, 8rem) 0 clamp(4rem, 6vw, 6rem);
   text-align: left;
   position: relative;
   overflow: hidden;
-}
-
-/* Single-column hero — content constrained to a comfortable measure */
-.hero__inner {
-  position: relative;
-  z-index: 1;
-  max-width: 720px;
-}
-
-/* Subtle dot grid overlay */
-.hero--taco::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 56px 56px;
-  background-position: center center;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
-  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
-  pointer-events: none;
+  border-bottom: 1px solid var(--taco-border-hairline);
 }
 
 [data-theme='dark'] .hero--taco {
-  background: #06090f;
-  background-image:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(234, 179, 8, 0.08) 0%, transparent 65%),
-    radial-gradient(ellipse 60% 40% at 85% 15%, rgba(59, 130, 246, 0.03) 0%, transparent 50%);
+  background: var(--taco-ink);
+  color: var(--taco-paper);
+}
+
+/* Two-column hero — editorial left, poster right */
+.hero__inner {
+  position: relative;
+  z-index: 1;
+  max-width: 880px;
+}
+
+.hero__grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: clamp(2.5rem, 6vw, 6rem);
+  align-items: start;
+}
+
+.hero__main {
+  position: relative;
+  max-width: 640px;
+}
+
+/* The poster — sculptural typographic centerpiece on the right */
+.hero__poster {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.hero__poster-frame {
+  position: relative;
+  width: 100%;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border: 2px solid var(--taco-ink);
+  background: var(--taco-paper-soft);
+  /* Slight rotation for poster character */
+  transform: rotate(0.3deg);
+}
+
+[data-theme='dark'] .hero__poster-frame {
+  border-color: var(--taco-paper);
+  background: var(--taco-surface-card);
+}
+
+/* Inner accent rule, like a poster's printed inner border */
+.hero__poster-frame::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid var(--taco-ink);
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+[data-theme='dark'] .hero__poster-frame::before {
+  border-color: var(--taco-paper);
+}
+
+/* The four letters in a 2x2 grid */
+.hero__poster-letters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-bottom: 1.5rem;
+}
+
+.hero__poster-letter {
+  font-family: var(--taco-font-display);
+  font-weight: 400;
+  font-size: clamp(4.5rem, 11vw, 9rem);
+  line-height: 0.85;
+  text-align: center;
+  letter-spacing: -0.06em;
+  font-variation-settings: 'opsz' 144, 'SOFT' 30, 'wght' 400;
+}
+
+.hero__poster-letter--t {
+  color: var(--taco-ink);
+  border-right: 2px solid var(--taco-ink);
+  border-bottom: 2px solid var(--taco-ink);
+  padding: 0.15em 0;
+  background: var(--taco-paper);
+}
+
+.hero__poster-letter--a {
+  color: var(--taco-paper);
+  background: var(--taco-clay);
+  font-style: italic;
+  border-bottom: 2px solid var(--taco-ink);
+  padding: 0.15em 0;
+  font-variation-settings: 'opsz' 144, 'SOFT' 80, 'wght' 400;
+}
+
+.hero__poster-letter--c {
+  color: var(--taco-paper);
+  background: var(--taco-cobalt);
+  border-right: 2px solid var(--taco-ink);
+  padding: 0.15em 0;
+  font-variation-settings: 'opsz' 144, 'SOFT' 0, 'wght' 500;
+}
+
+.hero__poster-letter--o {
+  color: var(--taco-ink);
+  background: var(--taco-paper);
+  padding: 0.15em 0;
+  font-style: italic;
+  font-variation-settings: 'opsz' 144, 'SOFT' 80, 'wght' 300;
+}
+
+[data-theme='dark'] .hero__poster-letter--t {
+  color: var(--taco-paper);
+  border-color: var(--taco-paper);
+  background: var(--taco-surface-card);
+}
+
+[data-theme='dark'] .hero__poster-letter--a {
+  border-color: var(--taco-paper);
+}
+
+[data-theme='dark'] .hero__poster-letter--c {
+  border-color: var(--taco-paper);
+}
+
+[data-theme='dark'] .hero__poster-letter--o {
+  color: var(--taco-paper);
+  background: var(--taco-surface-card);
+}
+
+.hero__poster-rule {
+  height: 2px;
+  background: var(--taco-ink);
+  margin-bottom: 1.25rem;
+}
+
+[data-theme='dark'] .hero__poster-rule {
+  background: var(--taco-paper);
+}
+
+.hero__poster-caption {
+  font-family: var(--taco-font-display);
+  font-size: clamp(1rem, 1.8vw, 1.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--taco-ink);
+  font-variation-settings: 'opsz' 72, 'SOFT' 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 1.5rem;
+}
+
+[data-theme='dark'] .hero__poster-caption {
+  color: var(--taco-paper);
+}
+
+.hero__poster-caption em {
+  font-style: italic;
+  color: var(--taco-cobalt);
+  font-variation-settings: 'opsz' 72, 'SOFT' 80;
+}
+
+[data-theme='dark'] .hero__poster-caption em {
+  color: var(--taco-clay);
+}
+
+.hero__poster-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--taco-font-ui);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--taco-stone);
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--taco-border);
+  font-variation-settings: normal;
+}
+
+[data-theme='dark'] .hero__poster-meta {
+  color: var(--taco-text-secondary);
+  border-top-color: var(--taco-border-strong);
+}
+
+/* Mobile: stack the poster below the content */
+@media (max-width: 900px) {
+  .hero__grid {
+    grid-template-columns: 1fr;
+  }
+  .hero__poster {
+    max-width: 420px;
+    margin-top: 1rem;
+  }
 }
 
 .hero--taco .hero__title {
-  font-size: var(--taco-text-display);
-  font-weight: 700;
-  letter-spacing: var(--taco-tracking-display);
-  line-height: 0.98;
-  margin: 0 0 1.5rem;
-  max-width: 15ch;
+  font-family: var(--taco-font-display);
+  font-size: clamp(3rem, 9vw, 6.5rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  margin: 0 0 2rem;
+  max-width: 14ch;
   position: relative;
   text-align: left;
   text-wrap: balance;
+  color: var(--taco-ink);
+  font-variation-settings: 'opsz' 144, 'SOFT' 40, 'wght' 400;
+}
+
+[data-theme='dark'] .hero--taco .hero__title {
+  color: var(--taco-paper);
 }
 
 .hero__title-em {
-  font-family: var(--taco-font-display);
   font-style: italic;
   font-weight: 400;
-  color: var(--taco-gold);
-  letter-spacing: -0.025em;
-  /* Optical bump — serif italic at large sizes wants a bit more weight */
-  font-size: 1.08em;
-  /* Fraunces variable axes: opt-size up for character, SOFT axis for warmth */
-  font-variation-settings: 'opsz' 144, 'SOFT' 50;
+  color: var(--taco-clay);
+  letter-spacing: -0.04em;
+  font-variation-settings: 'opsz' 144, 'SOFT' 70, 'wght' 400;
 }
 
-/* Hero marker — small uppercase mono eyebrow with a short gold rule */
+/* Hero marker — small uppercase Inter, refined */
 .hero__marker {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
-  margin-bottom: 1.5rem;
-  font-family: var(--ifm-font-family-monospace);
-  font-size: 0.72rem;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  font-family: var(--taco-font-ui);
+  font-size: 0.7rem;
   font-weight: 600;
-  color: var(--taco-text-on-dark-dim);
-  letter-spacing: var(--taco-tracking-eyebrow);
+  color: var(--taco-stone);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  font-variation-settings: normal;
+}
+
+[data-theme='dark'] .hero__marker {
+  color: var(--taco-text-secondary);
 }
 
 .hero__marker-rule {
   display: inline-block;
-  width: 24px;
+  width: 32px;
   height: 1px;
-  background: var(--taco-gold);
-  opacity: 0.8;
+  background: var(--taco-clay);
 }
 
-/* Hero proof links — plain underlined text links, no chips */
+/* Hero proof links — quiet inline editorial */
 .hero__links {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
-  margin-top: 2rem;
+  gap: 1.75rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--taco-border-hairline);
 }
 
 .hero__link {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--taco-text-on-dark-dim);
+  font-family: var(--taco-font-body);
+  font-size: 0.95rem;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--taco-stone);
   text-decoration: none;
-  border-bottom: 1px solid rgba(234, 179, 8, 0.4);
+  border-bottom: 1px solid var(--taco-clay);
   padding-bottom: 2px;
+  font-variation-settings: 'opsz' 24, 'SOFT' 40;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 
+[data-theme='dark'] .hero__link {
+  color: var(--taco-text-secondary);
+}
+
 .hero__link:hover {
-  color: var(--taco-gold);
-  border-color: var(--taco-gold);
+  color: var(--taco-clay);
+  border-color: var(--taco-clay-hover);
   text-decoration: none;
 }
 
@@ -263,14 +516,34 @@ h1, h2, h3, h4 {
 }
 
 .hero__tldr {
-  font-size: var(--taco-text-lead);
-  font-weight: 500;
-  color: var(--taco-text-on-dark-dim);
-  margin: 0 0 2rem;
-  max-width: 52ch;
+  font-family: var(--taco-font-body);
+  font-size: clamp(1.15rem, 1.6vw, 1.35rem);
+  font-weight: 400;
+  color: var(--taco-ink-soft);
+  margin: 0 0 2.5rem;
+  max-width: 48ch;
   line-height: 1.5;
-  letter-spacing: var(--taco-tracking-normal);
+  letter-spacing: -0.005em;
   text-wrap: balance;
+  font-variation-settings: 'opsz' 24, 'SOFT' 30;
+}
+
+[data-theme='dark'] .hero__tldr {
+  color: var(--taco-text-secondary);
+}
+
+/* Drop cap on the lead paragraph */
+.hero__tldr::first-letter {
+  font-family: var(--taco-font-display);
+  font-style: italic;
+  font-weight: 400;
+  float: left;
+  font-size: 4.2em;
+  line-height: 0.85;
+  padding: 0.05em 0.18em 0 0;
+  margin-top: 0.05em;
+  color: var(--taco-clay);
+  font-variation-settings: 'opsz' 144, 'SOFT' 70;
 }
 
 .hero__oneliner {
@@ -317,44 +590,56 @@ h1, h2, h3, h4 {
    ============================================================ */
 
 .button--accent {
-  background: var(--taco-gold);
-  color: var(--taco-navy);
-  border: none;
+  background: var(--taco-clay);
+  color: var(--taco-paper);
+  border: 1px solid var(--taco-clay);
+  font-family: var(--taco-font-ui);
   font-weight: 600;
-  font-size: 0.9rem;
-  padding: 0.65rem 1.4rem;
-  border-radius: 6px;
-  letter-spacing: var(--taco-tracking-normal);
-  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  font-size: 0.88rem;
+  padding: 0.7rem 1.5rem;
+  border-radius: 2px;
+  letter-spacing: 0.01em;
+  box-shadow: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 @media (hover: hover) {
   .button--accent:hover {
-    background: var(--taco-gold-hover);
-    color: var(--taco-navy);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(234, 179, 8, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    background: var(--taco-clay-hover);
+    border-color: var(--taco-clay-hover);
+    color: var(--taco-paper);
+    transform: none;
+    box-shadow: none;
   }
 }
 
 .button--outline-light {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--taco-text-on-dark);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: var(--taco-ink);
+  border: 1px solid var(--taco-ink);
+  font-family: var(--taco-font-ui);
   font-weight: 500;
-  font-size: 0.9rem;
-  padding: 0.65rem 1.4rem;
-  border-radius: 6px;
-  letter-spacing: var(--taco-tracking-normal);
-  transition: all 0.15s ease;
-  backdrop-filter: blur(8px);
+  font-size: 0.88rem;
+  padding: 0.7rem 1.5rem;
+  border-radius: 2px;
+  letter-spacing: 0.01em;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+[data-theme='dark'] .button--outline-light {
+  color: var(--taco-paper);
+  border-color: var(--taco-paper);
 }
 
 .button--outline-light:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: #fff;
+  background: var(--taco-ink);
+  color: var(--taco-paper);
+  border-color: var(--taco-ink);
+}
+
+[data-theme='dark'] .button--outline-light:hover {
+  background: var(--taco-paper);
+  color: var(--taco-ink);
 }
 
 /* ============================================================
@@ -407,108 +692,222 @@ main {
 }
 
 /* Hairline divider between consecutive same-bg sections */
-.section + .section:not(.section--alt),
+.section + .section:not(.section--alt):not(.section--cobalt),
 .section--alt + .section--alt {
   border-top: 1px solid var(--taco-border-hairline);
 }
 
-.section__heading {
-  text-align: center;
-  margin-bottom: 0.75rem;
-  font-size: var(--taco-text-h2);
-  font-weight: 700;
-  letter-spacing: var(--taco-tracking-tight);
-  color: var(--taco-text);
-  line-height: 1.1;
-  text-wrap: balance;
+/* ============================================================
+   Cobalt section — full-bleed color block for visual rhythm
+   ============================================================ */
+
+.section--cobalt {
+  background: var(--taco-cobalt);
+  color: var(--taco-paper);
+  padding-top: clamp(5rem, 9vw, 8rem);
+  padding-bottom: clamp(5rem, 9vw, 8rem);
+  position: relative;
 }
 
-.section__eyebrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  text-align: center;
-  font-family: var(--ifm-font-family-monospace);
-  font-size: var(--taco-text-micro);
-  font-weight: 600;
-  color: var(--taco-gold);
-  text-transform: uppercase;
-  letter-spacing: var(--taco-tracking-eyebrow);
-  margin-bottom: 1rem;
+.section--cobalt .section__num {
+  color: var(--taco-clay);
+}
+
+.section--cobalt .section__head-rule {
+  background: var(--taco-paper);
+  opacity: 1;
+}
+
+.section--cobalt .section__head-label {
+  color: var(--taco-paper);
+}
+
+.section--cobalt .section__heading {
+  color: var(--taco-paper);
+}
+
+.section--cobalt .heading-em {
+  color: var(--taco-clay);
+}
+
+.section--cobalt .section__subheading {
+  color: rgba(244, 239, 228, 0.78);
+}
+
+/* Standardization table inside the cobalt block */
+.section--cobalt .standardization-table-wrap {
+  background: rgba(244, 239, 228, 0.04);
+  border-color: rgba(244, 239, 228, 0.15);
+}
+
+.section--cobalt .standardization-table {
+  background: transparent;
+}
+
+.section--cobalt .standardization-table thead tr {
+  background: rgba(244, 239, 228, 0.08);
+}
+
+.section--cobalt .standardization-table th {
+  color: rgba(244, 239, 228, 0.78);
+  border-bottom-color: rgba(244, 239, 228, 0.18);
+}
+
+.section--cobalt .standardization-table thead th:last-child {
+  color: var(--taco-clay-hover);
+}
+
+.section--cobalt .standardization-table td {
+  border-bottom-color: rgba(244, 239, 228, 0.10);
+}
+
+.section--cobalt .standardization-table__dim {
+  color: var(--taco-paper);
+}
+
+.section--cobalt .standardization-table__a2a {
+  color: rgba(244, 239, 228, 0.50);
+}
+
+.section--cobalt .standardization-table__taco {
+  color: var(--taco-paper);
+  border-left-color: var(--taco-clay);
+}
+
+.section--cobalt .standardization-table__taco::before {
+  color: var(--taco-clay);
+}
+
+.section--cobalt .standardization-table tbody tr:hover {
+  background-color: rgba(201, 70, 28, 0.10);
+}
+
+.section--cobalt .standardization-note {
+  color: rgba(244, 239, 228, 0.72);
+}
+
+/* ============================================================
+   Section headers — magazine style: big serif numeral + rule + label
+   ============================================================ */
+
+.section__head {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) 1fr;
+  gap: clamp(1.5rem, 3vw, 3rem);
+  align-items: start;
+  margin-bottom: 2.5rem;
+  max-width: 1100px;
 }
 
 .section__num {
-  color: var(--taco-gold);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-family: var(--taco-font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(5rem, 9vw, 9rem);
+  line-height: 0.82;
+  letter-spacing: -0.05em;
+  color: var(--taco-clay);
+  font-variation-settings: 'opsz' 144, 'SOFT' 80, 'wght' 300;
 }
 
-.section__rule {
-  display: inline-block;
-  width: 24px;
-  height: 1px;
-  background: currentColor;
+.section__head-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 1.25rem;
+  position: relative;
+}
+
+.section__head-rule {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--taco-ink);
+  opacity: 1;
+}
+
+[data-theme='dark'] .section__head-rule {
+  background: var(--taco-paper);
   opacity: 0.5;
 }
 
-.section__eyebrow-label {
-  color: var(--taco-gold);
+.section__head-label {
+  font-family: var(--taco-font-ui);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--taco-ink);
+  font-variation-settings: normal;
 }
 
-[data-theme='light'] .section__num,
-[data-theme='light'] .section__eyebrow,
-[data-theme='light'] .section__eyebrow-label {
-  /* Eyebrow gold on near-white surfaces is weak; bump to the hover gold */
-  color: var(--taco-gold-hover);
+[data-theme='dark'] .section__head-label {
+  color: var(--taco-paper);
 }
 
-/* Left-aligned section variant — used for rhythm break */
-.section--left .section__eyebrow {
-  justify-content: flex-start;
+[data-theme='dark'] .section__head-label {
+  color: var(--taco-text-secondary);
+}
+
+.section__heading {
+  font-family: var(--taco-font-display);
   text-align: left;
-}
-
-.section--left .section__heading,
-.section--left .section__subheading {
-  text-align: left;
-  margin-left: 0;
-}
-
-.section--left .section__subheading {
-  margin-right: 0;
-  max-width: 640px;
+  margin: 0 0 2rem;
+  font-size: clamp(2.75rem, 6vw, 5rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  color: var(--taco-ink);
+  line-height: 0.98;
+  text-wrap: balance;
+  max-width: 18ch;
+  font-variation-settings: 'opsz' 144, 'SOFT' 30, 'wght' 400;
 }
 
 [data-theme='dark'] .section__heading {
-  color: var(--taco-text);
+  color: var(--taco-paper);
 }
 
-/* Editorial emphasis word inside any heading — mirrors the hero's title-em */
+/* Editorial emphasis word — italic serif in clay */
 .heading-em {
   font-family: var(--taco-font-display);
   font-style: italic;
   font-weight: 400;
-  color: var(--taco-gold);
-  letter-spacing: -0.02em;
-  font-size: 1.05em;
-  font-variation-settings: 'opsz' 144, 'SOFT' 50;
-}
-
-[data-theme='light'] .heading-em {
-  color: var(--taco-gold-hover);
+  color: var(--taco-clay);
+  letter-spacing: -0.035em;
+  font-variation-settings: 'opsz' 144, 'SOFT' 70, 'wght' 400;
 }
 
 .section__subheading {
-  text-align: center;
+  text-align: left;
+  color: var(--taco-stone);
+  margin: 0 0 2.5rem;
+  max-width: 56ch;
+  line-height: 1.55;
+  font-size: 1.1rem;
+  font-style: italic;
+  font-variation-settings: 'opsz' 24, 'SOFT' 50, 'wght' 400;
+  text-wrap: balance;
+}
+
+[data-theme='dark'] .section__subheading {
   color: var(--taco-text-secondary);
-  margin-bottom: 3.5rem;
-  max-width: 580px;
+}
+
+/* Centered section variant (kept for sections that need it) */
+.section--center .section__head,
+.section--center .section__heading,
+.section--center .section__subheading {
+  text-align: center;
   margin-left: auto;
   margin-right: auto;
-  line-height: 1.6;
-  font-size: 1.02rem;
-  text-wrap: balance;
+}
+
+/* Legacy alignment override classes (now harmless) */
+.section--left .section__head,
+.section--left .section__heading,
+.section--left .section__subheading {
+  text-align: left;
+  margin-left: 0;
 }
 
 /* ============================================================
@@ -1034,96 +1433,98 @@ main {
 
 .cta-section {
   text-align: center;
-  padding: clamp(4rem, 8vw, 7rem) 0;
-  background: var(--taco-navy);
-  background-image:
-    radial-gradient(ellipse 70% 50% at 50% 30%, rgba(234, 179, 8, 0.08) 0%, transparent 65%);
-  color: var(--taco-text-on-dark);
+  padding: clamp(5rem, 9vw, 8rem) 0;
+  background: var(--taco-ink);
+  color: var(--taco-paper);
   position: relative;
   overflow: hidden;
+  border-top: 1px solid var(--taco-ink);
+}
+
+.cta-section .container {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
 }
 
 .cta__heading {
-  font-size: clamp(2.25rem, 5vw, 3.25rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.02;
-  color: #fff;
-  margin: 0 auto 1.25rem;
-  max-width: 18ch;
+  font-family: var(--taco-font-display);
+  font-size: clamp(3rem, 7vw, 5rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  color: var(--taco-paper);
+  margin: 0 auto 2rem;
+  max-width: 14ch;
   text-wrap: balance;
+  font-variation-settings: 'opsz' 144, 'SOFT' 40, 'wght' 400;
 }
 
 .cta__heading-em {
-  font-family: var(--taco-font-display);
   font-style: italic;
   font-weight: 400;
-  color: var(--taco-gold);
-  letter-spacing: -0.025em;
-  font-variation-settings: 'opsz' 144, 'SOFT' 50;
+  color: var(--taco-clay-hover);
+  letter-spacing: -0.04em;
+  font-variation-settings: 'opsz' 144, 'SOFT' 70, 'wght' 400;
+}
+
+[data-theme='dark'] .cta__heading-em {
+  color: var(--taco-clay);
 }
 
 .cta__body {
-  font-size: 1.05rem;
-  line-height: 1.6;
-  color: var(--taco-text-on-dark-dim);
-  max-width: 52ch;
-  margin: 0 auto 2rem;
+  font-family: var(--taco-font-body);
+  font-size: 1.15rem;
+  font-style: italic;
+  line-height: 1.55;
+  color: rgba(244, 239, 228, 0.75);
+  max-width: 50ch;
+  margin: 0 auto 2.5rem;
   text-wrap: balance;
+  font-variation-settings: 'opsz' 24, 'SOFT' 50, 'wght' 400;
 }
 
 .cta-section::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 56px 56px;
-  background-position: center center;
-  mask-image: radial-gradient(ellipse 60% 70% at 50% 50%, black, transparent);
-  -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 50%, black, transparent);
   pointer-events: none;
 }
 
-[data-theme='dark'] .cta-section {
-  background: #06090f;
-  background-image:
-    radial-gradient(ellipse 70% 50% at 50% 30%, rgba(234, 179, 8, 0.06) 0%, transparent 65%);
-}
-
-.cta-section h2 {
-  color: #fff;
-  margin-bottom: 1rem;
-  font-size: var(--taco-text-h2);
-  font-weight: 700;
-  letter-spacing: var(--taco-tracking-tight);
-  text-wrap: balance;
-  max-width: 18ch;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.1;
-}
-
-.cta-section p {
-  max-width: 540px;
-  margin: 0 auto 2.5rem;
-  color: var(--taco-text-on-dark-dim);
-  line-height: 1.65;
-  font-size: 1rem;
-  text-wrap: balance;
-}
 
 .cta-note {
-  margin-top: 1.25rem;
-  font-size: 0.8rem;
-  color: var(--taco-text-on-dark-dim);
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  font-family: var(--taco-font-ui);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(244, 239, 228, 0.45);
+  border-top: 1px solid rgba(244, 239, 228, 0.1);
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .cta-note a {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(244, 239, 228, 0.65);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+/* CTA is always warm-dark — override outline button colors here */
+.cta-section .button--outline-light {
+  color: var(--taco-paper);
+  border-color: var(--taco-paper);
+  background: transparent;
+}
+
+.cta-section .button--outline-light:hover {
+  background: var(--taco-paper);
+  color: var(--taco-ink);
+  border-color: var(--taco-paper);
 }
 
 .cta-note a:hover {
@@ -1293,21 +1694,25 @@ main {
 .hero__install {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  padding: 0.4rem 0.55rem 0.4rem 1.1rem;
+  gap: 0.65rem;
+  background: transparent;
+  border: 1px solid var(--taco-border);
+  border-radius: 2px;
+  padding: 0.5rem 0.65rem 0.5rem 0.9rem;
   margin-bottom: 1.5rem;
   font-family: var(--ifm-font-family-monospace);
-  font-size: 0.83rem;
-  color: var(--taco-text-on-dark);
-  backdrop-filter: blur(8px);
+  font-size: 0.82rem;
+  color: var(--taco-ink);
   transition: border-color 0.15s ease;
 }
 
+[data-theme='dark'] .hero__install {
+  color: var(--taco-paper);
+  border-color: var(--taco-border-strong);
+}
+
 .hero__install:hover {
-  border-color: rgba(234, 179, 8, 0.4);
+  border-color: var(--taco-clay);
 }
 
 .hero__install code {
@@ -1319,9 +1724,9 @@ main {
 
 .hero__install::before {
   content: '$';
-  color: var(--taco-text-on-dark-quiet);
+  color: var(--taco-clay);
   margin-right: 0.25rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* ============================================================
@@ -1345,23 +1750,52 @@ main {
    ============================================================ */
 
 .what-is-taco {
-  max-width: 720px;
-  margin: 0 auto;
-  text-align: center;
-  font-size: 1.15rem;
-  line-height: 1.8;
+  max-width: 62ch;
+  margin: 0 0 2.5rem;
+  text-align: left;
+  font-family: var(--taco-font-body);
+  font-size: 1.1rem;
+  line-height: 1.65;
+  color: var(--taco-ink-soft);
+  font-variation-settings: 'opsz' 16, 'SOFT' 30, 'wght' 400;
+}
+
+[data-theme='dark'] .what-is-taco {
   color: var(--taco-text-secondary);
 }
 
+.what-is-taco p {
+  margin: 0;
+}
+
+/* Drop cap on the lead paragraph */
+.what-is-taco p:first-of-type::first-letter {
+  font-family: var(--taco-font-display);
+  font-style: italic;
+  font-weight: 400;
+  float: left;
+  font-size: 4em;
+  line-height: 0.85;
+  padding: 0.05em 0.15em 0 0;
+  margin-top: 0.05em;
+  color: var(--taco-clay);
+  font-variation-settings: 'opsz' 144, 'SOFT' 70;
+}
+
 .what-is-taco strong {
-  color: var(--taco-text);
+  color: var(--taco-ink);
   font-weight: 600;
+}
+
+[data-theme='dark'] .what-is-taco strong {
+  color: var(--taco-paper);
 }
 
 .what-is-taco .what-is-taco__tagline {
   margin-top: 1.25rem;
   font-size: 0.95rem;
-  color: var(--taco-text-secondary);
+  color: var(--taco-stone);
+  font-style: italic;
 }
 
 /* ============================================================
@@ -5584,50 +6018,59 @@ main .container > ul {
    Logo Strip — "Built on" (clean)
    ============================================================ */
 
+/* Editorial colophon-style strip: cream, italic mono label, serif links */
 .logo-strip {
-  background: rgba(15, 23, 42, 0.97);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 1rem 0;
+  background: var(--taco-paper-deep);
+  border-top: 1px solid var(--taco-border-hairline);
+  border-bottom: 1px solid var(--taco-border-hairline);
+  padding: 1.25rem 0;
 }
 
 [data-theme='dark'] .logo-strip {
-  background: #06090f;
+  background: var(--taco-surface-card);
 }
 
 .logo-strip .container {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: center;
-  gap: 1rem 1.75rem;
+  gap: 1.75rem;
   flex-wrap: wrap;
 }
 
 .logo-strip__label {
-  font-family: var(--ifm-font-family-monospace);
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: var(--taco-text-on-dark-quiet);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
+  font-family: var(--taco-font-display);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--taco-stone);
+  letter-spacing: -0.005em;
+  font-variation-settings: 'opsz' 24, 'SOFT' 50;
 }
 
 .logo-strip__logos {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 1.5rem;
   flex-wrap: wrap;
 }
 
 .logo-strip__link {
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--taco-text-on-dark-dim);
+  font-family: var(--taco-font-ui);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--taco-ink);
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
+[data-theme='dark'] .logo-strip__link {
+  color: var(--taco-paper);
+}
+
 .logo-strip__link:hover {
-  color: var(--taco-gold);
+  color: var(--taco-clay);
   text-decoration: none;
 }
 

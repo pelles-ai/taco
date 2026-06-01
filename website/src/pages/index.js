@@ -42,14 +42,16 @@ function FadeIn({children, className = ''}) {
   );
 }
 
-/* Numbered eyebrow: 0X ── LABEL */
+/* Magazine-style section head: big serif numeral + thin rule + small label */
 function SectionEyebrow({num, children}) {
   return (
-    <span className="section__eyebrow">
-      <span className="section__num">{num}</span>
-      <span className="section__rule" aria-hidden="true" />
-      <span className="section__eyebrow-label">{children}</span>
-    </span>
+    <div className="section__head">
+      <div className="section__num" aria-hidden="true">{num}</div>
+      <div className="section__head-body">
+        <span className="section__head-rule" aria-hidden="true" />
+        <span className="section__head-label">{children}</span>
+      </div>
+    </div>
   );
 }
 
@@ -61,49 +63,73 @@ function SectionEyebrow({num, children}) {
 function HeroSection() {
   return (
     <header className="hero--taco">
-      <div className="container hero__inner">
-        <div className="hero__marker">
-          <span className="hero__marker-rule" aria-hidden="true" />
-          Protocol · v0.3 · Apache 2.0
-        </div>
-
-        <Heading as="h1" className="hero__title">
-          The protocol for <em className="hero__title-em">construction</em>{' '}
-          agents.
-        </Heading>
-        <p className="hero__tldr">
-          Your project runs ten platforms. Each one's API is a custom
-          integration. TACO is the open standard that lets construction agents
-          and platforms actually talk to each other.
-        </p>
-
-        <div className="hero__cta-block">
-          <div className="hero__install">
-            <code>pip install taco-agent</code>
-            <CopyButton text="pip install taco-agent" />
+      <div className="container hero__grid">
+        <div className="hero__main">
+          <div className="hero__marker">
+            <span className="hero__marker-rule" aria-hidden="true" />
+            Protocol · v0.3 · Apache 2.0
           </div>
-          <div className="hero__buttons">
-            <Link
-              className="button button--lg button--accent"
-              to="/docs/getting-started/quick-start">
-              Get Started &rarr;
-            </Link>
-            <Link
-              className="button button--lg button--outline-light"
-              href="https://github.com/pelles-ai/taco">
-              <svg viewBox="0 0 16 16" aria-hidden="true" className="hero__btn-icon">
-                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-              </svg>
-              Source
-            </Link>
+
+          <Heading as="h1" className="hero__title">
+            The protocol for <em className="hero__title-em">construction</em>{' '}
+            agents.
+          </Heading>
+          <p className="hero__tldr">
+            Your project runs ten platforms. Each one's API is a custom
+            integration. TACO is the open standard that lets construction
+            agents and platforms actually talk to each other.
+          </p>
+
+          <div className="hero__cta-block">
+            <div className="hero__install">
+              <code>pip install taco-agent</code>
+              <CopyButton text="pip install taco-agent" />
+            </div>
+            <div className="hero__buttons">
+              <Link
+                className="button button--lg button--accent"
+                to="/docs/getting-started/quick-start">
+                Get Started &rarr;
+              </Link>
+              <Link
+                className="button button--lg button--outline-light"
+                href="https://github.com/pelles-ai/taco">
+                <svg viewBox="0 0 16 16" aria-hidden="true" className="hero__btn-icon">
+                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                </svg>
+                Source
+              </Link>
+            </div>
+          </div>
+
+          <div className="hero__links">
+            <Link to="/sandbox" className="hero__link">Try it in your browser</Link>
+            <Link to="/conformance" className="hero__link">Test your agent live</Link>
+            <Link to="/docs/cookbook/" className="hero__link">5 recipes · 18 task types</Link>
           </div>
         </div>
 
-        <div className="hero__links">
-          <Link to="/sandbox" className="hero__link">Try it in your browser</Link>
-          <Link to="/conformance" className="hero__link">Test your agent live</Link>
-          <Link to="/docs/cookbook/" className="hero__link">5 recipes · 18 task types</Link>
-        </div>
+        <aside className="hero__poster" aria-hidden="true">
+          <div className="hero__poster-frame">
+            <div className="hero__poster-letters">
+              <span className="hero__poster-letter hero__poster-letter--t">T</span>
+              <span className="hero__poster-letter hero__poster-letter--a">A</span>
+              <span className="hero__poster-letter hero__poster-letter--c">C</span>
+              <span className="hero__poster-letter hero__poster-letter--o">O</span>
+            </div>
+            <div className="hero__poster-rule" />
+            <div className="hero__poster-caption">
+              <span>The</span>
+              <span><em>A2A</em></span>
+              <span>Construction</span>
+              <span>Open-standard.</span>
+            </div>
+            <div className="hero__poster-meta">
+              <span>EST. 2026</span>
+              <span>Pelles.ai</span>
+            </div>
+          </div>
+        </aside>
       </div>
     </header>
   );
@@ -220,7 +246,7 @@ const standardizationRows = [
 function StandardizationSection() {
   return (
     <FadeIn>
-      <section className="section section--alt section--left">
+      <section className="section section--cobalt section--left">
         <div className="container">
           <SectionEyebrow num="03">The Layer</SectionEyebrow>
           <Heading as="h2" className="section__heading">
