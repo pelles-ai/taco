@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://taco-protocol.dev/schemas/estimate-v1.json",
+  "title": "TACO Cost Estimate v1",
+  "description": "Standardized cost estimate for construction workflows",
+  "type": "object",
+  "required": ["projectId", "trade", "csiDivision", "lineItems", "summary", "metadata"],
+  "properties": {
+    "projectId": {
+      "type": "string",
+      "description": "Unique project identifier"
+    },
+    "trade": {
+      "type": "string",
+      "description": "Trade this estimate covers",
+      "enum": ["mechanical", "electrical", "plumbing", "structural", "civil", "architectural", "fire-protection", "general", "multi-trade"]
+    },
+    "csiDivision": {
+      "type": "string",
+      "description": "Primary CSI MasterFormat division number"
+    },
+    "lineItems": {
+      "type": "array",
+      "description": "Individual cost line items corresponding to BOM entries",
+      "items": {
+        "type": "object",
+        "required": ["bomItemId", "description", "quantity", "unit", "materialUnitCost", "materialTotal", "laborHours", "laborRate", "laborTotal", "subtotal"],
+        "properties": {
+          "bomItemId": {
+            "type": "string",
+            "description": "Reference to the source BOM line item ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable item description"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity from the BOM"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of measure"
+          },
+          "materialUnitCost": {
+            "type": "number",
+            "description": "Cost per unit of material"
+          },
+          "materialTotal": {
+            "type": "number",
+            "description": "Total material cost (quantity x unit cost)"
+          },
+          "laborHours": {
+            "type": "number",
+            "description": "Estimated labor hours for installation"
+          },
+          "laborRate": {
+            "type": "number",
+            "description": "Hourly labor rate"
+          },
+          "laborTotal": {
+            "type": "number",
+            "description": "Total labor cost (hours x rate)"
+          },
+          "equipmentCost": {
+            "type": "number",
+            "description": "Equipment rental/usage cost for installation"
+          },
+          "subtotal": {
+            "type": "number",
+            "description": "Line item total (material + labor + equipment)"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["totalMaterial", "totalLabor", "totalEquipment", "subtotal", "overheadPercentage", "overheadAmount", "profitPercentage", "profitAmount", "grandTotal"],
+      "properties": {
+        "totalMaterial": {
+          "type": "number",
+          "description": "Sum of all material costs"
+        },
+        "totalLabor": {
+          "type": "number",
+          "description": "Sum of all labor costs"
+        },
+        "totalEquipment": {
+          "type": "number",
+          "description": "Sum of all equipment costs"
+        },
+        "subtotal": {
+          "type": "number",
+          "description": "Total before overhead and profit"
+        },
+        "overheadPercentage": {
+          "type": "number",
+          "description": "Overhead as a percentage (e.g., 12 for 12%)"
+        },
+        "overheadAmount": {
+          "type": "number",
+          "description": "Calculated overhead amount"
+        },
+        "profitPercentage": {
+          "type": "number",
+          "description": "Profit margin as a percentage (e.g., 10 for 10%)"
+        },
+        "profitAmount": {
+          "type": "number",
+          "description": "Calculated profit amount"
+        },
+        "grandTotal": {
+          "type": "number",
+          "description": "Final estimate total (subtotal + overhead + profit)"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["generatedBy", "generatedAt"],
+      "properties": {
+        "generatedBy": {
+          "type": "string",
+          "description": "Agent ID that generated this estimate"
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of generation"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall confidence score (0-1)"
+        },
+        "pricingRegion": {
+          "type": "string",
+          "description": "Geographic region for pricing basis (e.g., 'US-National', 'US-Northeast')"
+        },
+        "pricingDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Date the pricing data is based on"
+        },
+        "notes": {
+          "type": "array",
+          "description": "Additional notes or assumptions",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

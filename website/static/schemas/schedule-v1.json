@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://taco-protocol.dev/schemas/schedule-v1.json",
+  "title": "TACO schedule-v1",
+  "description": "Project schedule with activities, dependencies, milestones, and resource assignments",
+  "type": "object",
+  "required": ["projectId", "activities", "metadata"],
+  "properties": {
+    "projectId": {
+      "type": "string",
+      "description": "Project identifier"
+    },
+    "startDate": {
+      "type": "string",
+      "description": "Project start date"
+    },
+    "endDate": {
+      "type": "string",
+      "description": "Project end date"
+    },
+    "activities": {
+      "type": "array",
+      "minItems": 1,
+      "description": "List of scheduled activities (IDs must be unique)",
+      "items": { "$ref": "#/$defs/ScheduleActivity" }
+    },
+    "milestones": {
+      "type": "array",
+      "description": "List of project milestones",
+      "items": { "$ref": "#/$defs/ScheduleMilestone" }
+    },
+    "metadata": { "$ref": "#/$defs/ScheduleMetadata" }
+  },
+  "$defs": {
+    "ScheduleActivity": {
+      "type": "object",
+      "required": ["id", "name", "durationDays"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique activity identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Activity name"
+        },
+        "trade": {
+          "type": "string",
+          "description": "Associated trade"
+        },
+        "durationDays": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Duration in days"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Activity start date"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "Activity end date"
+        },
+        "predecessors": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IDs of predecessor activities"
+        },
+        "successors": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IDs of successor activities"
+        },
+        "percentComplete": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Completion percentage"
+        },
+        "isCritical": {
+          "type": "boolean",
+          "description": "Whether the activity is on the critical path"
+        },
+        "resources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Assigned resources"
+        }
+      }
+    },
+    "ScheduleMilestone": {
+      "type": "object",
+      "required": ["id", "name", "date"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique milestone identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Milestone name"
+        },
+        "date": {
+          "type": "string",
+          "description": "Milestone date"
+        },
+        "isMet": {
+          "type": "boolean",
+          "description": "Whether the milestone has been achieved"
+        }
+      }
+    },
+    "ScheduleMetadata": {
+      "type": "object",
+      "required": ["generatedBy", "generatedAt"],
+      "properties": {
+        "generatedBy": {
+          "type": "string",
+          "description": "System or agent that generated the schedule"
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO-8601 timestamp"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score"
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional notes"
+        }
+      }
+    }
+  }
+}

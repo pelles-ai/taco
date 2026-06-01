@@ -1,11 +1,16 @@
 ---
 sidebar_position: 6
-title: SDK Reference
+title: SDK Guide
+description: How to use the TACO Python SDK — models, A2A server framework, async client, agent registry, and CLI for building construction agents.
 ---
 
-# SDK Reference
+# SDK Guide
 
 The TACO Python SDK provides models, a server framework, a client, and an agent registry for building A2A-compatible construction agents.
+
+:::tip Looking for per-symbol details?
+This page is the high-level guide. For the full signature, docstring, and source link of every public class, method, and function, see the auto-generated [**SDK Reference**](./sdk-reference/).
+:::
 
 ## Installation
 

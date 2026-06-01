@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://taco-protocol.dev/schemas/change-order-v1.json",
+  "title": "TACO change-order-v1",
+  "description": "Change order with cost impact, schedule impact, and scope modifications",
+  "type": "object",
+  "required": ["projectId", "changeOrderNumber", "title", "reason", "status", "lineItems", "totalCostImpact", "metadata"],
+  "properties": {
+    "projectId": {
+      "type": "string",
+      "description": "Project identifier"
+    },
+    "changeOrderNumber": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Change order number"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Change order title"
+    },
+    "reason": {
+      "type": "string",
+      "enum": ["design-change", "unforeseen-condition", "owner-request", "value-engineering", "code-compliance", "error-omission"],
+      "description": "Reason for the change order"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "submitted", "approved", "rejected", "withdrawn"],
+      "description": "Current status"
+    },
+    "lineItems": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Line items with cost and schedule impact",
+      "items": { "$ref": "#/$defs/ChangeOrderLineItem" }
+    },
+    "totalCostImpact": {
+      "type": "number",
+      "description": "Total cost impact (can be negative for savings)"
+    },
+    "totalScheduleImpactDays": {
+      "type": "integer",
+      "description": "Total schedule impact in days"
+    },
+    "relatedRfis": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Related RFI identifiers"
+    },
+    "metadata": { "$ref": "#/$defs/ChangeOrderMetadata" }
+  },
+  "$defs": {
+    "ChangeOrderLineItem": {
+      "type": "object",
+      "required": ["id", "description", "costImpact"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique line item identifier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the change"
+        },
+        "trade": {
+          "type": "string",
+          "description": "Associated trade"
+        },
+        "costImpact": {
+          "type": "number",
+          "description": "Cost impact (negative for credits/savings)"
+        },
+        "scheduleImpactDays": {
+          "type": "integer",
+          "description": "Schedule impact in days"
+        },
+        "bomItemIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Related BOM item identifiers"
+        }
+      }
+    },
+    "ChangeOrderMetadata": {
+      "type": "object",
+      "required": ["generatedBy", "generatedAt"],
+      "properties": {
+        "generatedBy": {
+          "type": "string",
+          "description": "System or agent that generated the change order"
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO-8601 timestamp"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score"
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional notes"
+        }
+      }
+    }
+  }
+}

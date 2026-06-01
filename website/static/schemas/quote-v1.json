@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://taco-protocol.dev/schemas/quote-v1.json",
+  "title": "TACO Supplier Quote v1",
+  "description": "Standardized supplier quote for construction material procurement",
+  "type": "object",
+  "required": ["projectId", "supplierName", "quoteNumber", "validUntil", "lineItems", "summary", "terms", "metadata"],
+  "properties": {
+    "projectId": {
+      "type": "string",
+      "description": "Unique project identifier"
+    },
+    "supplierName": {
+      "type": "string",
+      "description": "Name of the quoting supplier"
+    },
+    "quoteNumber": {
+      "type": "string",
+      "description": "Supplier's quote reference number"
+    },
+    "validUntil": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the quote expires"
+    },
+    "lineItems": {
+      "type": "array",
+      "description": "Individual quoted items corresponding to BOM entries",
+      "items": {
+        "type": "object",
+        "required": ["bomItemId", "description", "quantity", "unit", "unitPrice", "extendedPrice", "manufacturer", "partNumber", "leadTimeDays", "availability"],
+        "properties": {
+          "bomItemId": {
+            "type": "string",
+            "description": "Reference to the source BOM line item ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable item description"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quoted quantity"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of measure"
+          },
+          "unitPrice": {
+            "type": "number",
+            "description": "Price per unit"
+          },
+          "extendedPrice": {
+            "type": "number",
+            "description": "Total price (quantity x unit price)"
+          },
+          "manufacturer": {
+            "type": "string",
+            "description": "Manufacturer name"
+          },
+          "partNumber": {
+            "type": "string",
+            "description": "Manufacturer part number"
+          },
+          "leadTimeDays": {
+            "type": "integer",
+            "description": "Estimated delivery lead time in days"
+          },
+          "availability": {
+            "type": "string",
+            "description": "Current stock status",
+            "enum": ["in-stock", "made-to-order", "backordered"]
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional notes about this line item"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["subtotal", "taxRate", "taxAmount", "freight", "total"],
+      "properties": {
+        "subtotal": {
+          "type": "number",
+          "description": "Sum of all extended prices"
+        },
+        "taxRate": {
+          "type": "number",
+          "description": "Applicable tax rate (e.g., 0.08 for 8%)"
+        },
+        "taxAmount": {
+          "type": "number",
+          "description": "Calculated tax amount"
+        },
+        "freight": {
+          "type": "number",
+          "description": "Estimated freight/shipping cost"
+        },
+        "total": {
+          "type": "number",
+          "description": "Grand total (subtotal + tax + freight)"
+        }
+      }
+    },
+    "terms": {
+      "type": "object",
+      "required": ["paymentTerms", "deliveryMethod", "warranty", "returnPolicy"],
+      "properties": {
+        "paymentTerms": {
+          "type": "string",
+          "description": "Payment terms (e.g., 'Net 30')"
+        },
+        "deliveryMethod": {
+          "type": "string",
+          "description": "Delivery/shipping method"
+        },
+        "warranty": {
+          "type": "string",
+          "description": "Warranty terms"
+        },
+        "returnPolicy": {
+          "type": "string",
+          "description": "Return/cancellation policy"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["generatedBy", "generatedAt"],
+      "properties": {
+        "generatedBy": {
+          "type": "string",
+          "description": "Agent ID that generated this quote"
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of generation"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall confidence score (0-1)"
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,7 @@
 ---
 sidebar_position: 3
 title: Agent Card Extensions
+description: The `x-construction` extension adds trade, CSI division, project type, and platform integration metadata to standard A2A Agent Cards.
 ---
 
 # Agent Card Extensions

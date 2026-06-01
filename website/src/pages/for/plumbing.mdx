@@ -1,0 +1,141 @@
+---
+title: TACO for Plumbing Trades
+description: How plumbing contractors use TACO — water service, sanitary, storm, medical gas, and the supplier-heavy procurement that drives plumbing's lead-time risk. Typed BOMs that round-trip across designers, GCs, and PHCP wholesalers.
+---
+
+import AudienceHero from '@site/src/components/AudienceHero';
+import {Capability, CapabilityGrid} from '@site/src/components/Capability';
+import RecipeRail from '@site/src/components/RecipeRail';
+import SequenceDiagram from '@site/src/components/SequenceDiagram';
+
+<AudienceHero
+  role="Plumbing Trades"
+  title="Water service, sanitary, storm, and medical gas — typed for the supplier-heavy workflow plumbing actually has"
+  subtitle="Plumbing scope lives in CSI division 22, with crossings into 33 (site utilities) and 23 (mechanical equipment with plumbing connections). The hard part isn't the takeoff; it's the supplier and lead-time coordination across PHCP wholesalers. TACO gives you typed handoffs across the chain."
+  primaryCta={{label: 'Build a plumbing agent', to: '/docs/getting-started/build-agent'}}
+  secondaryCta={{label: 'BOM-to-Quote Marketplace', to: '/docs/cookbook/bom-to-quote-marketplace'}}
+/>
+
+## Where TACO fits your scope
+
+Plumbing lives primarily in **CSI division 22 (Plumbing)** with frequent crossings into **33 (Site Utilities)** for water service and storm drainage, and **23 (HVAC)** for hydronic piping shared with mechanical scope. The TACO `bom-v1` and `quote-v1` schemas were designed with this kind of multi-division-but-trade-coherent scope in mind.
+
+What's *different* about plumbing vs. mechanical:
+
+- **The supplier ecosystem is fragmented.** Plumbing wholesalers (Ferguson, F.W. Webb, Hajoca, Winsupply, regional independents) compete on inventory and lead time more than on price. A typed quote that includes per-item lead time is more valuable than one that doesn't.
+- **Medical gas is its own world.** Spec sections 22 60–66 (medical gas) require certified installers and dedicated suppliers; treat it as a separate skill or sub-agent rather than as a normal plumbing scope item.
+- **Water-authority approvals add lifecycle steps.** Tap permits, backflow assemblies, water meter sizing — these are coordination tasks the orchestrator should know about, not pure scope items.
+- **Service vs. trim split.** Underground / rough-in scope is sequenced very differently from finish trim, and they often go to different procurement cycles.
+
+The handoffs that matter:
+
+<CapabilityGrid>
+  <Capability
+    title="Supplier quote loops that respect lead time"
+    description="Plumbing wholesalers' quote agents return quote-v1 with per-item leadTimeDays. The schedule-aware procurement recipe catches mismatches against rough-in start dates — critical when slab pours can't move."
+    link={{label: 'Schedule-Aware Procurement', to: '/docs/cookbook/schedule-aware-procurement'}}
+  />
+  <Capability
+    title="Multi-wholesaler price + availability leveling"
+    description="The fan-out-and-level pattern is plumbing-native. Five wholesalers, same BOM, instant comparison on price + lead time + manufacturer alignment. Stop maintaining a spreadsheet of who's quoting what."
+    link={{label: 'BOM-to-Quote Marketplace', to: '/docs/cookbook/bom-to-quote-marketplace'}}
+  />
+  <Capability
+    title="Code-compliance audits for water and waste"
+    description="A spec-compliance-check agent verifies pipe sizing against IPC/UPC tables, backflow placement, vent sizing, and trap arms. Catches code issues at takeoff time instead of inspection time."
+    link={{label: 'Task types', to: '/docs/task-types'}}
+  />
+  <Capability
+    title="Designer RFI round-trips"
+    description="Plumbing RFIs are heavy on routing conflicts — pipes through beams, conflicts with electrical conduit, sleeve placement. Typed rfi-v1 with sheet references and bounding boxes routes to the right design discipline faster than a portal."
+    link={{label: 'RFI Round-trip', to: '/docs/cookbook/rfi-round-trip'}}
+  />
+</CapabilityGrid>
+
+## Schema fit for plumbing
+
+`bom-v1` line items applied to plumbing scope:
+
+| Field | Plumbing example |
+|------|---------------------|
+| `description` | `"Copper Type L domestic cold water, hard-drawn"` |
+| `quantity` | `1280` |
+| `unit` | `LF` for piping; `EA` for fixtures + valves + meters; `LS` for installation packages |
+| `size` | `"1 inch"` for piping, `"4 inch"` for service, fixture model numbers for trim |
+| `material` | `"copper"`, `"PEX"`, `"CPVC"`, `"cast-iron"`, `"PVC"`, `"PP"`, `"stainless"` |
+| `specSection` | `"22 11 16"` for domestic water distribution, `"22 13 16"` for sanitary, `"22 60 00"` for medical gas |
+| `sourceSheet` | `"P-201"` (water service), `"P-301"` (sanitary), `"PM-101"` (medical gas) |
+| `location` | `"Level 2 Wing B"`, `"Building service entrance"`, `"OR-1 Med Gas wall"` |
+| `alternates[]` | acceptable substitutions (PEX in place of copper, PVC in place of cast-iron for sanitary above-grade) |
+
+A field worth highlighting for plumbing: **`metadata.flaggedItems[]`**. Plumbing takeoffs reliably produce items needing human review — unusual fitting sizes, ambiguous fixture model numbers, missing valve specifications. Surface them in `flaggedItems` so the estimator (or human PM) catches them before quotes go out.
+
+## A typical plumbing workflow
+
+<SequenceDiagram
+  actors={[
+    {id: 'gc', label: 'GC Orchestrator', sub: ''},
+    {id: 'audit', label: 'Code Auditor', sub: 'IPC/UPC compliance'},
+    {id: 'est', label: 'Plumbing Estimator', sub: 'your shop'},
+    {id: 'sup', label: 'Wholesaler', sub: 'fan-out across 3-5'},
+  ]}
+  messages={[
+    {from: 'gc', to: 'audit', label: 'code check', schema: 'bom-v1'},
+    {from: 'audit', to: 'gc', label: 'returns', schema: 'rfi-v1', kind: 'return'},
+    {from: 'gc', to: 'est', label: 'estimate', schema: 'bom-v1'},
+    {from: 'est', to: 'gc', label: 'returns', schema: 'estimate-v1', kind: 'return'},
+    {from: 'gc', to: 'sup', label: 'price + lead time (fan-out)', schema: 'bom-v1'},
+    {from: 'sup', to: 'gc', label: 'returns quotes', schema: 'quote-v1', kind: 'return'},
+  ]}
+/>
+
+The wholesaler hop is the high-value one. Fan out across three to five wholesalers using the [BOM-to-Quote Marketplace pattern](/docs/cookbook/bom-to-quote-marketplace), then level on the policy your project actually cares about — usually a combination of total price, lead time relative to rough-in start, and preferred-supplier rebate programs.
+
+## Platforms typically integrated
+
+- **Estimating** — Trimble FastPIPE (purpose-built for plumbing), Trimble Accubid, McCormick, ConWize, PlanSwift with plumbing tags
+- **Design** — Revit MEP, AutoCAD MEP, Plumber's CAD (Trimble), CADpipe
+- **Wholesaler catalogs** — Ferguson, F.W. Webb, Hajoca, Winsupply (each has its own API; sidecar pattern wraps them)
+- **Coordination** — Navisworks, Revizto
+- **Project management** — Procore, ACC, Sage 300 (common in mid-sized plumbing shops)
+
+Declare your relevant `integrations[]` on the agent card so GC orchestrators that already speak the same wholesalers find you naturally.
+
+## Common plumbing-specific pitfalls
+
+**Mixing copper grades silently.** Type L, Type M, and Type K copper have different costs and code allowances. A takeoff that lumps them as "copper" loses material information the estimator needs. Use `material: "copper-L"` (or whatever your convention is) — pick one and document it.
+
+**Medical gas in a normal plumbing skill.** Medical gas requires NFPA 99 certified installers, dedicated brazing, and specialty supplier networks (Praxair, Linde, Air Products). Don't expose medical gas as a normal plumbing skill — declare a separate `medical-gas-installation` skill or sub-agent with appropriate `csi_divisions: ["22"]` and a note in the description. Mixing the two in one estimator produces underbid pricing.
+
+**Service entrance forgotten.** The water service from the main to the building is often a separate scope (under CSI 33 site utilities) and often a separate cost basis (water authority fees, tap permits, meter sizing). If your takeoff agent silently includes or excludes the service entrance, downstream estimates will be off by a large amount. Be explicit in `metadata.notes`.
+
+**Backflow assemblies treated as line items.** A backflow preventer is a line item with installation costs, but it's also a code-required device with testing certification and ongoing inspection schedule. Track it in the BOM, but flag it in `flaggedItems` so commissioning and operations are aware.
+
+**Storm vs sanitary confusion.** Storm and sanitary look similar in BIM but have very different code requirements and pipe materials. If your takeoff agent is reading from a model with poor system tagging, it will silently mix them. Validate against the spec section (`22 13` for sanitary, `22 14` for storm).
+
+## Curated for plumbing readers
+
+<RecipeRail
+  slugs={[
+    'bom-to-quote-marketplace',
+    'schedule-aware-procurement',
+    'gc-estimator-supplier-chain',
+    'rfi-round-trip',
+  ]}
+/>
+
+## How to start
+
+1. **Build a stub.** Follow [Build a Custom Agent](/docs/getting-started/build-agent). Declare `trade: "plumbing"`, `csi_divisions: ["22"]` (add `"33"` if you do site utilities, `"23"` for hydronic crossover).
+2. **Pick one skill first.** Most plumbing shops start with `estimate`. Add `material-procurement` later when you're ready to wrap your wholesaler integrations.
+3. **Add code-compliance audit as a differentiator.** A `spec-compliance-check` skill that validates against IPC/UPC tables makes you genuinely valuable to a GC orchestrator beyond pricing.
+4. **Run the conformance runner.** [`/conformance`](/conformance) catches structural issues before any GC's orchestrator filters you out.
+
+## See also
+
+- [For Mechanical Trades](./mechanical) — the sibling page; mechanical and plumbing overlap on division 22
+- [For Subcontractors](./subcontractor) — broader sub-side framing
+- [Stafford Mechanical onboarding case study](/docs/case-studies/stafford-mechanical-onboarding) — a regional mechanical sub's adoption path; the pattern translates directly to plumbing shops
+- [Build a Custom Agent](/docs/getting-started/build-agent)
+- [Best Practices](/docs/best-practices)
+- [Common Pitfalls](/docs/pitfalls)

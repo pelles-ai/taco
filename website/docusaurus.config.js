@@ -1,12 +1,41 @@
 // @ts-check
 
+import {execFileSync} from 'node:child_process';
 import {themes as prismThemes} from 'prism-react-renderer';
+
+/**
+ * Single source of truth for the displayed SDK version.
+ * Reads the latest semver git tag (e.g. `v0.3.11`) at build time and falls back
+ * to a hardcoded constant when git is unavailable (sandbox, fresh tarball).
+ */
+function readSdkVersion() {
+  const fallback = '0.3.11';
+  try {
+    const tag = execFileSync(
+      'git',
+      ['describe', '--tags', '--abbrev=0', '--match', 'v*'],
+      {stdio: ['ignore', 'pipe', 'ignore']},
+    )
+      .toString()
+      .trim();
+    return tag.startsWith('v') ? tag.slice(1) : tag;
+  } catch {
+    return fallback;
+  }
+}
+
+const SDK_VERSION = readSdkVersion();
+const SDK_VERSION_MAJOR_MINOR = SDK_VERSION.split('.').slice(0, 2).join('.');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'TACO',
-  tagline: 'The A2A Construction Open-standard',
+  tagline: 'The protocol for construction agents',
   favicon: 'img/favicon.ico',
+
+  customFields: {
+    sdkVersion: SDK_VERSION,
+  },
 
   future: {
     v4: true,
@@ -48,6 +77,28 @@ const config = {
       },
     },
     {
+      tagName: 'link',
+      attributes: {
+        rel: 'preconnect',
+        href: 'https://fonts.googleapis.com',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preconnect',
+        href: 'https://fonts.gstatic.com',
+        crossorigin: 'anonymous',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,0..100;1,9..144,300..700,0..100&display=swap',
+      },
+    },
+    {
       tagName: 'meta',
       attributes: {
         name: 'keywords',
@@ -69,7 +120,7 @@ const config = {
         applicationCategory: 'DeveloperApplication',
         operatingSystem: 'Cross-platform',
         license: 'https://opensource.org/licenses/Apache-2.0',
-        version: '0.2.5',
+        softwareVersion: SDK_VERSION,
         codeRepository: 'https://github.com/pelles-ai/taco',
         url: 'https://taco-protocol.com',
       }),
@@ -89,6 +140,8 @@ const config = {
         docs: {
           sidebarPath: './sidebars.js',
           editUrl: 'https://github.com/pelles-ai/taco/tree/main/website/',
+          showLastUpdateTime: true,
+          showLastUpdateAuthor: true,
         },
         blog: {
           showReadingTime: true,
@@ -98,6 +151,27 @@ const config = {
         theme: {
           customCss: './src/css/custom.css',
         },
+      }),
+    ],
+  ],
+
+  plugins: [
+    './plugins/og-images',
+  ],
+
+  themes: [
+    [
+      '@easyops-cn/docusaurus-search-local',
+      /** @type {import('@easyops-cn/docusaurus-search-local').PluginOptions} */
+      ({
+        hashed: true,
+        indexBlog: true,
+        indexDocs: true,
+        indexPages: true,
+        docsRouteBasePath: '/docs',
+        highlightSearchTermsOnTargetPage: true,
+        explicitSearchResultPath: true,
+        searchBarShortcutHint: false,
       }),
     ],
   ],
@@ -135,6 +209,39 @@ const config = {
             position: 'left',
           },
           {
+            to: '/docs/cookbook/',
+            label: 'Cookbook',
+            position: 'left',
+          },
+          {
+            type: 'dropdown',
+            label: 'For',
+            position: 'left',
+            items: [
+              {to: '/for/general-contractor', label: 'General Contractors'},
+              {to: '/for/owner', label: 'Owners'},
+              {to: '/for/subcontractor', label: 'Subcontractors'},
+              {to: '/for/platform-vendor', label: 'Platform Vendors'},
+              {type: 'html', value: '<hr style="margin: 0.3rem 0;">'},
+              {to: '/for/mechanical', label: 'Mechanical Trades'},
+              {to: '/for/electrical', label: 'Electrical Trades'},
+              {to: '/for/plumbing', label: 'Plumbing Trades'},
+              {to: '/for/structural', label: 'Structural Trades'},
+              {type: 'html', value: '<hr style="margin: 0.3rem 0;">'},
+              {to: '/for/', label: 'All roles & trades'},
+            ],
+          },
+          {
+            to: '/sandbox',
+            label: 'Sandbox',
+            position: 'left',
+          },
+          {
+            to: '/conformance',
+            label: 'Conformance',
+            position: 'left',
+          },
+          {
             href: 'https://github.com/pelles-ai/taco/tree/main/spec',
             label: 'Spec',
             position: 'left',
@@ -152,8 +259,7 @@ const config = {
           {
             type: 'html',
             position: 'right',
-            value:
-              '<a href="https://pypi.org/project/taco-agent/" target="_blank" rel="noopener noreferrer" class="navbar__version-badge">v0.2</a>',
+            value: `<a href="https://pypi.org/project/taco-agent/" target="_blank" rel="noopener noreferrer" class="navbar__version-badge" title="taco-agent ${SDK_VERSION}">v${SDK_VERSION_MAJOR_MINOR}</a>`,
           },
           {
             href: 'https://github.com/pelles-ai/taco',

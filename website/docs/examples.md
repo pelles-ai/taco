@@ -1,6 +1,7 @@
 ---
 sidebar_position: 8
 title: Examples
+description: Standalone examples and a full sandbox demo with LLM-powered construction agents you can run locally.
 ---
 
 # Examples

@@ -1,0 +1,85 @@
+---
+title: TACO for Owners
+description: How project owners use TACO to get vendor-independent visibility, enforce data ownership, and avoid lock-in across the construction software stack.
+---
+
+import AudienceHero from '@site/src/components/AudienceHero';
+import {Capability, CapabilityGrid} from '@site/src/components/Capability';
+import RecipeRail from '@site/src/components/RecipeRail';
+import SequenceDiagram from '@site/src/components/SequenceDiagram';
+
+<AudienceHero
+  role="Owners"
+  title="Project data you own, that outlives any single vendor"
+  subtitle="Every artifact on the project — takeoffs, estimates, RFIs, change orders, schedules — flows through typed schemas your team controls. Switch platforms tomorrow without losing your history."
+  primaryCta={{label: 'Why TACO', to: '/docs/why-taco'}}
+  secondaryCta={{label: 'Compare alternatives', to: '/docs/compare'}}
+/>
+
+## What this means for you
+
+<CapabilityGrid>
+  <Capability
+    title="Vendor-independent data layer"
+    description="Procore, ACC, Bluebeam, your custom platform — they each expose their data as the same typed TACO artifacts. Your project record doesn't break when you change vendors."
+    link={{label: 'Compare to proprietary APIs', to: '/docs/compare'}}
+  />
+  <Capability
+    title="Single source of truth across teams"
+    description="The GC's estimator, the architect's coordinator, the supplier's catalog — they all speak the same vocabulary. No more reconciling three versions of the same BOM."
+    link={{label: 'Data Schemas', to: '/docs/schemas/'}}
+  />
+  <Capability
+    title="Auditable change orders"
+    description="Every change order references the typed estimate and schedule it was computed against. Disputes get shorter when the math is reproducible from the source artifacts."
+    link={{label: 'Change Order Impact', to: '/docs/cookbook/change-order-impact'}}
+  />
+  <Capability
+    title="Capacity to require it in RFPs"
+    description="Add 'must expose TACO-compatible agent endpoints' to your next platform RFP. Your project gains interoperability; your vendors compete on quality, not lock-in."
+    link={{label: 'Agent Card Extensions', to: '/docs/agent-card-extensions'}}
+  />
+</CapabilityGrid>
+
+## Why this matters now
+
+The construction software stack used to be one suite per role: a CAD platform, a project management platform, a financials platform. AI is changing that — every team is shopping for or building specialized agents (takeoff, estimating, RFI drafting, safety auditing, scheduling). Without a shared protocol, every one of those agents is a new integration to maintain and a new place your project data sprawls into.
+
+TACO defines a shared vocabulary so the agents you adopt now don't become tomorrow's migration project.
+
+## What a TACO-aware project looks like
+
+<SequenceDiagram
+  actors={[
+    {id: 'owner', label: 'Owner', sub: 'project record'},
+    {id: 'gc', label: 'GC', sub: 'orchestrator'},
+    {id: 'arch', label: 'Architect', sub: 'design agent'},
+    {id: 'sub', label: 'Sub', sub: 'trade agent'},
+  ]}
+  messages={[
+    {from: 'gc', to: 'sub', label: 'request takeoff', schema: 'bom-v1'},
+    {from: 'sub', to: 'gc', label: 'returns', schema: 'bom-v1', kind: 'return'},
+    {from: 'gc', to: 'arch', label: 'route design RFI', schema: 'rfi-v1'},
+    {from: 'arch', to: 'gc', label: 'returns', schema: 'rfi-v1', kind: 'return'},
+    {from: 'gc', to: 'owner', label: 'persist typed artifacts', schema: 'bom-v1 · rfi-v1'},
+  ]}
+/>
+
+Every typed artifact in the chain lands in the owner's project record, regardless of which vendor's tool produced it. That's the leverage point.
+
+## Recipes worth understanding
+
+<RecipeRail
+  slugs={[
+    'gc-estimator-supplier-chain',
+    'change-order-impact',
+    'rfi-round-trip',
+  ]}
+/>
+
+## How to bring it to your projects
+
+1. **Read [Why TACO](/docs/why-taco)** — the framing your team will share with vendors.
+2. **Talk to your GC.** Ask which agents and platforms they're using. Find out which already speak TACO or could with a [sidecar](/docs/getting-started/integrate-platform).
+3. **Update your next RFP.** Require typed artifact outputs and TACO-compatible discovery for any agent-based deliverable.
+4. **Ask vendors for their roadmap.** The construction software stack is moving fast. Vendors that won't commit to an interoperable layer are flagging future migration cost.

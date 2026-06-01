@@ -11,6 +11,7 @@ import CopyButton from '@site/src/components/CopyButton';
 import CountUpStats from '@site/src/components/CountUpStats';
 import HowItWorks from '@site/src/components/HowItWorks';
 import AudiencePaths from '@site/src/components/AudiencePaths';
+import RegistryFilter from '@site/src/components/RegistryFilter';
 
 function useScrollFadeIn() {
   const ref = useRef(null);
@@ -41,6 +42,20 @@ function FadeIn({children, className = ''}) {
   );
 }
 
+/* Magazine-style section head: big serif numeral + thin rule + small label */
+function SectionEyebrow({num, children}) {
+  return (
+    <div className="section__head">
+      <div className="section__num" aria-hidden="true">{num}</div>
+      <div className="section__head-body">
+        <span className="section__head-rule" aria-hidden="true" />
+        <span className="section__head-label">{children}</span>
+      </div>
+    </div>
+  );
+}
+
+
 /* ============================================================
    1. Hero
    ============================================================ */
@@ -48,50 +63,73 @@ function FadeIn({children, className = ''}) {
 function HeroSection() {
   return (
     <header className="hero--taco">
-      <div className="container">
-        <a
-          className="hero__github-badge"
-          href="https://github.com/pelles-ai/taco"
-          target="_blank"
-          rel="noopener noreferrer">
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-          </svg>
-          Star on GitHub
-        </a>
+      <div className="container hero__grid">
+        <div className="hero__main">
+          <div className="hero__marker">
+            <span className="hero__marker-rule" aria-hidden="true" />
+            Protocol · v0.3 · Apache 2.0
+          </div>
 
-        <Heading as="h1" className="hero__title">
-          One Language for Every
-          <br />
-          Construction Agent
-        </Heading>
-        <p className="hero__subtitle">
-          The superintendent's vocabulary, machine-readable
-        </p>
-        <p className="hero__oneliner">
-          TACO is an open-source construction ontology built on the{' '}
-          <a href="https://a2a-protocol.org">A2A protocol</a> (Linux Foundation).
-          It gives every agent — autonomous or sidecar — a common language for
-          tasks, data, and discovery.
-        </p>
+          <Heading as="h1" className="hero__title">
+            The protocol for <em className="hero__title-em">construction</em>{' '}
+            agents.
+          </Heading>
+          <p className="hero__tldr">
+            Your project runs ten platforms. Each one's API is a custom
+            integration. TACO is the open standard that lets construction
+            agents and platforms actually talk to each other.
+          </p>
 
-        <div className="hero__install">
-          <code>pip install taco-agent</code>
-          <CopyButton text="pip install taco-agent" />
+          <div className="hero__cta-block">
+            <div className="hero__install">
+              <code>pip install taco-agent</code>
+              <CopyButton text="pip install taco-agent" />
+            </div>
+            <div className="hero__buttons">
+              <Link
+                className="button button--lg button--accent"
+                to="/docs/getting-started/quick-start">
+                Get Started &rarr;
+              </Link>
+              <Link
+                className="button button--lg button--outline-light"
+                href="https://github.com/pelles-ai/taco">
+                <svg viewBox="0 0 16 16" aria-hidden="true" className="hero__btn-icon">
+                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                </svg>
+                Source
+              </Link>
+            </div>
+          </div>
+
+          <div className="hero__links">
+            <Link to="/sandbox" className="hero__link">Try it in your browser</Link>
+            <Link to="/conformance" className="hero__link">Test your agent live</Link>
+            <Link to="/docs/cookbook/" className="hero__link">5 recipes · 18 task types</Link>
+          </div>
         </div>
 
-        <div className="hero__buttons">
-          <Link
-            className="button button--lg button--accent"
-            to="/docs/getting-started/build-agent">
-            Get Started
-          </Link>
-          <Link
-            className="button button--lg button--outline-light"
-            href="https://github.com/pelles-ai/taco">
-            GitHub
-          </Link>
-        </div>
+        <aside className="hero__poster" aria-hidden="true">
+          <div className="hero__poster-frame">
+            <div className="hero__poster-letters">
+              <span className="hero__poster-letter hero__poster-letter--t">T</span>
+              <span className="hero__poster-letter hero__poster-letter--a">A</span>
+              <span className="hero__poster-letter hero__poster-letter--c">C</span>
+              <span className="hero__poster-letter hero__poster-letter--o">O</span>
+            </div>
+            <div className="hero__poster-rule" />
+            <div className="hero__poster-caption">
+              <span>The</span>
+              <span><em>A2A</em></span>
+              <span>Construction</span>
+              <span>Open-standard.</span>
+            </div>
+            <div className="hero__poster-meta">
+              <span>EST. 2026</span>
+              <span>Pelles.ai</span>
+            </div>
+          </div>
+        </aside>
       </div>
     </header>
   );
@@ -102,7 +140,7 @@ function HeroSection() {
    ============================================================ */
 
 function LogoStrip() {
-  const links = [
+  const items = [
     {label: 'A2A Protocol', href: 'https://a2a-protocol.org'},
     {label: 'Linux Foundation', href: 'https://www.linuxfoundation.org/'},
     {label: 'Python', href: 'https://python.org'},
@@ -115,19 +153,15 @@ function LogoStrip() {
       <div className="container">
         <span className="logo-strip__label">Built on</span>
         <div className="logo-strip__logos">
-          {links.map((l, i) => (
-            <Fragment key={l.label}>
-              <a
-                href={l.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="logo-strip__link">
-                {l.label}
-              </a>
-              {i < links.length - 1 && (
-                <span className="logo-strip__separator" />
-              )}
-            </Fragment>
+          {items.map((it) => (
+            <a
+              key={it.label}
+              href={it.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="logo-strip__link">
+              {it.label}
+            </a>
           ))}
         </div>
       </div>
@@ -142,45 +176,29 @@ function LogoStrip() {
 function TheProblemSection() {
   return (
     <FadeIn>
-      <section className="section">
+      <section className="section section--left">
         <div className="container">
+          <SectionEyebrow num="01">The Problem</SectionEyebrow>
           <Heading as="h2" className="section__heading">
-            The Problem
+            Every construction tool ships a different{' '}
+            <em className="heading-em">vocabulary</em>
           </Heading>
           <div className="what-is-taco">
             <p>
-              Construction AI agents are being built in isolation.
-              Different APIs, different schemas, no shared vocabulary.
-              Every integration is custom — <strong>REST, gRPC, SOAP,
-              GraphQL, WebSocket</strong> — with no way for agents to
-              discover each other, exchange typed data, or establish trust.
+              Procore's RFI doesn't fit Autodesk's RFI. Your estimator's BOM
+              doesn't match your supplier's BOM. Every integration is a
+              custom mapping — <strong>REST, gRPC, GraphQL, vendor SDKs</strong>
+              — with no way for agents to discover each other, exchange typed
+              data, or narrow trust across organizational boundaries.
             </p>
           </div>
-          <div className="problem-grid">
-            <div className="problem-grid__item">
-              <div className="problem-grid__icon">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
-              </div>
-              <div className="problem-grid__label">No discovery</div>
-            </div>
-            <div className="problem-grid__item">
-              <div className="problem-grid__icon">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
-              </div>
-              <div className="problem-grid__label">Incompatible schemas</div>
-            </div>
-            <div className="problem-grid__item">
-              <div className="problem-grid__icon">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
-              </div>
-              <div className="problem-grid__label">Manual integration</div>
-            </div>
-            <div className="problem-grid__item">
-              <div className="problem-grid__icon">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
-              </div>
-              <div className="problem-grid__label">Zero trust model</div>
-            </div>
+          <div className="problem-list">
+            {['No discovery', 'Incompatible schemas', 'Manual integration', 'Zero trust model'].map((label) => (
+              <span className="problem-list__item" key={label}>
+                <span className="problem-list__dot" aria-hidden="true" />
+                {label}
+              </span>
+            ))}
           </div>
         </div>
       </section>
@@ -228,10 +246,11 @@ const standardizationRows = [
 function StandardizationSection() {
   return (
     <FadeIn>
-      <section className="section section--alt">
+      <section className="section section--cobalt section--left">
         <div className="container">
+          <SectionEyebrow num="03">The Layer</SectionEyebrow>
           <Heading as="h2" className="section__heading">
-            What TACO Standardizes
+            What TACO <em className="heading-em">standardizes</em>
           </Heading>
           <p className="section__subheading">
             A2A provides the transport. TACO adds construction semantics at every layer.
@@ -267,41 +286,154 @@ function StandardizationSection() {
 }
 
 /* ============================================================
-   Ecosystem Positioning
+   How TACO fits with MCP and A2A
+   — analogy-led explainer for non-technical readers
    ============================================================ */
 
-function EcosystemSection() {
+/* Order: highest layer (semantic / TACO) on top → transport (A2A) →
+   per-agent tool layer (MCP) at the bottom. Mirrors a real protocol-stack
+   diagram. */
+const stackLayers = [
+  {
+    badge: 'TACO',
+    color: 'taco',
+    layer: 'L7 · Semantics',
+    title: 'What construction agents know',
+    analogy: 'The trade vocabulary.',
+    body: 'The shared dictionary every construction agent uses — what a takeoff is, what a BOM looks like, what division 23 means.',
+    href: '/docs/protocol-stack',
+    hrefLabel: 'Protocol Stack',
+  },
+  {
+    badge: 'A2A',
+    color: 'a2a',
+    layer: 'L6 · Transport',
+    title: 'How agents talk to each other',
+    analogy: 'The jobsite radio.',
+    body: 'The protocol that lets one agent send a task to another. Like a two-way radio, it does not care what trade you are — only that the channel is open.',
+    href: 'https://a2a-protocol.org',
+    hrefLabel: 'A2A Protocol',
+  },
+  {
+    badge: 'MCP',
+    color: 'mcp',
+    layer: 'L5 · Tools',
+    title: 'How an agent reaches its tools',
+    analogy: 'The toolbox.',
+    body: 'How a single agent picks up tools and reaches into data — Procore, AutoCAD, a database, a calculator. Each agent has its own toolbox.',
+    href: 'https://modelcontextprotocol.io',
+    hrefLabel: 'Model Context Protocol',
+  },
+];
+
+function ProtocolStackSection() {
   return (
     <FadeIn>
-      <section className="section section--alt">
+      <section className="section section--alt" id="protocol-stack">
         <div className="container">
+          <SectionEyebrow num="02">The Stack</SectionEyebrow>
           <Heading as="h2" className="section__heading">
-            Where TACO Fits
+            How TACO <em className="heading-em">fits</em> with A2A and MCP
           </Heading>
           <p className="section__subheading">
-            A2A handles communication. MCP connects tools. TACO adds
-            construction intelligence.
+            Three protocols, three jobs. Plain language first; the technical
+            details come after.
           </p>
-          <div className="ecosystem-stack">
-            <div className="ecosystem-layer ecosystem-layer--taco">
-              <div className="ecosystem-layer__label">TACO</div>
-              <div className="ecosystem-layer__desc">
-                Task types, data schemas, agent discovery
+
+          <div className="protocol-stack">
+            <div className="protocol-stack__diagram" aria-hidden="true">
+              {stackLayers.map((l) => (
+                <div
+                  className={`protocol-stack__layer protocol-stack__layer--${l.color}`}
+                  key={l.badge}>
+                  <div className="protocol-stack__layer-tag">{l.layer}</div>
+                  <div className="protocol-stack__layer-badge">{l.badge}</div>
+                  <div className="protocol-stack__layer-analogy">{l.analogy}</div>
+                </div>
+              ))}
+              <div className="protocol-stack__caption">Protocol stack — top to bottom</div>
+            </div>
+            <ol className="protocol-stack__notes">
+              {stackLayers.map((l, i) => (
+                <li
+                  className={`protocol-stack__note protocol-stack__note--${l.color}`}
+                  key={l.badge}>
+                  <div className="protocol-stack__note-leader" aria-hidden="true">
+                    <span className="protocol-stack__note-leader-num">0{i + 1}</span>
+                    <span className="protocol-stack__note-leader-line" />
+                  </div>
+                  <div className="protocol-stack__note-body">
+                    <div className="protocol-stack__note-head">
+                      <span className="protocol-stack__note-badge">{l.badge}</span>
+                      <span className="protocol-stack__note-title">{l.title}</span>
+                    </div>
+                    <p className="protocol-stack__note-text">{l.body}</p>
+                    <a
+                      className="protocol-stack__note-link"
+                      href={l.href}
+                      {...(l.href.startsWith('http')
+                        ? {target: '_blank', rel: 'noopener noreferrer'}
+                        : {})}>
+                      {l.hrefLabel} &rarr;
+                    </a>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="stack-diagram" aria-hidden="true">
+            <div className="stack-diagram__row">
+              <div className="stack-node stack-node--agent">
+                <span className="stack-node__label">Agent A</span>
+                <span className="stack-node__sub">Mechanical estimator</span>
+              </div>
+              <div className="stack-diagram__a2a">
+                <span className="stack-diagram__a2a-label">A2A</span>
+                <svg viewBox="0 0 120 12" className="stack-diagram__line">
+                  <line x1="4" y1="6" x2="116" y2="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 3" />
+                  <polyline points="110,2 116,6 110,10" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                  <polyline points="10,2 4,6 10,10" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+                <span className="stack-diagram__a2a-sub">Speaks TACO</span>
+              </div>
+              <div className="stack-node stack-node--agent">
+                <span className="stack-node__label">Agent B</span>
+                <span className="stack-node__sub">Supplier quoter</span>
               </div>
             </div>
-            <div className="ecosystem-layer ecosystem-layer--a2a">
-              <div className="ecosystem-layer__label">A2A Protocol</div>
-              <div className="ecosystem-layer__desc">
-                Agent-to-agent messaging, task lifecycle, streaming
+            <div className="stack-diagram__row stack-diagram__row--mcp">
+              <div className="stack-diagram__mcp-leg">
+                <span className="stack-diagram__mcp-label">MCP</span>
+                <svg viewBox="0 0 12 60" className="stack-diagram__vline">
+                  <line x1="6" y1="4" x2="6" y2="56" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 3" />
+                  <polyline points="2,50 6,56 10,50" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              </div>
+              <div />
+              <div className="stack-diagram__mcp-leg">
+                <span className="stack-diagram__mcp-label">MCP</span>
+                <svg viewBox="0 0 12 60" className="stack-diagram__vline">
+                  <line x1="6" y1="4" x2="6" y2="56" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 3" />
+                  <polyline points="2,50 6,56 10,50" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
               </div>
             </div>
-            <div className="ecosystem-layer ecosystem-layer--transport">
-              <div className="ecosystem-layer__label">HTTP / JSON-RPC</div>
-              <div className="ecosystem-layer__desc">
-                Transport layer
+            <div className="stack-diagram__row">
+              <div className="stack-node stack-node--tool">
+                <span className="stack-node__label">Procore · AutoCAD · DB</span>
+              </div>
+              <div />
+              <div className="stack-node stack-node--tool">
+                <span className="stack-node__label">ERP · pricing API · catalog</span>
               </div>
             </div>
           </div>
+
+          <p className="stack-diagram-caption">
+            A2A moves the message between agents. MCP lets each agent reach its own tools.
+            TACO is the shared construction vocabulary the message is written in.
+          </p>
         </div>
       </section>
     </FadeIn>
@@ -346,58 +478,84 @@ function SearchIcon() {
 function FeaturesSection() {
   return (
     <FadeIn>
-      <section className="section section--alt">
+      <section className="section">
         <div className="container">
+          <SectionEyebrow num="04">Three Pillars</SectionEyebrow>
           <Heading as="h2" className="section__heading">
-            Three Pillars
+            Everything a construction agent needs to{' '}
+            <em className="heading-em">interoperate</em>
           </Heading>
           <p className="section__subheading">
-            Everything a construction agent needs to interoperate.
+            Task types, data schemas, and discovery — built as additive
+            extensions to A2A, so every TACO agent is a valid A2A agent.
           </p>
-          <div className="features">
-            <div className="feature-card feature-card--task-types">
-              <div className="feature-card__icon feature-card__icon--lg">
-                <ClipboardIcon />
+          <ol className="spec-list">
+            <li className="spec-list__item">
+              <div className="spec-list__rail">
+                <span className="spec-list__ref">04.01</span>
+                <span className="spec-list__rule" aria-hidden="true" />
               </div>
-              <div className="feature-card__title">Task Types</div>
-              <div className="feature-card__desc">
-                A typed vocabulary of construction workflows — takeoff, estimate,
-                rfi-generation, submittal-review, schedule-coordination, and more.
+              <div className="spec-list__body">
+                <div className="spec-list__head">
+                  <span className="spec-list__icon"><ClipboardIcon /></span>
+                  <h3 className="spec-list__title">Task Types</h3>
+                  <span className="spec-list__meta">18 defined · v1</span>
+                </div>
+                <p className="spec-list__desc">
+                  A typed vocabulary of construction workflows — takeoff,
+                  estimate, rfi-generation, submittal-review,
+                  schedule-coordination, and more.
+                </p>
+                <Link className="spec-list__link" to="/docs/task-types">
+                  Browse all task types &rarr;
+                </Link>
               </div>
-              <Link className="feature-card__link" to="/docs/task-types">
-                Learn more &rarr;
-              </Link>
-            </div>
-            <div className="feature-card feature-card--schemas">
-              <div className="feature-card__icon feature-card__icon--lg">
-                <CodeBracketsIcon />
+            </li>
+            <li className="spec-list__item">
+              <div className="spec-list__rail">
+                <span className="spec-list__ref">04.02</span>
+                <span className="spec-list__rule" aria-hidden="true" />
               </div>
-              <div className="feature-card__title">Data Schemas</div>
-              <div className="feature-card__desc">
-                Typed JSON schemas for construction artifacts — bom-v1, rfi-v1,
-                estimate-v1, schedule-v1. Output from one agent is valid input for
-                the next.
+              <div className="spec-list__body">
+                <div className="spec-list__head">
+                  <span className="spec-list__icon"><CodeBracketsIcon /></span>
+                  <h3 className="spec-list__title">Data Schemas</h3>
+                  <span className="spec-list__meta">6 typed · cross-referenced</span>
+                </div>
+                <p className="spec-list__desc">
+                  Typed JSON schemas for construction artifacts —
+                  bom-v1, rfi-v1, estimate-v1, schedule-v1. Output from
+                  one agent is valid input for the next.
+                </p>
+                <Link className="spec-list__link" to="/docs/schemas/">
+                  Open the schema explorer &rarr;
+                </Link>
               </div>
-              <Link className="feature-card__link" to="/docs/schemas/">
-                Learn more &rarr;
-              </Link>
-            </div>
-            <div className="feature-card feature-card--discovery">
-              <div className="feature-card__icon feature-card__icon--lg">
-                <SearchIcon />
+            </li>
+            <li className="spec-list__item">
+              <div className="spec-list__rail">
+                <span className="spec-list__ref">04.03</span>
+                <span className="spec-list__rule" aria-hidden="true" />
               </div>
-              <div className="feature-card__title">Agent Discovery</div>
-              <div className="feature-card__desc">
-                Find agents by trade, CSI division, project type, and platform
-                integration. Construction extensions to A2A Agent Cards.
+              <div className="spec-list__body">
+                <div className="spec-list__head">
+                  <span className="spec-list__icon"><SearchIcon /></span>
+                  <h3 className="spec-list__title">Agent Discovery</h3>
+                  <span className="spec-list__meta">trade · CSI · platform</span>
+                </div>
+                <p className="spec-list__desc">
+                  Find agents by trade, CSI division, project type, and
+                  platform integration. Construction extensions to A2A
+                  Agent Cards.
+                </p>
+                <Link
+                  className="spec-list__link"
+                  to="/docs/agent-card-extensions">
+                  Agent card extensions &rarr;
+                </Link>
               </div>
-              <Link
-                className="feature-card__link"
-                to="/docs/agent-card-extensions">
-                Learn more &rarr;
-              </Link>
-            </div>
-          </div>
+            </li>
+          </ol>
         </div>
       </section>
     </FadeIn>
@@ -411,13 +569,15 @@ function FeaturesSection() {
 function HowItWorksSection() {
   return (
     <FadeIn>
-      <section className="section">
+      <section className="section section--alt section--left">
         <div className="container">
+          <SectionEyebrow num="05">Three Steps</SectionEyebrow>
           <Heading as="h2" className="section__heading">
-            How It Works
+            Define. Discover. <em className="heading-em">Communicate</em>.
           </Heading>
           <p className="section__subheading">
-            Define. Discover. Communicate. Three steps to agent interoperability.
+            Define your agent. Find peers in the registry. Exchange typed
+            artifacts. The whole loop is under a hundred lines of Python.
           </p>
           <HowItWorks />
         </div>
@@ -433,10 +593,12 @@ function HowItWorksSection() {
 function DiagramSection() {
   return (
     <FadeIn>
-      <section className="section section--alt">
+      <section className="section">
         <div className="container">
+          <SectionEyebrow num="06">Architecture</SectionEyebrow>
           <Heading as="h2" className="section__heading">
-            Architecture
+            One shared <em className="heading-em">layer</em> across every trade
+            and platform
           </Heading>
           <div className="diagram-container">
             <ArchitectureDiagram />
@@ -444,6 +606,17 @@ function DiagramSection() {
           <p className="diagram-caption">
             Different companies. Different AI models. One shared language.
           </p>
+          <div className="diagram-deepdive">
+            <a href="/taco-architecture-overview.html" className="diagram-deepdive__link">
+              Full architecture overview &rarr;
+            </a>
+            <a href="/taco-auth-flow.html" className="diagram-deepdive__link">
+              Authentication flow &rarr;
+            </a>
+            <a href="/taco-security-model.html" className="diagram-deepdive__link">
+              Security model &rarr;
+            </a>
+          </div>
         </div>
       </section>
     </FadeIn>
@@ -515,16 +688,43 @@ function InstallTabs() {
   );
 }
 
-function QuickStartSection() {
+/* ============================================================
+   Interactive Registry Filter — try the discovery model
+   ============================================================ */
+
+function RegistrySection() {
   return (
     <FadeIn>
       <section className="section">
         <div className="container">
+          <SectionEyebrow num="07">Try it</SectionEyebrow>
           <Heading as="h2" className="section__heading">
-            Quick Start
+            Discover agents by trade, division, and{' '}
+            <em className="heading-em">trust</em>
           </Heading>
           <p className="section__subheading">
-            Get up and running in under a minute.
+            Live demo of the TACO registry. Filter a sample set of agents the
+            way you would over the wire — the CLI command updates as you go.
+          </p>
+          <RegistryFilter />
+        </div>
+      </section>
+    </FadeIn>
+  );
+}
+
+function QuickStartSection() {
+  return (
+    <FadeIn>
+      <section className="section section--alt section--left">
+        <div className="container">
+          <SectionEyebrow num="08">Quick Start</SectionEyebrow>
+          <Heading as="h2" className="section__heading">
+            Up and running in under a{' '}
+            <em className="heading-em">minute</em>
+          </Heading>
+          <p className="section__subheading">
+            Two patterns: expose your own agent, or discover and call others.
           </p>
           <div className="code-section">
             <Tabs>
@@ -564,12 +764,11 @@ function AudienceSection() {
     <FadeIn>
       <section className="section section--alt">
         <div className="container">
+          <SectionEyebrow num="10">Pick Your Path</SectionEyebrow>
           <Heading as="h2" className="section__heading">
-            Get Started
+            Choose the entry point that fits your{' '}
+            <em className="heading-em">role</em>
           </Heading>
-          <p className="section__subheading">
-            Choose the path that fits your role.
-          </p>
           <AudiencePaths />
         </div>
       </section>
@@ -583,22 +782,22 @@ function AudienceSection() {
 
 const principles = [
   {
-    marker: 'Principle 01',
+    num: '01',
     title: 'Ontology, not protocol',
     desc: 'TACO builds on A2A using its native extension points. It does not fork or modify the underlying protocol.',
   },
   {
-    marker: 'Principle 02',
+    num: '02',
     title: 'Agents are opaque',
     desc: 'TACO defines what goes in and what comes out. Agents collaborate without exposing their internals.',
   },
   {
-    marker: 'Principle 03',
+    num: '03',
     title: 'Open and composable',
     desc: 'Apache 2.0 licensed. Every schema, task type, and extension is public and community-driven.',
   },
   {
-    marker: 'Principle 04',
+    num: '04',
     title: 'Construction-native',
     desc: 'Designed for trade, CSI division, project phase, and platform — not retrofitted from another domain.',
   },
@@ -609,18 +808,21 @@ function PrinciplesSection() {
     <FadeIn>
       <section className="section">
         <div className="container">
+          <SectionEyebrow num="09">Foundations</SectionEyebrow>
           <Heading as="h2" className="section__heading">
-            Design Principles
+            Design <em className="heading-em">Principles</em>
           </Heading>
-          <div className="principles">
+          <ol className="principles-list">
             {principles.map((p) => (
-              <div className="principle" key={p.marker}>
-                <div className="principle__marker">{p.marker}</div>
-                <div className="principle__title">{p.title}</div>
-                <div className="principle__desc">{p.desc}</div>
-              </div>
+              <li className="principle-row" key={p.num}>
+                <div className="principle-row__num" aria-hidden="true">{p.num}</div>
+                <div className="principle-row__body">
+                  <div className="principle-row__title">{p.title}</div>
+                  <div className="principle-row__desc">{p.desc}</div>
+                </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
     </FadeIn>
@@ -635,17 +837,19 @@ function CTASection() {
   return (
     <section className="cta-section">
       <div className="container">
-        <Heading as="h2">Shape the Standard</Heading>
-        <p>
-          TACO is in active development. We're looking for construction technology
-          companies, trade contractors, GCs, and platform vendors to help define
-          the schemas and build the ecosystem.
+        <Heading as="h2" className="cta__heading">
+          Shape the <em className="cta__heading-em">standard</em>.
+        </Heading>
+        <p className="cta__body">
+          TACO is in active development. We're looking for construction
+          technology companies, trade contractors, GCs, and platform vendors to
+          help define the schemas and build the ecosystem.
         </p>
         <div className="cta-buttons">
           <Link
             className="button button--lg button--accent"
             href="https://github.com/pelles-ai/taco">
-            Star on GitHub
+            Star on GitHub &rarr;
           </Link>
           <Link
             className="button button--lg button--outline-light"
@@ -654,7 +858,7 @@ function CTASection() {
           </Link>
         </div>
         <div className="cta-note">
-          Initiated by <a href="https://pelles.ai">Pelles</a> | Apache 2.0 |
+          Initiated by <a href="https://pelles.ai">Pelles</a> · Apache 2.0 ·
           Built on <a href="https://a2a-protocol.org">A2A</a> (Linux Foundation)
         </div>
       </div>
@@ -669,17 +873,18 @@ function CTASection() {
 export default function Home() {
   return (
     <Layout
-      title="One Language for Every Construction Agent"
+      title="The protocol for construction agents"
       description="TACO is an open standard for AI agent communication in the built environment. Task types, data schemas, and agent discovery for construction.">
       <HeroSection />
       <LogoStrip />
       <main>
         <TheProblemSection />
+        <ProtocolStackSection />
         <StandardizationSection />
-        <EcosystemSection />
         <FeaturesSection />
         <HowItWorksSection />
         <DiagramSection />
+        <RegistrySection />
         <QuickStartSection />
         <StatsSection />
         <PrinciplesSection />

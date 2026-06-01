@@ -1,0 +1,141 @@
+---
+title: TACO for Structural Trades
+description: How structural contractors use TACO — concrete, masonry, structural steel, rebar. Typed BOMs and shop drawings that round-trip across designers, fabricators, and erectors with the sequence integrity structural sequence demands.
+---
+
+import AudienceHero from '@site/src/components/AudienceHero';
+import {Capability, CapabilityGrid} from '@site/src/components/Capability';
+import RecipeRail from '@site/src/components/RecipeRail';
+import SequenceDiagram from '@site/src/components/SequenceDiagram';
+
+<AudienceHero
+  role="Structural Trades"
+  title="Concrete, masonry, and steel — typed across the longest-lead sequence on the project"
+  subtitle="Structural scope spans CSI divisions 03, 04, and 05 — and structural sequence drives every floor above. TACO gives you typed handoffs for the workflow that historically eats the most coordination time: shop drawing review, rebar takeoff, embed coordination, and erection sequencing."
+  primaryCta={{label: 'Build a structural agent', to: '/docs/getting-started/build-agent'}}
+  secondaryCta={{label: 'Submittal review task type', to: '/docs/task-types'}}
+/>
+
+## Where TACO fits your scope
+
+Structural work spans **CSI division 03 (Concrete)**, **04 (Masonry)**, and **05 (Metals — structural steel, miscellaneous metals, and metal fabrications)**. Many shops specialize in one division; some integrators span all three. The TACO Agent Card supports either pattern via the `csi_divisions[]` field.
+
+What's *different* about structural vs. other trades:
+
+- **The sequence is the project.** Structural rough-in for floor N has to complete before floor N+1 can start. A delay in your shop's scope cascades into every trade above. The schedule-aware reconciliation pattern matters more here than anywhere else.
+- **Shop drawings are first-class artifacts.** Fabricators (steel detailers, rebar shop drawings, precast shops) produce their own typed deliverables. The `submittal-review` task type maps directly.
+- **Embed coordination crosses trades.** Anchor bolts, electrical conduits embedded in slabs, plumbing sleeves, mechanical embeds — every embed is a typed coordination point. RFIs and clash detection drive most of this.
+- **Concrete placement scheduling has tight windows.** Pour day is a critical-path event with weather dependencies, batch plant scheduling, and inspection coordination. The schedule-coordination task type, integrated with weather and ready-mix availability, is real.
+
+The handoffs that matter:
+
+<CapabilityGrid>
+  <Capability
+    title="Shop drawing submittals as typed artifacts"
+    description="Steel detailers and rebar shops produce shop drawings on every project. Wrap your shop's deliverable as a submittal-review skill — the EOR's responder agent reviews and returns typed approval status."
+    link={{label: 'Task types', to: '/docs/task-types'}}
+  />
+  <Capability
+    title="Embed coordination via clash detection"
+    description="The clash-detection task type catches mechanical, electrical, and plumbing embeds that conflict with structural reinforcement. Catching these at coordination time instead of pour-day saves expensive rework."
+    link={{label: 'Task types', to: '/docs/task-types'}}
+  />
+  <Capability
+    title="Pour-day procurement coordination"
+    description="Ready-mix concrete is delivered to a tight window. The schedule-aware procurement recipe with a 0-day slack policy is the right shape — quote agents coordinate with batch plants, dispatchers, and weather forecasts."
+    link={{label: 'Schedule-Aware Procurement', to: '/docs/cookbook/schedule-aware-procurement'}}
+  />
+  <Capability
+    title="Rebar takeoff that handles substitutions"
+    description="Rebar is heavily substituted (Grade 60 vs Grade 80, epoxy-coated vs black, bundled vs loose). The bom-v1 alternates[] field tracks acceptable substitutions per line item so estimating and procurement can act on availability without code-violation risk."
+    link={{label: 'bom-v1 schema', to: '/docs/schemas/bom-v1'}}
+  />
+</CapabilityGrid>
+
+## Schema fit for structural
+
+`bom-v1` line items applied to structural scope:
+
+| Field | Structural example |
+|------|---------------------|
+| `description` | `"W14x90 wide flange beam, A992 steel, shop-fab"`, `"Grade 60 rebar #5"`, `"3000 psi concrete, normal-weight"` |
+| `quantity` | `48` (pieces), `12400` (lbs of rebar), `185` (CY concrete) |
+| `unit` | `EA` for steel members; `LB` or `TON` for rebar; `CY` for concrete; `SF` for formwork; `LF` for misc metal |
+| `size` | `"W14x90"`, `"#5"`, `"3000 psi"` |
+| `material` | `"A992-steel"`, `"grade-60-rebar"`, `"epoxy-coated-rebar"`, `"3000-psi-normal-weight-concrete"` |
+| `specSection` | `"05 12 13"` (structural steel framing), `"03 21 00"` (reinforcing steel), `"03 30 00"` (cast-in-place concrete) |
+| `sourceSheet` | `"S-201"` (framing plans), `"S-301"` (sections), `"S-401"` (details) |
+| `location` | `"Level 2 framing"`, `"Foundation, west bay"` |
+| `alternates[]` | acceptable substitutions (e.g. W14x99 substitution for W14x90 if specified light section unavailable) |
+
+A field worth highlighting for structural: **`specSection`**. Structural specs reference industry standards heavily (AISC, ACI, ASTM); the spec section is how downstream consumers know which standard applies. Don't truncate it.
+
+## A typical structural workflow
+
+<SequenceDiagram
+  actors={[
+    {id: 'gc', label: 'GC Orchestrator', sub: ''},
+    {id: 'det', label: 'Steel Detailer', sub: 'your shop'},
+    {id: 'eor', label: 'EOR Responder', sub: 'design engineer'},
+    {id: 'sup', label: 'Steel Supplier', sub: 'mill or service center'},
+  ]}
+  messages={[
+    {from: 'gc', to: 'det', label: 'detail the project', schema: 'bom-v1'},
+    {from: 'det', to: 'eor', label: 'submit shop drawings', schema: 'rfi-v1', note: 'submittal-review task type'},
+    {from: 'eor', to: 'det', label: 'returns review', schema: 'rfi-v1', kind: 'return'},
+    {from: 'det', to: 'sup', label: 'release to fabrication', schema: 'bom-v1'},
+    {from: 'sup', to: 'gc', label: 'fabrication schedule + quote', schema: 'quote-v1', kind: 'return'},
+  ]}
+/>
+
+The shop drawing review loop (detailer → EOR → detailer) is the bottleneck on most steel jobs. Typed `rfi-v1` for each review comment, with `referenceTaskIds` linking back to the original submittal, makes the round-trip auditable in ways PDF markup never was.
+
+## Platforms typically integrated
+
+- **Steel detailing** — Tekla Structures, SDS/2, Bentley ProStructures, Advance Steel
+- **Rebar detailing** — Tekla, aSa, Rebar2000
+- **Structural design** — RAM Structural System, ETABS, RISA, ProStructures, Robot
+- **Concrete batching** — CommandAlkon, JWS, Conexpo's own catalogs (per regional batch plant)
+- **Project management** — Procore (with structural-specific modules), ACC, Tekla PowerFab for fabrication
+- **BIM coordination** — Navisworks, Revizto, Tekla BIMsight
+
+Steel and rebar shops in particular often have mature internal tooling (Tekla PowerFab, aSa) that pre-dates any cloud platform. The sidecar pattern wraps these without rewrites.
+
+## Common structural-specific pitfalls
+
+**Treating a shop drawing rev as a new project.** Shop drawings cycle through multiple revisions (Rev A pending review → Rev B with comments → Rev C resubmittal → IFC for issue-for-construction). Each rev is a typed `rfi-v1` (or `submittal-review`) round-trip, linked via `referenceTaskIds`. Treating each rev as a new project loses the audit trail.
+
+**Misclassifying rebar substitutions.** Substituting Grade 80 rebar for Grade 60 reduces required area by ~25% per ACI 318, but the GC's pricing model might not know. Don't silently allow substitutions — flag them in `flaggedItems` so the EOR's responder agent confirms the design intent.
+
+**Forgetting embed coordination in the BOM.** Anchor bolts, embed plates, and curb angles are all structural-side line items but are physically installed by adjacent trades (electrical, mechanical embeds especially). If your structural BOM omits embeds because "the GC handles those," coordination breaks. Include them with `location` and `metadata.notes` indicating responsibility.
+
+**Ignoring pour-day weather risk.** A concrete pour scheduled in freezing weather requires admixtures, heated batching, and post-pour curing protection — all of which are line items, not weather contingencies. Your schedule-coordination agent should query weather and flag affected pours.
+
+**Steel takeoff without erection sequence.** A BOM of 1,200 steel members is a procurement document; without erection sequence (which member arrives in what order), it's an erection planning gap. Either include sequence in `metadata` or emit a parallel `schedule-v1` artifact tied to the BOM.
+
+## Curated for structural readers
+
+<RecipeRail
+  slugs={[
+    'rfi-round-trip',
+    'schedule-aware-procurement',
+    'change-order-impact',
+    'gc-estimator-supplier-chain',
+  ]}
+/>
+
+## How to start
+
+1. **Build a stub.** Follow [Build a Custom Agent](/docs/getting-started/build-agent). Declare your division — typically `csi_divisions: ["03"]` (concrete), `["05"]` (steel), or `["03", "05"]` if you span both.
+2. **Pick the highest-value skill first.** For most structural shops, that's either `estimate` (you bid frequently) or `submittal-review` (you handle a lot of shop drawing reviews on your projects). Add the other later.
+3. **Wire to your existing detailing platform.** Tekla, SDS/2, RAM — the handler is a translator between the platform's exports and TACO's typed artifacts.
+4. **Run the conformance runner.** [`/conformance`](/conformance) catches structural issues — pun intended — before downstream consumers see them.
+
+## See also
+
+- [For Subcontractors](./subcontractor) — broader sub-side framing
+- [For Mechanical Trades](./mechanical) — sibling per-trade page
+- [For Electrical Trades](./electrical) — embed coordination is where structural and electrical meet
+- [Build a Custom Agent](/docs/getting-started/build-agent)
+- [Best Practices](/docs/best-practices)
+- [Common Pitfalls](/docs/pitfalls)

@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: Build a Custom Agent
+description: Build a mechanical takeoff agent with a trade, CSI divisions, typed schemas, and a live monitor UI.
 ---
 
 # Build a Custom Agent

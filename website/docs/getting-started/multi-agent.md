@@ -1,6 +1,7 @@
 ---
 sidebar_position: 2
 title: Agent-to-Agent Communication
+description: Connect multiple agents — orchestrators, data agents, estimating agents — using peer discovery and the TACO registry.
 ---
 
 # Agent-to-Agent Communication
