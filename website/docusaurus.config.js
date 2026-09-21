@@ -1,12 +1,75 @@
 // @ts-check
 
+import fs from 'node:fs';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 import {themes as prismThemes} from 'prism-react-renderer';
+
+/* ------------------------------------------------------------------
+   Facts the homepage displays. Each one has a single source of truth
+   in the repo so the site never carries a hand-typed number.
+   ------------------------------------------------------------------ */
+
+const REPO_ROOT = path.resolve(process.cwd(), '..');
+
+/** Latest semver git tag (v0.3.13 -> 0.3.13). Falls back when git or tags are unavailable. */
+function readSdkVersion() {
+  const fallback = '0.3.13';
+  try {
+    const tag = execFileSync('git', ['describe', '--tags', '--abbrev=0', '--match', 'v*'], {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .toString()
+      .trim();
+    return tag.startsWith('v') ? tag.slice(1) : tag || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Rows of the form "| `task-type` | ..." in spec/task-types.md. */
+function countTaskTypes() {
+  try {
+    const md = fs.readFileSync(path.join(REPO_ROOT, 'spec', 'task-types.md'), 'utf8');
+    const n = md.split('\n').filter((line) => /^\|\s*`[a-z0-9-]+`\s*\|/.test(line)).length;
+    return n || 18;
+  } catch {
+    return 18;
+  }
+}
+
+/** JSON schema files in spec/schemas. */
+function countSchemas() {
+  try {
+    const n = fs
+      .readdirSync(path.join(REPO_ROOT, 'spec', 'schemas'))
+      .filter((f) => f.endsWith('.json')).length;
+    return n || 6;
+  } catch {
+    return 6;
+  }
+}
+
+const SDK_VERSION = readSdkVersion();
+const PROTOCOL_VERSION = SDK_VERSION.split('.').slice(0, 2).join('.');
+const TASK_TYPE_COUNT = countTaskTypes();
+const SCHEMA_COUNT = countSchemas();
+
+const SITE_DESCRIPTION =
+  'TACO is the open standard that lets construction AI agents hand work to each other: typed task types, typed data schemas and discovery by trade and CSI division, on top of the A2A protocol.';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'TACO',
-  tagline: 'The A2A Construction Open-standard',
+  tagline: 'One vocabulary for every construction agent',
   favicon: 'img/favicon.ico',
+
+  customFields: {
+    sdkVersion: SDK_VERSION,
+    protocolVersion: PROTOCOL_VERSION,
+    taskTypeCount: TASK_TYPE_COUNT,
+    schemaCount: SCHEMA_COUNT,
+  },
 
   future: {
     v4: true,
@@ -31,6 +94,16 @@ const config = {
       tagName: 'link',
       attributes: {
         rel: 'preload',
+        href: '/fonts/archivo-variable.woff2',
+        as: 'font',
+        type: 'font/woff2',
+        crossorigin: 'anonymous',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preload',
         href: '/fonts/inter-variable.woff2',
         as: 'font',
         type: 'font/woff2',
@@ -50,9 +123,16 @@ const config = {
     {
       tagName: 'meta',
       attributes: {
+        name: 'description',
+        content: SITE_DESCRIPTION,
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
         name: 'keywords',
         content:
-          'construction, AI, agent, A2A, protocol, agent-to-agent, open standard, construction technology, BIM, takeoff, estimating',
+          'construction, AI, agent, A2A, protocol, agent-to-agent, open standard, construction technology, BIM, takeoff, estimating, RFI, CSI division',
       },
     },
     {
@@ -64,12 +144,11 @@ const config = {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         name: 'TACO — The A2A Construction Open-standard',
-        description:
-          'An open-source construction ontology layer built on the A2A protocol. Defines task types, data schemas, and agent discovery for construction AI.',
+        description: SITE_DESCRIPTION,
         applicationCategory: 'DeveloperApplication',
         operatingSystem: 'Cross-platform',
         license: 'https://opensource.org/licenses/Apache-2.0',
-        version: '0.2.5',
+        softwareVersion: SDK_VERSION,
         codeRepository: 'https://github.com/pelles-ai/taco',
         url: 'https://taco-protocol.com',
       }),
@@ -106,10 +185,10 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       image: 'img/taco-social-card.png',
+      metadata: [{name: 'og:description', content: SITE_DESCRIPTION}],
       announcementBar: {
-        id: 'active_development',
-        content:
-          'TACO is in active development. <a href="https://github.com/pelles-ai/taco">Star us on GitHub</a> and help shape the standard.',
+        id: 'active_development_0_3',
+        content: `TACO ${PROTOCOL_VERSION} is an open standard in active development. <a href="https://github.com/pelles-ai/taco">Star the repo</a> and help write the schemas.`,
         isCloseable: true,
       },
       colorMode: {
@@ -152,8 +231,7 @@ const config = {
           {
             type: 'html',
             position: 'right',
-            value:
-              '<a href="https://pypi.org/project/taco-agent/" target="_blank" rel="noopener noreferrer" class="navbar__version-badge">v0.2</a>',
+            value: `<a href="https://pypi.org/project/taco-agent/" target="_blank" rel="noopener noreferrer" class="navbar__version-badge" title="taco-agent ${SDK_VERSION} on PyPI">v${SDK_VERSION}</a>`,
           },
           {
             href: 'https://github.com/pelles-ai/taco',
@@ -170,85 +248,40 @@ const config = {
           {
             title: 'Learn',
             items: [
-              {
-                label: 'Introduction',
-                to: '/docs/intro',
-              },
-              {
-                label: 'Build Your First Agent',
-                to: '/docs/getting-started/build-agent',
-              },
-              {
-                label: 'Task Types',
-                to: '/docs/task-types',
-              },
-              {
-                label: 'Data Schemas',
-                to: '/docs/schemas/',
-              },
+              {label: 'Why TACO?', to: '/docs/why-taco'},
+              {label: 'Introduction', to: '/docs/intro'},
+              {label: 'Build your first agent', to: '/docs/getting-started/build-agent'},
+              {label: 'Task types', to: '/docs/task-types'},
+              {label: 'Data schemas', to: '/docs/schemas/'},
             ],
           },
           {
             title: 'SDK',
             items: [
-              {
-                label: 'SDK Guide',
-                to: '/docs/sdk',
-              },
-              {
-                label: 'PyPI',
-                href: 'https://pypi.org/project/taco-agent/',
-              },
-              {
-                label: 'Agent Card Extensions',
-                to: '/docs/agent-card-extensions',
-              },
-              {
-                label: 'Security',
-                to: '/docs/security',
-              },
+              {label: 'SDK guide', to: '/docs/sdk'},
+              {label: 'CLI', to: '/docs/cli'},
+              {label: 'PyPI', href: 'https://pypi.org/project/taco-agent/'},
+              {label: 'Agent card extensions', to: '/docs/agent-card-extensions'},
+              {label: 'Security', to: '/docs/security'},
             ],
           },
           {
             title: 'Community',
             items: [
-              {
-                label: 'GitHub Discussions',
-                href: 'https://github.com/pelles-ai/taco/discussions',
-              },
-              {
-                label: 'Issues',
-                href: 'https://github.com/pelles-ai/taco/issues',
-              },
-              {
-                label: 'Contributing',
-                href: 'https://github.com/pelles-ai/taco/blob/main/CONTRIBUTING.md',
-              },
+              {label: 'GitHub Discussions', href: 'https://github.com/pelles-ai/taco/discussions'},
+              {label: 'Issues', href: 'https://github.com/pelles-ai/taco/issues'},
+              {label: 'Contributing', href: 'https://github.com/pelles-ai/taco/blob/main/CONTRIBUTING.md'},
+              {label: 'Changelog', href: 'https://github.com/pelles-ai/taco/blob/main/CHANGELOG.md'},
             ],
           },
           {
             title: 'More',
             items: [
-              {
-                label: 'GitHub',
-                href: 'https://github.com/pelles-ai/taco',
-              },
-              {
-                label: 'A2A Protocol',
-                href: 'https://a2a-protocol.org',
-              },
-              {
-                label: 'Linux Foundation',
-                href: 'https://www.linuxfoundation.org/',
-              },
-              {
-                label: 'Pelles',
-                href: 'https://pelles.ai',
-              },
-              {
-                label: 'Blog',
-                to: '/blog',
-              },
+              {label: 'GitHub', href: 'https://github.com/pelles-ai/taco'},
+              {label: 'A2A Protocol', href: 'https://a2a-protocol.org'},
+              {label: 'Linux Foundation', href: 'https://www.linuxfoundation.org/'},
+              {label: 'Pelles', href: 'https://pelles.ai'},
+              {label: 'Blog', to: '/blog'},
             ],
           },
         ],
