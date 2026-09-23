@@ -1,5 +1,6 @@
 ---
 title: "quote-v1 — Supplier Quote"
+description: Supplier material quote schema — pricing, availability, lead times, and terms.
 ---
 
 # quote-v1 — Supplier Quote

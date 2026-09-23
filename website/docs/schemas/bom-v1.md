@@ -1,5 +1,6 @@
 ---
 title: "bom-v1 — Bill of Materials"
+description: Standardized Bill of Materials schema — line items, quantities, materials, sizes, and provenance for construction takeoffs.
 ---
 
 # bom-v1 — Bill of Materials

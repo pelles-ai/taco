@@ -83,9 +83,7 @@ function TitleBlock({sdkVersion, protocolVersion, taskTypeCount, schemaCount}) {
             Pelles
           </a>
         </span>
-        <a href={`${GITHUB}/blob/main/CHANGELOG.md`} target="_blank" rel="noopener noreferrer">
-          Revision history
-        </a>
+        <Link to="/docs/changelog">Revision history</Link>
       </div>
     </aside>
   );

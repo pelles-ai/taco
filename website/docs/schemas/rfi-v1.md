@@ -1,5 +1,6 @@
 ---
 title: "rfi-v1 — Request for Information"
+description: RFI schema for design conflicts, missing information, and clarifications — with drawing references and priority levels.
 ---
 
 # rfi-v1 — Request for Information

@@ -1,5 +1,6 @@
 ---
 title: "schedule-v1 — Project Schedule"
+description: Project schedule schema — activities, dependencies, milestones, and resource assignments.
 ---
 
 # schedule-v1 — Project Schedule

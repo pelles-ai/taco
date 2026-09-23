@@ -1669,3 +1669,120 @@ div[class*='announcementBar'] a {
     transform: none;
   }
 }
+
+/* ============================================================
+   Docs footer: last-updated stamp and page feedback
+   ============================================================ */
+
+.theme-last-updated {
+  font-family: var(--taco-font-mono);
+  font-size: 0.72rem;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  color: var(--taco-ink-3);
+}
+
+.theme-last-updated b {
+  font-weight: 500;
+  color: var(--taco-ink-2);
+}
+
+.page-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  margin-top: 2rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--taco-line-2);
+  border-bottom: 1px solid var(--taco-line);
+}
+
+.page-feedback__prompt {
+  font-family: var(--taco-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--taco-gold-ink);
+}
+
+.page-feedback__buttons {
+  display: inline-flex;
+  border: 1px solid var(--taco-line-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.page-feedback__btn {
+  min-width: 64px;
+  min-height: 36px;
+  padding: 0.35rem 1rem;
+  background: transparent;
+  border: none;
+  font-family: var(--taco-font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--taco-ink);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.page-feedback__btn + .page-feedback__btn {
+  border-left: 1px solid var(--taco-line-2);
+}
+
+.page-feedback__btn:hover {
+  background: var(--taco-gold);
+  color: var(--taco-navy);
+}
+
+.page-feedback__btn:focus-visible {
+  outline: 2px solid var(--taco-gold);
+  outline-offset: -2px;
+}
+
+.page-feedback__reply {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--taco-ink-2);
+}
+
+/* ============================================================
+   Search (docusaurus-search-local)
+   ============================================================ */
+
+.navbar__search-input {
+  border-radius: 3px;
+  background-color: var(--taco-card);
+  border: 1px solid var(--taco-line-2);
+  font-family: var(--taco-font-body);
+  color: var(--taco-ink);
+}
+
+.navbar__search-input:focus {
+  outline: 2px solid var(--taco-gold);
+  outline-offset: 1px;
+}
+
+.navbar__search-input::placeholder {
+  color: var(--taco-ink-3);
+}
+
+/* Search results page */
+.search-page-wrapper h1 {
+  font-stretch: 92%;
+  letter-spacing: -0.025em;
+}
+
+.search-page-wrapper mark,
+.navbar__search mark {
+  background: var(--taco-gold-dim);
+  color: var(--taco-ink);
+  box-shadow: inset 0 -2px 0 var(--taco-gold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-feedback__btn {
+    transition: none;
+  }
+}
