@@ -6,6 +6,10 @@ Versions are auto-published to PyPI on every push to `main`.
 
 ## [Unreleased]
 
+### Fixed
+- **Streaming handlers on a2a-sdk >= 1.1** — stream chunks now share one artifact id, with the first chunk created via `append=False` and later chunks appended, as the A2A spec requires. a2a-sdk 1.1 started rejecting `append=True` for an unknown artifact id, which made every streaming task fail.
+- **Package build on hatchling >= 1.28** — the SDK now ships its own `sdk/README.md` instead of pointing at `../README.md`, which newer hatchling rejects as outside the project directory. This also unblocks the PyPI publish job.
+
 ### Added
 - **Task persistence** — `A2AServer` and `TacoAgent` accept an optional `task_store` parameter for pluggable task persistence (defaults to `InMemoryTaskStore`)
 - **`JsonFileTaskStore`** — lightweight JSON-file-backed `TaskStore` implementation with atomic writes, suitable for single-process agents that need persistence without a database
