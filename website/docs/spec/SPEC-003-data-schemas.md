@@ -34,7 +34,7 @@ Each canonical schema's `$id` is of the form:
 https://taco-protocol.dev/schemas/{name}-vN.json
 ```
 
-The `$id` is the schema's identifier. The TACO website does not currently serve schema documents at that URL or any other. Until a stable hosted URL exists, the canonical, publicly readable copy of each schema is the file in [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas) on the repository's `main` branch, which tooling can fetch over HTTPS without authentication.
+The `$id` is the schema's identifier; nothing is served at that URL today. The canonical copy of each schema is the file in [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas) on the repository's `main` branch. The TACO website republishes those files unchanged at `https://taco-protocol.com/schemas/{name}-vN.json` on every deploy, so tooling can fetch them from either place over HTTPS without authentication. When the two ever differ, the repository file wins.
 
 ## 3. Schema identification
 

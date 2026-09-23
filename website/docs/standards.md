@@ -86,7 +86,7 @@ Each entry follows the same shape: **what it is**, **how TACO uses it**, **what 
 
 **What it is.** The most recent stable draft of the JSON Schema spec — the format used to describe the structure of JSON documents.
 
-**How TACO uses it.** Every TACO data schema (`bom-v1`, `rfi-v1`, `estimate-v1`, `quote-v1`, `schedule-v1`, `change-order-v1`) is published as a JSON Schema 2020-12 document. The canonical files live in the repository at [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas) (each declares a `$id` of the form `https://taco-protocol.dev/schemas/<name>.json`). Each one is documented field by field under [Data Schemas](/docs/schemas/).
+**How TACO uses it.** Every TACO data schema (`bom-v1`, `rfi-v1`, `estimate-v1`, `quote-v1`, `schedule-v1`, `change-order-v1`) is published as a JSON Schema 2020-12 document. The canonical files live in the repository at [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas) (each declares a `$id` of the form `https://taco-protocol.dev/schemas/<name>.json`). The site republishes them at `/schemas/<name>.json`, and each is documented field by field, with an in-browser validator, under [Data Schemas](/docs/schemas/).
 
 ### OAuth 2.0 + RFC 8693 Token Exchange
 

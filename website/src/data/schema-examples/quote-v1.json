@@ -1,0 +1,51 @@
+{
+  "projectId": "PRJ-2026-OAKRIDGE-MEDICAL",
+  "supplierName": "Midwest Mechanical Supply",
+  "quoteNumber": "Q-44871",
+  "validUntil": "2026-10-31",
+  "lineItems": [
+    {
+      "bomItemId": "LI-001",
+      "description": "Rooftop Unit, 25-ton, high-efficiency",
+      "quantity": 2,
+      "unit": "EA",
+      "unitPrice": 37200,
+      "extendedPrice": 74400,
+      "manufacturer": "Carrier",
+      "partNumber": "48HC-A28",
+      "leadTimeDays": 56,
+      "availability": "made-to-order"
+    },
+    {
+      "bomItemId": "LI-002",
+      "description": "Copper pipe, Type L, 2 inch, 20 ft lengths",
+      "quantity": 850,
+      "unit": "LF",
+      "unitPrice": 17.95,
+      "extendedPrice": 15257.5,
+      "manufacturer": "Sample Tube Co.",
+      "partNumber": "CUL-2000-20",
+      "leadTimeDays": 5,
+      "availability": "in-stock",
+      "notes": "Ships in two deliveries"
+    }
+  ],
+  "summary": {
+    "subtotal": 89657.5,
+    "taxRate": 0.0825,
+    "taxAmount": 7396.74,
+    "freight": 1850,
+    "total": 98904.24
+  },
+  "terms": {
+    "paymentTerms": "Net 30",
+    "deliveryMethod": "Flatbed to site, liftgate for pipe",
+    "warranty": "Manufacturer standard",
+    "returnPolicy": "Stock items only, 15% restocking fee"
+  },
+  "metadata": {
+    "generatedBy": "supplier-quote-agent",
+    "generatedAt": "2026-09-15T09:05:00Z",
+    "confidence": 0.95
+  }
+}

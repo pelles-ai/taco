@@ -1,0 +1,42 @@
+{
+  "projectId": "PRJ-2026-OAKRIDGE-MEDICAL",
+  "subject": "HVAC pipe size discrepancy \u2014 Drawing M-201 vs. schedule",
+  "question": "Drawing M-201 detail 3 shows a 4-inch chilled water supply line at grid D4-E6, but the pipe schedule on M-001 specifies 3-inch for this run. Which is correct?",
+  "category": "design-conflict",
+  "priority": "high",
+  "references": [
+    {
+      "sheetId": "M-201",
+      "area": "grid D4-E6",
+      "coordinates": {
+        "x": 1240,
+        "y": 890,
+        "width": 320,
+        "height": 180
+      }
+    },
+    {
+      "sheetId": "M-001",
+      "area": "pipe schedule row 14"
+    }
+  ],
+  "suggestedResolution": "Use 4-inch as shown on plan detail \u2014 the schedule may not have been updated after the Rev C resize.",
+  "relatedBomItems": [
+    "LI-006",
+    "LI-007"
+  ],
+  "dueDate": "2026-03-15",
+  "assignedTo": {
+    "role": "engineer",
+    "company": "Smith MEP Engineering",
+    "contact": "rsmith@smithmep.com"
+  },
+  "metadata": {
+    "generatedBy": "pelles-rfi-agent-v1",
+    "generatedAt": "2026-03-01T14:22:00Z",
+    "confidence": 0.91,
+    "relatedRfis": [
+      "RFI-042"
+    ]
+  }
+}
