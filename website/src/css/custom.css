@@ -1,8 +1,22 @@
 /* ============================================================
-   TACO Design System — Bold & Distinctive
+   TACO design system: "the drawing set"
+   Construction communicates through drawing sets and spec books:
+   title blocks, general notes, keynotes, sheet rules. The site is
+   set the same way. One accent (gold), engineering lettering for
+   headings, mono for labels, restrained everything else.
    ============================================================ */
 
-/* Self-hosted fonts */
+/* ---------- Self-hosted fonts ---------- */
+
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url('/fonts/archivo-variable.woff2') format('woff2-variations');
+}
+
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -19,35 +33,37 @@
   src: url('/fonts/jetbrains-mono-variable.woff2') format('woff2');
 }
 
+/* ---------- Tokens ---------- */
+
 :root {
-  /* Core palette */
+  /* Brand */
   --taco-navy: #0f172a;
-  --taco-navy-light: #1e293b;
-  --taco-gold: #EAB308;
-  --taco-gold-hover: #FACC15;
-  --taco-gold-dim: rgba(234, 179, 8, 0.1);
-  --taco-gold-glow: rgba(234, 179, 8, 0.15);
+  --taco-navy-2: #1e293b;
+  --taco-gold: #eab308;
+  --taco-gold-hover: #facc15;
+  --taco-gold-ink: #8a6104; /* gold usable as text on light grounds */
+  --taco-gold-dim: rgba(234, 179, 8, 0.12);
+  --taco-blue: #2f5da8;
+  --taco-blue-dim: rgba(47, 93, 168, 0.1);
 
-  /* Text */
-  --taco-text: #1e293b;
-  --taco-text-secondary: #64748b;
-  --taco-text-on-dark: #f1f5f9;
-  --taco-text-on-dark-dim: rgba(241, 245, 249, 0.6);
+  /* Ink and paper (light) */
+  --taco-ink: #0f172a;
+  --taco-ink-2: #3b4352;
+  --taco-ink-3: #64718a;
+  --taco-paper: #f5f6f9;
+  --taco-paper-2: #eceef3;
+  --taco-card: #ffffff;
+  --taco-line: #d6dae3;
+  --taco-line-2: #b7bfcc;
+  --taco-grid: rgba(15, 23, 42, 0.05);
+  --taco-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 10px 30px rgba(15, 23, 42, 0.05);
 
-  /* Surfaces */
-  --taco-surface: #f8fafc;
-  --taco-surface-card: #ffffff;
-  --taco-border: #e2e8f0;
+  /* Type */
+  --taco-font-display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --taco-font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --taco-font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
 
-  /* Agent zone colors */
-  --taco-precon: #8B5CF6;
-  --taco-docmgmt: #3B82F6;
-  --taco-field: #22C55E;
-  --taco-supply: #F59E0B;
-  --taco-external: #EF4444;
-  --taco-orchestration: #06B6D4;
-
-  /* Docusaurus overrides */
+  /* Docusaurus */
   --ifm-color-primary: #0f172a;
   --ifm-color-primary-dark: #0c1322;
   --ifm-color-primary-darker: #0a1020;
@@ -55,263 +71,835 @@
   --ifm-color-primary-light: #162040;
   --ifm-color-primary-lighter: #1a2650;
   --ifm-color-primary-lightest: #253566;
+  --ifm-background-color: var(--taco-paper);
+  --ifm-background-surface-color: var(--taco-card);
+  --ifm-font-color-base: var(--taco-ink);
   --ifm-code-font-size: 95%;
-  --ifm-font-family-base: 'Inter', system-ui, -apple-system, sans-serif;
-  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+  --ifm-font-family-base: var(--taco-font-body);
+  --ifm-font-family-monospace: var(--taco-font-mono);
+  --ifm-heading-font-family: var(--taco-font-display);
   --ifm-heading-font-weight: 700;
-  --docusaurus-highlighted-code-line-bg: rgba(234, 179, 8, 0.1);
+  --ifm-link-color: var(--taco-blue);
+  --ifm-link-hover-color: var(--taco-ink);
+  --ifm-navbar-background-color: rgba(245, 246, 249, 0.92);
+  --ifm-toc-border-color: var(--taco-line);
+  --docusaurus-highlighted-code-line-bg: rgba(234, 179, 8, 0.12);
 }
 
 [data-theme='dark'] {
-  --taco-text: #e2e8f0;
-  --taco-text-secondary: #94a3b8;
-  --taco-surface: #0f172a;
-  --taco-surface-card: #1e293b;
-  --taco-border: #334155;
-  --taco-gold-dim: rgba(234, 179, 8, 0.08);
-  --taco-gold-glow: rgba(234, 179, 8, 0.12);
+  --taco-gold-ink: #eab308;
+  --taco-gold-dim: rgba(234, 179, 8, 0.1);
+  --taco-blue: #7ea6ea;
+  --taco-blue-dim: rgba(126, 166, 234, 0.12);
 
-  --ifm-color-primary: #EAB308;
+  --taco-ink: #eef1f6;
+  --taco-ink-2: #c3c9d6;
+  --taco-ink-3: #8b94a7;
+  --taco-paper: #0b0f1a;
+  --taco-paper-2: #10162a;
+  --taco-card: #141a2c;
+  --taco-line: #263048;
+  --taco-line-2: #34405c;
+  --taco-grid: rgba(238, 241, 246, 0.045);
+  --taco-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  --ifm-color-primary: #eab308;
   --ifm-color-primary-dark: #d4a106;
   --ifm-color-primary-darker: #c99806;
   --ifm-color-primary-darkest: #a57d05;
   --ifm-color-primary-light: #ecbc20;
   --ifm-color-primary-lighter: #edc02b;
   --ifm-color-primary-lightest: #f1cd55;
-  --ifm-background-color: #0b0f1a;
-  --ifm-background-surface-color: #131828;
+  --ifm-background-color: var(--taco-paper);
+  --ifm-background-surface-color: var(--taco-paper-2);
+  --ifm-font-color-base: var(--taco-ink);
+  --ifm-link-color: var(--taco-blue);
+  --ifm-link-hover-color: var(--taco-ink);
+  --ifm-navbar-background-color: rgba(11, 15, 26, 0.92);
   --docusaurus-highlighted-code-line-bg: rgba(234, 179, 8, 0.15);
 }
 
-/* ============================================================
-   Global typography
-   ============================================================ */
+/* ---------- Global typography ---------- */
 
-h1, h2, h3, h4 {
-  letter-spacing: -0.02em;
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--taco-font-display);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 
-/* ============================================================
-   Hero Section
-   ============================================================ */
-
-.hero--taco {
-  background: var(--taco-navy);
-  background-image:
-    radial-gradient(ellipse at 50% 50%, rgba(234, 179, 8, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
-  color: var(--taco-text-on-dark);
-  padding: 6rem 0 5rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
+h1, h2 {
+  font-stretch: 92%;
 }
 
-/* Subtle dot grid overlay */
-.hero--taco::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 24px 24px;
-  pointer-events: none;
-}
-
-[data-theme='dark'] .hero--taco {
-  background: #080c14;
-  background-image:
-    radial-gradient(ellipse at 50% 50%, rgba(234, 179, 8, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.04) 0%, transparent 40%);
-}
-
-.hero--taco .hero__title {
-  font-size: clamp(2rem, 8vw, 4.5rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  margin-bottom: 0.25rem;
-  position: relative;
-}
-
-.hero--taco .hero__subtitle {
-  font-size: 1.3rem;
+.eyebrow,
+.sheet-head__label,
+.sheet-head__meta {
+  font-family: var(--taco-font-mono);
+  font-size: 0.72rem;
   font-weight: 500;
-  color: var(--taco-gold);
-  margin-bottom: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  color: var(--taco-gold-ink);
+  margin: 0 0 1.25rem;
+}
+
+.navbar {
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--taco-line);
+  box-shadow: none;
+}
+
+.navbar__title {
+  font-family: var(--taco-font-display);
+  font-weight: 800;
+  font-stretch: 90%;
   letter-spacing: 0.02em;
 }
 
-.hero__oneliner {
-  font-size: 1.05rem;
-  color: var(--taco-text-on-dark-dim);
-  margin-bottom: 2.5rem;
-  max-width: 560px;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.6;
-}
+/* ---------- Buttons ---------- */
 
-.hero__buttons {
-  display: flex;
-  gap: 1rem;
+.btn {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  margin-bottom: 2rem;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.65rem 1.4rem;
+  border-radius: 3px;
+  font-family: var(--taco-font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
-/* ============================================================
-   Shared Button Variants
-   ============================================================ */
+.btn:hover,
+.btn:focus-visible {
+  text-decoration: none;
+}
 
+.btn:focus-visible {
+  outline: 2px solid var(--taco-gold);
+  outline-offset: 2px;
+}
+
+.btn--primary {
+  background: var(--taco-gold);
+  color: var(--taco-navy);
+  border-color: var(--taco-gold);
+}
+
+.btn--primary:hover {
+  background: var(--taco-gold-hover);
+  border-color: var(--taco-gold-hover);
+  color: var(--taco-navy);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--taco-ink);
+  border-color: var(--taco-line-2);
+}
+
+.btn--ghost:hover {
+  color: var(--taco-ink);
+  border-color: var(--taco-ink);
+  background: var(--taco-card);
+}
+
+.btn--sm {
+  min-height: 38px;
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* Legacy button variants still used by the 404 page */
 .button--accent {
   background: var(--taco-gold);
   color: var(--taco-navy);
   border: none;
   font-weight: 700;
-  font-size: 0.95rem;
-  padding: 0.7rem 1.8rem;
-  border-radius: 8px;
-  transition: background 0.15s ease, transform 0.15s ease;
+  border-radius: 3px;
 }
 
-@media (hover: hover) {
-  .button--accent:hover {
-    background: var(--taco-gold-hover);
-    color: var(--taco-navy);
-    transform: translateY(-1px);
-  }
-}
-
-.button--outline-light {
-  background: transparent;
-  color: var(--taco-text-on-dark);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-weight: 600;
-  font-size: 0.95rem;
-  padding: 0.7rem 1.8rem;
-  border-radius: 8px;
-  transition: all 0.15s ease;
-}
-
-.button--outline-light:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: #fff;
+.button--accent:hover {
+  background: var(--taco-gold-hover);
+  color: var(--taco-navy);
 }
 
 /* ============================================================
-   Sections — rhythm & spacing
+   Hero: copy on the left, drawing title block on the right
    ============================================================ */
 
-.section {
-  padding: 5rem 0;
+.hero {
+  position: relative;
+  padding: 4.5rem 0 4rem;
+  background-color: var(--taco-paper);
+  background-image:
+    linear-gradient(var(--taco-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--taco-grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: center top;
+  border-bottom: 1px solid var(--taco-line);
 }
 
-.section--alt {
-  background: var(--taco-surface);
+.hero__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 3rem 4rem;
+  align-items: start;
 }
 
-[data-theme='dark'] .section--alt {
-  background: var(--ifm-background-surface-color);
-}
-
-.section__heading {
-  text-align: center;
-  margin-bottom: 1rem;
-  font-size: clamp(1.4rem, 4vw, 2rem);
-  font-weight: 800;
+.hero__title {
+  font-size: clamp(2.4rem, 5.2vw, 4.25rem);
+  font-weight: 750;
+  font-stretch: 90%;
+  line-height: 1.02;
   letter-spacing: -0.03em;
-  color: var(--taco-text);
+  margin: 0 0 1.25rem;
+  color: var(--taco-ink);
+  max-width: 17ch;
 }
 
-[data-theme='dark'] .section__heading {
-  color: var(--taco-text);
+.hero__lede {
+  font-size: 1.1rem;
+  line-height: 1.65;
+  color: var(--taco-ink-2);
+  max-width: 58ch;
+  margin: 0 0 2rem;
 }
 
-.section__subheading {
-  text-align: center;
-  color: var(--taco-text-secondary);
-  margin-bottom: 3rem;
-  max-width: 580px;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.6;
+.hero__install,
+.install__cmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--taco-card);
+  border: 1px solid var(--taco-line-2);
+  border-radius: 3px;
+  padding: 0.25rem 0.25rem 0.25rem 0.9rem;
+  font-family: var(--taco-font-mono);
+  font-size: 0.92rem;
+  color: var(--taco-ink);
+  margin-bottom: 1.25rem;
 }
 
-/* ============================================================
-   Problem Grid
-   ============================================================ */
+.hero__install code,
+.install__cmd code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
 
-.problem-grid {
+.hero__prompt {
+  color: var(--taco-gold-ink);
+  font-weight: 600;
+}
+
+.hero__actions {
   display: flex;
-  justify-content: center;
-  gap: 2.5rem;
-  margin-top: 2rem;
   flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
 }
 
-.problem-grid__item {
+.hero__aside {
+  font-size: 0.9rem;
+  color: var(--taco-ink-3);
+  margin: 0;
+}
+
+.hero__aside a {
+  color: var(--taco-ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--taco-line-2);
+  text-underline-offset: 3px;
+}
+
+.hero__aside a:hover {
+  color: var(--taco-ink);
+  text-decoration-color: var(--taco-gold);
+}
+
+/* Title block */
+
+.titleblock {
+  border: 1.5px solid var(--taco-ink);
+  background: var(--taco-card);
+  box-shadow: var(--taco-shadow);
+  font-size: 0.9rem;
+}
+
+.titleblock__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  border-bottom: 1.5px solid var(--taco-ink);
+}
+
+.titleblock__head > div:first-child {
+  padding: 1rem 1.1rem 0.9rem;
+}
+
+.titleblock__name {
+  font-family: var(--taco-font-display);
+  font-weight: 800;
+  font-stretch: 85%;
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--taco-ink);
+}
+
+.titleblock__expansion {
+  font-family: var(--taco-font-display);
+  font-stretch: 92%;
+  font-weight: 500;
+  color: var(--taco-ink-2);
+  margin-top: 0.3rem;
+}
+
+.titleblock__rev {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 0.75rem 1.1rem;
+  min-width: 108px;
+  background: var(--taco-gold);
+  color: var(--taco-navy);
+  border-left: 1.5px solid var(--taco-ink);
+}
+
+.titleblock__rev-label {
+  font-family: var(--taco-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.titleblock__rev-value {
+  font-family: var(--taco-font-display);
+  font-weight: 800;
+  font-stretch: 88%;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.titleblock__rows {
+  margin: 0;
+}
+
+.titleblock__row {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  border-bottom: 1px solid var(--taco-line);
+}
+
+.titleblock__row dt {
+  font-family: var(--taco-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--taco-ink-3);
+  padding: 0.6rem 0.9rem 0.6rem 1.1rem;
+  border-right: 1px solid var(--taco-line);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
 }
 
-.problem-grid__icon svg {
-  width: 20px;
-  height: 20px;
-  stroke: #ef4444;
-  stroke-width: 2;
+.titleblock__row dd {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  font-family: var(--taco-font-display);
+  font-weight: 600;
+  font-stretch: 94%;
+  color: var(--taco-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.titleblock__row dd a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.titleblock__row dd a:hover {
+  color: var(--taco-ink);
+  border-bottom-color: var(--taco-gold);
+  text-decoration: none;
+}
+
+.titleblock__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 1.1rem;
+  font-family: var(--taco-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--taco-ink-3);
+}
+
+.titleblock__foot a {
+  color: var(--taco-ink-2);
+}
+
+.titleblock__foot a:hover {
+  color: var(--taco-gold-ink);
+  text-decoration: none;
+}
+
+/* ============================================================
+   Sheets (sections) and sheet heads
+   ============================================================ */
+
+.sheet {
+  padding: 5rem 0;
+  border-bottom: 1px solid var(--taco-line);
+  scroll-margin-top: 70px;
+}
+
+.sheet--alt {
+  background: var(--taco-paper-2);
+}
+
+.sheet-head {
+  margin-bottom: 2.5rem;
+}
+
+.sheet-head__rule {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sheet-head__rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--taco-line-2);
+}
+
+.sheet-head__label {
+  color: var(--taco-gold-ink);
+}
+
+.sheet-head__meta {
+  order: 3;
+  color: var(--taco-ink-3);
+}
+
+.sheet-head__title {
+  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  font-weight: 700;
+  font-stretch: 92%;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin: 1.1rem 0 0.75rem;
+  max-width: 24ch;
+  color: var(--taco-ink);
+}
+
+.sheet-head__lede {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--taco-ink-2);
+  max-width: 62ch;
+  margin: 0;
+}
+
+/* ============================================================
+   General notes
+   ============================================================ */
+
+.notes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 3rem;
+  border-top: 1px solid var(--taco-line-2);
+}
+
+.note {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 0.75rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--taco-line);
+}
+
+.note__num {
+  font-family: var(--taco-font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--taco-gold-ink);
+  padding-top: 0.2rem;
+}
+
+.note__title {
+  font-family: var(--taco-font-display);
+  font-weight: 650;
+  font-stretch: 94%;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  color: var(--taco-ink);
+  margin-bottom: 0.35rem;
+}
+
+.note__body {
+  font-size: 0.93rem;
+  line-height: 1.6;
+  color: var(--taco-ink-2);
+  margin: 0;
+}
+
+/* ============================================================
+   Problem: today / with TACO pairs
+   ============================================================ */
+
+.pairs {
+  border-top: 1px solid var(--taco-line-2);
+}
+
+.pairs__head,
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1.35fr);
+  gap: 0 1rem;
+  align-items: start;
+}
+
+.pairs__head {
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--taco-line);
+  font-family: var(--taco-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--taco-ink-3);
+}
+
+.pairs__head span:last-child {
+  color: var(--taco-gold-ink);
+}
+
+.pair {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--taco-line);
+}
+
+.pair__now {
+  font-family: var(--taco-font-display);
+  font-weight: 650;
+  font-stretch: 94%;
+  font-size: 1.1rem;
+  line-height: 1.3;
+  color: var(--taco-ink);
+  padding-top: 0.1rem;
+}
+
+.pair__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.8rem;
+}
+
+.pair__arrow svg {
+  width: 32px;
+  height: 12px;
+  stroke: var(--taco-gold-ink);
+  stroke-width: 1.5;
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.problem-grid__label {
-  font-size: 0.9rem;
+.pair__taco p {
+  margin: 0 0 0.35rem;
+  color: var(--taco-ink-2);
+  line-height: 1.6;
+}
+
+.pair__taco a {
+  font-size: 0.875rem;
   font-weight: 600;
-  color: var(--taco-text);
+  color: var(--taco-blue);
+  text-decoration: none;
+}
+
+.pair__taco a:hover {
+  color: var(--taco-ink);
+  text-decoration: underline;
 }
 
 /* ============================================================
-   Standardization Table
+   Stack: three protocols, three jobs
    ============================================================ */
 
+.stack {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 3rem;
+  align-items: start;
+}
+
+.stack__layers {
+  display: grid;
+  gap: 0.6rem;
+  position: sticky;
+  top: 90px;
+}
+
+.layer {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.75rem;
+  padding: 0.9rem 1rem 0.9rem 1.1rem;
+  border: 1px solid var(--taco-line-2);
+  border-left-width: 5px;
+  background: var(--taco-card);
+}
+
+.layer--taco { border-left-color: var(--taco-gold); }
+.layer--a2a { border-left-color: var(--taco-blue); }
+.layer--mcp { border-left-color: var(--taco-ink-3); }
+
+.layer__job {
+  grid-column: 1 / -1;
+  font-family: var(--taco-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--taco-ink-3);
+  margin-bottom: 0.3rem;
+}
+
+.layer__badge {
+  font-family: var(--taco-font-display);
+  font-weight: 800;
+  font-stretch: 88%;
+  font-size: 1.05rem;
+  color: var(--taco-ink);
+}
+
+.layer__analogy {
+  font-style: italic;
+  color: var(--taco-ink-2);
+  align-self: center;
+}
+
+.stack__caption {
+  font-family: var(--taco-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--taco-ink-3);
+  text-align: right;
+  margin-top: 0.25rem;
+}
+
+.stack__notes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--taco-line-2);
+}
+
+.stack-note {
+  padding: 1.25rem 0 1.25rem 1.25rem;
+  border-bottom: 1px solid var(--taco-line);
+  border-left: 3px solid transparent;
+}
+
+.stack-note--taco { border-left-color: var(--taco-gold); }
+.stack-note--a2a { border-left-color: var(--taco-blue); }
+.stack-note--mcp { border-left-color: var(--taco-ink-3); }
+
+.stack-note__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.stack-note__badge {
+  font-family: var(--taco-font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--taco-ink-3);
+}
+
+.stack-note__title {
+  font-family: var(--taco-font-display);
+  font-weight: 650;
+  font-stretch: 94%;
+  font-size: 1.1rem;
+  color: var(--taco-ink);
+}
+
+.stack-note__body {
+  margin: 0 0 0.4rem;
+  color: var(--taco-ink-2);
+  line-height: 1.6;
+  max-width: 60ch;
+}
+
+.stack-note a {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--taco-blue);
+  text-decoration: none;
+}
+
+.stack-note a:hover {
+  color: var(--taco-ink);
+  text-decoration: underline;
+}
+
+/* ============================================================
+   Scope: pillars and layer-by-layer comparison
+   ============================================================ */
+
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+
+.pillar {
+  background: var(--taco-card);
+  border: 1px solid var(--taco-line);
+  border-top: 3px solid var(--taco-gold);
+  padding: 1.5rem 1.5rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.pillar__count {
+  font-family: var(--taco-font-display);
+  font-weight: 750;
+  font-stretch: 88%;
+  font-size: 2.75rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--taco-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pillar__count--word {
+  font-size: 2rem;
+  padding-top: 0.4rem;
+}
+
+.pillar__unit {
+  font-family: var(--taco-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--taco-gold-ink);
+}
+
+.pillar__body {
+  font-size: 0.93rem;
+  line-height: 1.6;
+  color: var(--taco-ink-2);
+  margin: 0 0 1rem;
+  flex: 1;
+}
+
+.pillar__link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--taco-blue);
+  text-decoration: none;
+}
+
+.pillar__link:hover {
+  color: var(--taco-ink);
+  text-decoration: underline;
+}
+
+.compare__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.compare__head p {
+  margin: 0;
+  color: var(--taco-ink-2);
+  font-size: 0.95rem;
+}
+
+.compare__note {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  color: var(--taco-ink-3);
+}
+
 .standardization-table-wrap {
-  max-width: 860px;
-  margin: 2rem auto 0;
   overflow-x: auto;
+  border: 1px solid var(--taco-line-2);
+  background: var(--taco-card);
 }
 
 .standardization-table {
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid var(--taco-border);
-  border-radius: 10px;
-  overflow: hidden;
   font-size: 0.9rem;
+  margin: 0;
+  display: table;
 }
 
 .standardization-table thead tr {
-  background: var(--taco-surface);
-}
-
-[data-theme='dark'] .standardization-table thead tr {
-  background: var(--taco-surface-card);
+  background: var(--taco-paper-2);
 }
 
 .standardization-table th {
-  padding: 0.85rem 1.25rem;
-  font-weight: 700;
+  padding: 0.75rem 1.1rem;
   text-align: left;
-  font-size: 0.85rem;
+  font-family: var(--taco-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--taco-text-secondary);
-  border-bottom: 2px solid var(--taco-border);
+  color: var(--taco-ink-3);
+  border-bottom: 1px solid var(--taco-line-2);
+}
+
+.standardization-table th:last-child {
+  color: var(--taco-gold-ink);
 }
 
 .standardization-table td {
-  padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid var(--taco-border);
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--taco-line);
   vertical-align: top;
+  line-height: 1.5;
 }
 
 .standardization-table tbody tr:last-child td {
@@ -319,672 +907,415 @@ h1, h2, h3, h4 {
 }
 
 .standardization-table__dim {
-  font-weight: 700;
-  color: var(--taco-text);
+  font-family: var(--taco-font-display);
+  font-weight: 650;
+  font-stretch: 94%;
+  color: var(--taco-ink);
   white-space: nowrap;
 }
 
 .standardization-table__a2a {
-  color: var(--taco-text-secondary);
+  color: var(--taco-ink-3);
 }
 
 .standardization-table__taco {
-  color: var(--taco-text);
+  color: var(--taco-ink);
   font-weight: 500;
 }
 
-.standardization-note {
-  text-align: center;
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
-  color: var(--taco-text-secondary);
-  font-style: italic;
-}
-
 /* ============================================================
-   Principles
+   Handoff: sequence diagram and keynotes
    ============================================================ */
 
-.principles {
+.handoff {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
-  gap: 1.25rem;
-  max-width: 920px;
-  margin: 2rem auto 0;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
+  gap: 2.5rem;
+  align-items: start;
 }
 
-.principle {
-  background: var(--taco-surface-card);
-  border: 1px solid var(--taco-border);
-  border-radius: 10px;
-  padding: 1.25rem 1.5rem;
+.seq {
+  background: var(--taco-card);
+  border: 1px solid var(--taco-line-2);
+  padding: 1.25rem 1rem;
+  overflow-x: auto;
+}
+
+.seq__svg {
+  display: block;
+  width: 100%;
+  min-width: 560px;
+  height: auto;
+  font-family: var(--taco-font-body);
+}
+
+.seq__actor {
+  fill: var(--taco-paper-2);
+  stroke: var(--taco-ink);
+  stroke-width: 1.25;
+}
+
+.seq__actor-label {
+  font-family: var(--taco-font-display);
+  font-weight: 650;
+  font-stretch: 92%;
+  font-size: 13.5px;
+  fill: var(--taco-ink);
+}
+
+.seq__actor-sub {
+  font-family: var(--taco-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--taco-ink-3);
+}
+
+.seq__lifeline {
+  stroke: var(--taco-line-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.seq__line {
+  stroke: var(--taco-ink);
+  stroke-width: 1.5;
+}
+
+.seq__line--return {
+  stroke-dasharray: 5 4;
+  stroke: var(--taco-ink-2);
+}
+
+.seq__arrowhead {
+  fill: var(--taco-ink);
+}
+
+.seq__label {
+  font-family: var(--taco-font-mono);
+  font-size: 11px;
+  fill: var(--taco-ink-2);
+}
+
+.seq__schema-bg {
+  fill: var(--taco-gold-dim);
+  stroke: var(--taco-gold);
+  stroke-width: 1;
+}
+
+.seq__schema {
+  font-family: var(--taco-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--taco-gold-ink);
+}
+
+.seq__note {
+  font-family: var(--taco-font-body);
+  font-style: italic;
+  font-size: 10.5px;
+  fill: var(--taco-ink-3);
+}
+
+.seq__keynote-shape {
+  fill: var(--taco-card);
+  stroke: var(--taco-ink);
+  stroke-width: 1.25;
+}
+
+.seq__keynote-text {
+  font-family: var(--taco-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--taco-ink);
+}
+
+.handoff__keynotes ol {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: keynote;
+}
+
+.handoff__keynotes li {
+  counter-increment: keynote;
   position: relative;
+  padding: 0.6rem 0 0.6rem 2.25rem;
+  border-top: 1px solid var(--taco-line);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--taco-ink-2);
 }
 
-.principle__marker {
-  font-family: var(--ifm-font-family-monospace);
+.handoff__keynotes li::before {
+  content: counter(keynote);
+  position: absolute;
+  left: 0;
+  top: 0.7rem;
+  width: 22px;
+  height: 22px;
+  clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);
+  background: var(--taco-ink);
+  color: var(--taco-paper);
+  font-family: var(--taco-font-mono);
   font-size: 0.7rem;
   font-weight: 600;
-  color: var(--taco-gold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.5rem;
-}
-
-.principle__title {
-  font-weight: 700;
-  font-size: 1rem;
-  margin-bottom: 0.35rem;
-  letter-spacing: -0.01em;
-}
-
-.principle__desc {
-  font-size: 0.88rem;
-  color: var(--taco-text-secondary);
-  line-height: 1.55;
-}
-
-/* ============================================================
-   Feature Cards
-   ============================================================ */
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-  gap: 1.5rem;
-  max-width: 920px;
-  margin: 2rem auto 0;
-}
-
-.feature-card {
-  background: var(--taco-surface-card);
-  border: 1px solid var(--taco-border);
-  border-left: 3px solid var(--taco-gold);
-  border-radius: 10px;
-  padding: 1.75rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-@media (hover: hover) {
-  .feature-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-  }
-
-  [data-theme='dark'] .feature-card:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  }
-}
-
-.feature-card:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.feature-card__icon {
-  width: 40px;
-  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: var(--taco-gold-dim);
-  margin-bottom: 1rem;
 }
 
-.feature-card__icon svg {
-  width: 20px;
-  height: 20px;
-  stroke: var(--taco-gold);
-  stroke-width: 2;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.feature-card__title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.01em;
-}
-
-.feature-card__desc {
-  font-size: 0.9rem;
-  color: var(--taco-text-secondary);
-  line-height: 1.6;
+.handoff__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
 }
 
 /* ============================================================
-   Architecture Diagram
-   ============================================================ */
-
-.diagram-container {
-  max-width: 900px;
-  margin: 0 auto;
-  overflow-x: auto;
-  padding: 2rem;
-  background: var(--taco-surface-card);
-  border: 1px solid var(--taco-border);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-}
-
-[data-theme='dark'] .diagram-container {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-}
-
-.diagram-caption {
-  text-align: center;
-  font-style: italic;
-  color: var(--taco-text-secondary);
-  margin-top: 1.5rem;
-  font-size: 0.95rem;
-}
-
-.diagram-mobile-note {
-  display: none;
-  text-align: center;
-  font-size: 0.8rem;
-  color: var(--taco-text-secondary);
-  margin-bottom: 0.5rem;
-}
-
-/* Diagram SVG */
-.arch-diagram {
-  width: 100%;
-  max-width: 860px;
-  margin: 0 auto;
-  display: block;
-}
-
-.arch-diagram .zone-label {
-  font-size: 11px;
-  font-weight: 600;
-  fill: #fff;
-}
-
-.arch-diagram .agent-label {
-  font-size: 10px;
-  fill: #fff;
-}
-
-.arch-diagram .schema-label {
-  font-size: 9px;
-  fill: var(--taco-text-secondary);
-}
-
-.arch-diagram .taco-bar-text {
-  font-size: 13px;
-  font-weight: 700;
-  fill: #000;
-}
-
-.arch-diagram .zone-detail {
-  font-size: 9px;
-  fill: rgba(255,255,255,0.7);
-}
-
-.arch-diagram .taco-bar-subtext {
-  font-size: 10px;
-  fill: rgba(0,0,0,0.45);
-  font-weight: 500;
-}
-
-.arch-diagram .registry-text {
-  font-size: 11px;
-  font-weight: 500;
-}
-
-/* ============================================================
-   Quick Start / Code Section
+   Quick start
    ============================================================ */
 
 .code-section {
-  max-width: 800px;
-  margin: 2rem auto 0;
+  max-width: 860px;
 }
 
-.install-badge {
-  text-align: center;
-  margin-top: 1.75rem;
+.code-section .tabs {
+  font-family: var(--taco-font-display);
+  font-stretch: 94%;
+  font-weight: 600;
 }
 
-.install-badge code {
-  font-family: var(--ifm-font-family-monospace);
-  font-size: 0.95rem;
-  font-weight: 500;
-  padding: 0.6rem 2rem;
-  border-radius: 8px;
-  background: var(--taco-gold);
-  color: var(--taco-navy);
-  display: inline-block;
+.code-section .tabs__item {
+  border-bottom-width: 2px;
 }
 
-/* ============================================================
-   CTA Section
-   ============================================================ */
+.code-section .tabs__item--active {
+  border-bottom-color: var(--taco-gold);
+  color: var(--taco-ink);
+}
 
-.cta-section {
-  text-align: center;
-  padding: 5rem 0;
-  background: var(--taco-navy);
-  background-image:
-    radial-gradient(ellipse at 50% 50%, rgba(234, 179, 8, 0.06) 0%, transparent 60%);
-  color: var(--taco-text-on-dark);
-  position: relative;
+.install {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1rem;
+}
+
+.install__tabs {
+  display: inline-flex;
+  border: 1px solid var(--taco-line-2);
+  border-radius: 3px;
   overflow: hidden;
 }
 
-.cta-section::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 24px 24px;
-  pointer-events: none;
+.install__tab {
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--taco-line-2);
+  padding: 0.55rem 0.9rem;
+  min-height: 40px;
+  font-family: var(--taco-font-mono);
+  font-size: 0.78rem;
+  color: var(--taco-ink-3);
+  cursor: pointer;
 }
 
-[data-theme='dark'] .cta-section {
-  background: #080c14;
-  background-image:
-    radial-gradient(ellipse at 50% 50%, rgba(234, 179, 8, 0.04) 0%, transparent 60%);
+.install__tab:last-child {
+  border-right: none;
 }
 
-.cta-section h2 {
-  color: #fff;
-  margin-bottom: 1rem;
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-}
-
-.cta-section p {
-  max-width: 560px;
-  margin: 0 auto 2.5rem;
-  color: var(--taco-text-on-dark-dim);
-  line-height: 1.6;
-}
-
-.cta-note {
-  margin-top: 1.25rem;
-  font-size: 0.8rem;
-  color: var(--taco-text-on-dark-dim);
-}
-
-.cta-note a {
-  color: rgba(255, 255, 255, 0.5);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.cta-note a:hover {
-  color: rgba(255, 255, 255, 0.75);
-}
-
-/* ============================================================
-   Scroll fade-in animation
-   ============================================================ */
-
-.fade-in {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-}
-
-.fade-in--visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* ============================================================
-   Stats Row
-   ============================================================ */
-
-.stats-section {
-  background: var(--taco-navy-light);
-  padding: 2rem 0;
-  border-bottom: 1px solid rgba(234, 179, 8, 0.15);
-}
-
-[data-theme='dark'] .stats-section {
-  background: #0d1117;
-}
-
-.stats-row {
-  display: flex;
-  justify-content: center;
-  gap: 4rem;
-  max-width: 700px;
-  margin: 0 auto;
-}
-
-.stat {
-  text-align: center;
-}
-
-.stat__value {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--taco-gold);
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-}
-
-.stat__label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--taco-text-on-dark-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 0.25rem;
-}
-
-/* ============================================================
-   Hero glow animation
-   ============================================================ */
-
-@keyframes heroGlow {
-  0%, 100% { opacity: 0.08; transform: scale(1); }
-  50% { opacity: 0.14; transform: scale(1.05); }
-}
-
-.hero--taco::after {
-  content: '';
-  position: absolute;
-  top: 30%;
-  left: 50%;
-  width: 400px;
-  height: 400px;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, var(--taco-gold) 0%, transparent 70%);
-  opacity: 0.08;
-  animation: heroGlow 6s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.hero--taco .container {
-  position: relative;
-  z-index: 1;
-}
-
-/* ============================================================
-   Diagram zone hover effects
-   ============================================================ */
-
-.arch-diagram .zone-group {
-  transition: transform 0.2s ease, filter 0.2s ease;
-  cursor: default;
-}
-
-@media (hover: hover) {
-  .arch-diagram .zone-group:hover {
-    filter: brightness(1.12);
-    transform: translateY(-2px);
-  }
-}
-
-/* ============================================================
-   Hero Install Badge
-   ============================================================ */
-
-.hero__install {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(234, 179, 8, 0.3);
-  border-radius: 999px;
-  padding: 0.5rem 0.75rem 0.5rem 1.25rem;
-  margin-bottom: 2rem;
-  font-family: var(--ifm-font-family-monospace);
-  font-size: 0.9rem;
-  color: var(--taco-text-on-dark);
-  backdrop-filter: blur(8px);
-}
-
-.hero__install code {
-  background: none;
-  padding: 0;
-  font-size: inherit;
-  color: inherit;
-}
-
-/* ============================================================
-   Hero GitHub Badge
-   ============================================================ */
-
-.hero__github-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.8rem;
-  color: var(--taco-text-on-dark-dim);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.hero__github-badge:hover {
-  color: var(--taco-text-on-dark);
-  text-decoration: none;
-}
-
-.hero__github-badge svg {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-}
-
-/* ============================================================
-   What is TACO? section
-   ============================================================ */
-
-.what-is-taco {
-  max-width: 720px;
-  margin: 0 auto;
-  text-align: center;
-  font-size: 1.15rem;
-  line-height: 1.8;
-  color: var(--taco-text-secondary);
-}
-
-.what-is-taco strong {
-  color: var(--taco-text);
-  font-weight: 600;
-}
-
-.what-is-taco .what-is-taco__tagline {
-  margin-top: 1.25rem;
-  font-size: 0.95rem;
-  color: var(--taco-text-secondary);
-}
-
-/* ============================================================
-   How It Works — 3-step section
-   ============================================================ */
-
-.how-it-works {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr;
-  align-items: flex-start;
-  gap: 0;
-  max-width: 960px;
-  margin: 2.5rem auto 0;
-}
-
-.how-it-works__step {
-  text-align: center;
-  padding: 0 1rem;
-}
-
-.how-it-works__number {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+.install__tab--active {
   background: var(--taco-gold);
   color: var(--taco-navy);
-  font-weight: 800;
-  font-size: 1.2rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1rem;
+  font-weight: 600;
 }
 
-[data-theme='dark'] .how-it-works__number {
-  box-shadow: 0 0 20px rgba(234, 179, 8, 0.25);
+.install__tab:focus-visible {
+  outline: 2px solid var(--taco-gold);
+  outline-offset: -2px;
 }
 
-.how-it-works__title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.01em;
-}
-
-.how-it-works__desc {
-  font-size: 0.9rem;
-  color: var(--taco-text-secondary);
-  line-height: 1.6;
-  margin-bottom: 1rem;
-}
-
-.how-it-works__code {
-  text-align: left;
-  font-size: 0.78rem;
-  background: var(--taco-surface-card);
-  border: 1px solid var(--taco-border);
-  border-radius: 8px;
-  padding: 0.75rem;
-  overflow-x: auto;
-}
-
-.how-it-works__code code {
-  font-family: var(--ifm-font-family-monospace);
-  font-size: 0.78rem;
-  color: var(--taco-text);
-  white-space: pre;
-  background: none;
-  padding: 0;
-}
-
-.how-it-works__connector {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-top: 0.75rem;
-  color: var(--taco-gold);
-  font-size: 1.5rem;
-}
-
-.how-it-works__connector svg {
-  width: 32px;
-  height: 32px;
-  stroke: var(--taco-gold);
-  stroke-width: 2;
-  fill: none;
+.install__cmd {
+  margin-bottom: 0;
 }
 
 /* ============================================================
-   Audience Path Cards
+   Status, entry points, call to action
    ============================================================ */
 
-.audience-paths {
+.status {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  max-width: 920px;
-  margin: 2.5rem auto 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem;
+  padding-bottom: 3rem;
+  margin-bottom: 3rem;
+  border-bottom: 1px solid var(--taco-line-2);
 }
 
-.audience-card {
-  background: var(--taco-surface-card);
-  border: 1px solid var(--taco-border);
-  border-radius: 12px;
-  padding: 2rem 1.75rem;
-  text-decoration: none;
+.status__h {
+  font-family: var(--taco-font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--taco-gold-ink);
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--taco-line-2);
+}
+
+.status ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.status li {
+  position: relative;
+  padding: 0.45rem 0 0.45rem 1.1rem;
+  font-size: 0.93rem;
+  line-height: 1.55;
+  color: var(--taco-ink-2);
+}
+
+.status li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.95rem;
+  width: 6px;
+  height: 6px;
+  background: var(--taco-gold);
+}
+
+.status__col:nth-child(2) li::before {
+  background: transparent;
+  border: 1.5px solid var(--taco-gold-ink);
+}
+
+.status__col:nth-child(3) li::before {
+  background: var(--taco-ink-3);
+}
+
+.paths {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 4rem;
+}
+
+.path {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 0.35rem;
+  padding: 1.25rem 1.25rem 1.1rem;
+  background: var(--taco-card);
+  border: 1px solid var(--taco-line);
   color: inherit;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-  display: flex;
-  flex-direction: column;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
-@media (hover: hover) {
-  .audience-card:hover {
-    transform: translateY(-3px);
-    border-color: var(--taco-gold);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-    color: inherit;
-    text-decoration: none;
-  }
-
-  [data-theme='dark'] .audience-card:hover {
-    box-shadow: 0 8px 32px rgba(234, 179, 8, 0.08);
-  }
-}
-
-.audience-card:active {
-  transform: translateY(0);
+.path:hover {
   border-color: var(--taco-gold);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  color: inherit;
+  text-decoration: none;
+  transform: translateY(-2px);
 }
 
-.audience-card__icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  background: var(--taco-gold-dim);
-  margin-bottom: 1.25rem;
+.path__who {
+  font-family: var(--taco-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--taco-gold-ink);
 }
 
-.audience-card__icon svg {
-  width: 24px;
-  height: 24px;
-  stroke: var(--taco-gold);
-  stroke-width: 2;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.path__title {
+  font-family: var(--taco-font-display);
+  font-weight: 650;
+  font-stretch: 94%;
+  font-size: 1.05rem;
+  color: var(--taco-ink);
 }
 
-.audience-card__title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
+.path__body {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--taco-ink-2);
 }
 
-.audience-card__desc {
-  font-size: 0.9rem;
-  color: var(--taco-text-secondary);
-  line-height: 1.6;
-  flex: 1;
-}
-
-.audience-card__link {
-  margin-top: 1.25rem;
-  font-size: 0.9rem;
+.path__go {
+  color: var(--taco-gold-ink);
   font-weight: 600;
-  color: var(--taco-gold);
+  margin-top: 0.5rem;
+}
+
+.cta {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) auto;
+  gap: 2rem;
+  align-items: center;
+  padding: 2.25rem 2.5rem;
+  background: var(--taco-navy);
+  border: 1.5px solid var(--taco-navy);
+  color: #eef1f6;
+}
+
+[data-theme='dark'] .cta {
+  background: var(--taco-card);
+  border-color: var(--taco-ink);
+}
+
+.cta__title {
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  font-weight: 700;
+  font-stretch: 92%;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin: 0 0 0.5rem;
+}
+
+.cta__body {
+  margin: 0;
+  color: rgba(238, 241, 246, 0.75);
+  line-height: 1.6;
+  max-width: 56ch;
+}
+
+.cta__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.cta .btn--ghost {
+  color: #eef1f6;
+  border-color: rgba(238, 241, 246, 0.35);
+}
+
+.cta .btn--ghost:hover {
+  color: #fff;
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* ============================================================
-   Copy Button
+   Copy button
    ============================================================ */
 
 .copy-btn {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.75rem;
-  min-width: 44px;
-  min-height: 44px;
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.5);
+  padding: 0.6rem;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 3px;
+  color: var(--taco-ink-3);
   transition: color 0.15s ease, background 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -992,8 +1323,13 @@ h1, h2, h3, h4 {
 }
 
 .copy-btn:hover {
-  color: var(--taco-gold);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--taco-gold-ink);
+  background: var(--taco-gold-dim);
+}
+
+.copy-btn:focus-visible {
+  outline: 2px solid var(--taco-gold);
+  outline-offset: -2px;
 }
 
 .copy-btn svg {
@@ -1007,110 +1343,40 @@ h1, h2, h3, h4 {
 }
 
 /* ============================================================
-   Count-up Stats enhancements
+   Docs
    ============================================================ */
 
-.stat__value {
-  font-variant-numeric: tabular-nums;
-  transition: color 0.3s ease;
-}
-
-/* ============================================================
-   Feature card zone colors
-   ============================================================ */
-
-.feature-card--task-types {
-  border-left-color: var(--taco-precon);
-}
-
-.feature-card--schemas {
-  border-left-color: var(--taco-docmgmt);
-}
-
-.feature-card--discovery {
-  border-left-color: var(--taco-field);
-}
-
-.feature-card__link {
-  display: inline-block;
-  margin-top: 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--taco-gold);
-  text-decoration: none;
-}
-
-.feature-card__link:hover {
-  text-decoration: underline;
-}
-
-.feature-card__icon--lg {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
-}
-
-.feature-card__icon--lg svg {
-  width: 24px;
-  height: 24px;
-}
-
-/* ============================================================
-   Docs Enhancements
-   ============================================================ */
-
-/* Better table styling */
 .markdown table {
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--taco-border);
+  border: 1px solid var(--taco-line);
 }
 
 .markdown table thead tr {
-  background: var(--taco-surface);
+  background: var(--taco-paper-2);
 }
 
-[data-theme='dark'] .markdown table thead tr {
-  background: var(--taco-surface-card);
-}
-
-/* Code block border */
 .markdown .prism-code {
-  border: 1px solid var(--taco-border);
+  border: 1px solid var(--taco-line);
 }
 
-/* Sidebar active gold left border */
 .menu__link--active:not(.menu__link--sublist) {
   border-left: 3px solid var(--taco-gold);
   padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 3px);
 }
 
-/* Admonition gold accent */
 .admonition {
   border-left-color: var(--taco-gold);
 }
 
 /* ============================================================
-   CTA Section redesign
-   ============================================================ */
-
-.cta-section .cta-buttons {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-}
-
-/* ============================================================
-   Navbar Version Badge
+   Navbar version badge and announcement bar
    ============================================================ */
 
 .navbar__version-badge {
-  font-family: var(--ifm-font-family-monospace);
+  font-family: var(--taco-font-mono);
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  border-radius: 3px;
   background: var(--taco-gold);
   color: var(--taco-navy);
   text-decoration: none;
@@ -1124,21 +1390,65 @@ h1, h2, h3, h4 {
   text-decoration: none;
 }
 
-/* ============================================================
-   Announcement bar
-   ============================================================ */
-
 div[class*='announcementBar'] {
-  background: var(--taco-gold) !important;
-  color: var(--taco-navy) !important;
-  font-weight: 600;
-  font-size: 0.9rem;
+  background: var(--taco-navy) !important;
+  color: #eef1f6 !important;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--taco-gold);
+}
+
+[data-theme='dark'] div[class*='announcementBar'] {
+  background: var(--taco-paper-2) !important;
 }
 
 div[class*='announcementBar'] a {
-  color: var(--taco-navy) !important;
+  color: var(--taco-gold) !important;
   text-decoration: underline;
-  font-weight: 700;
+  text-underline-offset: 2px;
+  font-weight: 600;
+}
+
+/* ============================================================
+   404
+   ============================================================ */
+
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 2rem;
+}
+
+.not-found__code {
+  font-size: clamp(3rem, 15vw, 6rem);
+  font-weight: 800;
+  font-stretch: 85%;
+  color: var(--taco-gold);
+  letter-spacing: -0.04em;
+  margin-bottom: 0.5rem;
+  line-height: 1;
+}
+
+.not-found__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.not-found__desc {
+  color: var(--taco-ink-3);
+  margin-bottom: 2rem;
+  max-width: 420px;
+}
+
+.not-found__buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 /* ============================================================
@@ -1146,112 +1456,97 @@ div[class*='announcementBar'] a {
    ============================================================ */
 
 @media (max-width: 996px) {
-  .how-it-works {
+  .hero__grid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .titleblock {
+    max-width: 560px;
+  }
+
+  .stack {
     grid-template-columns: 1fr;
     gap: 2rem;
-    max-width: 400px;
   }
 
-  .how-it-works__connector {
-    transform: rotate(90deg);
-    padding: 0;
+  .stack__layers {
+    position: static;
+    max-width: 420px;
   }
 
-  .audience-paths {
-    grid-template-columns: repeat(2, 1fr);
-    max-width: 620px;
-    margin-left: auto;
-    margin-right: auto;
+  .pillars {
+    grid-template-columns: 1fr;
+  }
+
+  .handoff {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .status {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .paths {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cta {
+    grid-template-columns: 1fr;
+    padding: 2rem 1.75rem;
+  }
+
+  .cta__actions {
+    justify-content: flex-start;
   }
 }
 
 @media (max-width: 768px) {
-  .hero--taco {
-    padding: 4rem 1rem 3.5rem;
+  .hero {
+    padding: 3rem 0 3rem;
   }
 
-  .hero--taco .hero__subtitle {
-    font-size: 1.1rem;
+  .hero__title {
+    max-width: none;
   }
 
-  .hero__buttons {
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
+  .sheet {
+    padding: 3.5rem 0;
   }
 
-  .hero__github-badge {
+  .notes {
+    grid-template-columns: 1fr;
+  }
+
+  .pairs__head {
     display: none;
   }
 
-  .section {
-    padding: 3.5rem 1rem;
-  }
-
-  .cta-section {
-    padding: 3.5rem 1rem;
-  }
-
-  .diagram-container {
-    padding: 1rem;
-  }
-
-  .arch-diagram {
-    min-width: 600px;
-  }
-
-  .diagram-mobile-note {
-    display: block;
-  }
-
-  .how-it-works__code code {
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  .problem-grid {
-    gap: 1.25rem 1.5rem;
-  }
-
-  .standardization-table th,
-  .standardization-table td {
-    padding: 0.65rem 0.85rem;
-    font-size: 0.82rem;
-  }
-
-  .stats-row {
-    gap: 2rem;
-    flex-wrap: wrap;
-  }
-
-  .stat__value {
-    font-size: 1.5rem;
-  }
-
-  .cta-section .cta-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .logo-strip .container {
-    flex-direction: column;
+  .pair {
+    grid-template-columns: 1fr;
     gap: 0.5rem;
   }
-}
 
-@media (max-width: 600px) {
-  .audience-paths {
-    grid-template-columns: 1fr;
-    max-width: 400px;
+  .pair__arrow {
+    justify-content: flex-start;
+    height: auto;
   }
 
-  /* Card layout for standardization table */
+  .pair__arrow svg {
+    transform: rotate(90deg);
+    width: 20px;
+    height: 20px;
+  }
+
   .standardization-table-wrap {
     overflow-x: visible;
+    border: none;
+    background: transparent;
   }
 
   .standardization-table {
-    border: none;
     display: block;
   }
 
@@ -1268,385 +1563,109 @@ div[class*='announcementBar'] a {
   .standardization-table tbody tr {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-    background: var(--taco-surface-card);
-    border: 1px solid var(--taco-border);
-    border-radius: 10px;
-    overflow: hidden;
+    background: var(--taco-card);
+    border: 1px solid var(--taco-line-2);
   }
 
   .standardization-table td {
     border-bottom: none;
     padding: 0.6rem 0.85rem;
-    text-align: left;
     font-size: 0.85rem;
   }
 
   .standardization-table td::before {
     content: attr(data-label);
     display: block;
-    font-size: 0.65rem;
-    font-weight: 600;
+    font-family: var(--taco-font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--taco-text-secondary);
+    color: var(--taco-ink-3);
     margin-bottom: 0.2rem;
   }
 
   .standardization-table__dim {
     grid-column: 1 / -1;
-    font-size: 1rem;
-    background: var(--taco-surface);
-    border-bottom: 1px solid var(--taco-border) !important;
-    padding: 0.65rem 0.85rem;
+    background: var(--taco-paper-2);
+    border-bottom: 1px solid var(--taco-line) !important;
+    white-space: normal;
   }
 
   .standardization-table__dim::before {
-    display: none !important;
+    display: none;
   }
 
   .standardization-table__taco {
     background: var(--taco-gold-dim);
-    font-weight: 600;
-    color: var(--taco-text);
-  }
-}
-
-@media (max-width: 480px) {
-  .section {
-    padding: 3rem 0.75rem;
   }
 
-  .cta-section {
-    padding: 3rem 0.75rem;
+  .standardization-table__taco::before {
+    color: var(--taco-gold-ink);
   }
 
-  .hero--taco .hero__subtitle {
-    font-size: 0.95rem;
-  }
-
-  .hero__oneliner {
-    font-size: 0.9rem;
-  }
-
-  .cta-section h2 {
+  .cta__title {
     font-size: 1.5rem;
   }
+}
 
-  .cta-section p {
-    font-size: 0.9rem;
+@media (max-width: 560px) {
+  .titleblock__row {
+    grid-template-columns: 96px 1fr;
   }
 
-  .hero__install {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.6rem 0.4rem 1rem;
+  .titleblock__row dt {
+    padding-left: 0.85rem;
+    padding-right: 0.6rem;
   }
 
-  .stats-row {
-    gap: 1.5rem;
+  .titleblock__head > div:first-child {
+    padding: 0.85rem 0.85rem 0.75rem;
   }
 
-  .stat__value {
-    font-size: 1.25rem;
+  .titleblock__name {
+    font-size: 1.6rem;
   }
 
-  .stat__label {
-    font-size: 0.65rem;
+  .titleblock__rev {
+    min-width: 88px;
+    padding: 0.6rem 0.85rem;
   }
 
-  .ecosystem-layer {
+  .titleblock__foot {
     flex-direction: column;
-    text-align: left;
-    align-items: flex-start;
+    gap: 0.25rem;
   }
 
-  .ecosystem-layer__desc {
-    text-align: left;
+  .hero__install,
+  .install__cmd {
+    font-size: 0.82rem;
   }
 
-  .problem-grid {
-    gap: 1rem;
-    flex-direction: column;
-    align-items: center;
+  .hero__actions .btn {
+    flex: 1 1 100%;
   }
 
-  .stats-row {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-    justify-items: center;
+  .paths {
+    grid-template-columns: 1fr;
   }
 
-  .logo-strip__link {
-    font-size: 0.72rem;
-  }
-
-  .how-it-works__code {
-    font-size: 0.72rem;
-    padding: 0.5rem;
-  }
-
-  .how-it-works__code code {
-    font-size: 0.72rem;
-    white-space: pre-wrap;
-    word-break: break-word;
+  .cta__actions .btn {
+    flex: 1 1 100%;
   }
 }
 
 /* ============================================================
-   Logo Strip
-   ============================================================ */
-
-.logo-strip {
-  background: var(--taco-navy-light);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 0.85rem 0;
-  text-align: center;
-}
-
-[data-theme='dark'] .logo-strip {
-  background: #0d1117;
-}
-
-.logo-strip .container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.logo-strip__label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--taco-text-on-dark-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.logo-strip__logos {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.logo-strip__link {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: rgba(241, 245, 249, 0.5);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.logo-strip__link:hover {
-  color: var(--taco-gold);
-  text-decoration: none;
-}
-
-.logo-strip__separator {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-}
-
-/* ============================================================
-   Ecosystem Stack
-   ============================================================ */
-
-.ecosystem-stack {
-  max-width: 520px;
-  margin: 2rem auto 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.ecosystem-layer {
-  padding: 1.25rem 1.75rem;
-  border: 1px solid var(--taco-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.ecosystem-layer:first-child {
-  border-radius: 10px 10px 0 0;
-}
-
-.ecosystem-layer:last-child {
-  border-radius: 0 0 10px 10px;
-}
-
-.ecosystem-layer + .ecosystem-layer {
-  border-top: none;
-}
-
-.ecosystem-layer__label {
-  font-weight: 700;
-  font-size: 1rem;
-  white-space: nowrap;
-}
-
-.ecosystem-layer__desc {
-  font-size: 0.85rem;
-  color: var(--taco-text-secondary);
-  text-align: right;
-}
-
-.ecosystem-layer--taco {
-  background: var(--taco-gold);
-  border-color: var(--taco-gold);
-}
-
-.ecosystem-layer--taco .ecosystem-layer__label {
-  color: var(--taco-navy);
-}
-
-.ecosystem-layer--taco .ecosystem-layer__desc {
-  color: rgba(15, 23, 42, 0.7);
-}
-
-.ecosystem-layer--a2a {
-  background: var(--taco-surface-card);
-}
-
-.ecosystem-layer--transport {
-  background: var(--taco-surface);
-}
-
-[data-theme='dark'] .ecosystem-layer--a2a {
-  background: var(--taco-surface-card);
-}
-
-[data-theme='dark'] .ecosystem-layer--transport {
-  background: var(--taco-surface);
-}
-
-/* ============================================================
-   Install Tabs (Quick Start)
-   ============================================================ */
-
-.install-tabs {
-  display: flex;
-  justify-content: center;
-  gap: 0.25rem;
-  margin-bottom: 0.75rem;
-}
-
-.install-tabs__tab {
-  background: none;
-  border: 1px solid var(--taco-border);
-  border-radius: 6px;
-  padding: 0.55rem 1rem;
-  min-height: 44px;
-  font-family: var(--ifm-font-family-monospace);
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--taco-text-secondary);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.install-tabs__tab:hover {
-  border-color: var(--taco-gold);
-  color: var(--taco-text);
-}
-
-.install-tabs__tab--active {
-  background: var(--taco-gold-dim);
-  border-color: var(--taco-gold);
-  color: var(--taco-gold);
-  font-weight: 600;
-}
-
-.install-tabs__cmd {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.install-tabs__cmd code {
-  font-family: var(--ifm-font-family-monospace);
-  font-size: 0.95rem;
-  font-weight: 500;
-  padding: 0.6rem 1.5rem;
-  border-radius: 8px;
-  background: var(--taco-gold);
-  color: var(--taco-navy);
-  display: inline-block;
-}
-
-/* ============================================================
-   404 Page
-   ============================================================ */
-
-.not-found {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  text-align: center;
-  padding: 2rem;
-}
-
-.not-found__code {
-  font-size: clamp(3rem, 15vw, 6rem);
-  font-weight: 800;
-  color: var(--taco-gold);
-  letter-spacing: -0.04em;
-  margin-bottom: 0.5rem;
-  line-height: 1;
-}
-
-.not-found__title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
-.not-found__desc {
-  color: var(--taco-text-secondary);
-  margin-bottom: 2rem;
-  max-width: 420px;
-}
-
-.not-found__buttons {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-/* ============================================================
-   Accessibility — prefers-reduced-motion
+   Motion
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
-  .fade-in {
-    opacity: 1;
-    transform: none;
+  .btn,
+  .path,
+  .copy-btn {
     transition: none;
   }
 
-  .hero--taco::after {
-    animation: none;
-  }
-
-  .feature-card,
-  .audience-card,
-  .arch-diagram .zone-group {
-    transition: none;
-  }
-
-  .feature-card:hover,
-  .audience-card:hover {
-    transform: none;
-  }
-
-  .arch-diagram .zone-group:hover {
+  .path:hover {
     transform: none;
   }
 }
