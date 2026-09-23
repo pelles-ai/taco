@@ -10,7 +10,7 @@ import RecipeCard from '@site/src/components/RecipeCard';
 
 A growing library of multi-agent workflows you can lift directly into a project. Every recipe has a sequence diagram, the full Python that runs against `taco-agent`, and shows the typed data that flows between agents.
 
-These are the patterns we keep watching teams reimplement from scratch. The point of TACO is that you shouldn't have to.
+These are the patterns most multi-agent construction workflows need, written once so you don't have to.
 
 ## Multi-trade chains
 

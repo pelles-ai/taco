@@ -43,16 +43,9 @@ Make procurement decisions that respect the project schedule — automatically �
 
 ## Full Python
 
-<p>
-  <a className="sandbox-open-link" href="/sandbox?preset=gc-estimator-supplier-chain">
-    ▶ Open a related preset in the sandbox →
-  </a>
-  &nbsp;<small>(this exact recipe uses asyncio + multiple agents — the sandbox shim is sync, so the GC chain preset is the closest in-browser approximation)</small>
-</p>
-
 ```python
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from taco import (
     AgentRegistry,
     TacoClient,
@@ -76,23 +69,26 @@ async def fetch(agent, task_type, payload):
 
 def days_until(activity_start_iso: str, *, today: datetime) -> int:
     start = datetime.fromisoformat(activity_start_iso.replace("Z", "+00:00"))
+    if start.tzinfo is None:  # date-only or naive values: assume UTC
+        start = start.replace(tzinfo=timezone.utc)
     return (start - today).days
 
 
 def reconcile(quote: dict, schedule: dict, today: datetime) -> dict:
     """
-    Walk the quote items, map each back to a schedule activity, and flag
-    any whose lead time exceeds time-to-activity-start.
-    Returns a structured decision payload.
+    Walk the quote line items, map each back to a schedule activity via
+    its bomItemId, and flag any whose lead time exceeds
+    time-to-activity-start. Returns a structured decision payload.
     """
     activity_by_id = {a["id"]: a for a in schedule["activities"]}
     on_time, late = [], []
-    for item in quote["items"]:
-        activity_id = LINE_TO_ACTIVITY.get(item.get("sku") or item.get("lineItemId"))
-        if not activity_id or activity_id not in activity_by_id:
+    for item in quote["lineItems"]:
+        activity_id = LINE_TO_ACTIVITY.get(item["bomItemId"])
+        activity = activity_by_id.get(activity_id)
+        # startDate is optional in schedule-v1, so check for it
+        if activity is None or not activity.get("startDate"):
             on_time.append({**item, "decision": "no-schedule-link"})
             continue
-        activity = activity_by_id[activity_id]
         days_before_needed = days_until(activity["startDate"], today=today)
         slack = days_before_needed - item["leadTimeDays"]
         record = {
@@ -134,18 +130,19 @@ async def main() -> None:
     # Fetch quote + schedule in parallel
     quote, schedule = await asyncio.gather(
         fetch(supplier, "material-procurement", bom),
-        fetch(scheduler, "schedule-coordination", {"projectId": bom["projectId"]}),
+        fetch(scheduler, "schedule-coordination", bom),
     )
 
-    decision = reconcile(quote, schedule, today=datetime.utcnow())
+    decision = reconcile(quote, schedule, today=datetime.now(timezone.utc))
 
     print(f"On time   ({len(decision['onTime'])} items):")
     for r in decision["onTime"]:
-        print(f"  {r.get('sku', r.get('lineItemId')):<10}"
+        print(f"  {r['bomItemId']:<10}  {r['partNumber']:<12}"
               f"  decision={r['decision']}")
     print(f"\nLate      ({len(decision['late'])} items):")
     for r in decision["late"]:
-        print(f"  {r.get('sku'):<10}  activity={r['activityId']}  "
+        print(f"  {r['bomItemId']:<10}  {r['partNumber']:<12}  "
+              f"activity={r['activityId']}  "
               f"lead={r['leadTimeDays']}d  slack={r['slackDays']}d")
 
     if decision["late"]:
@@ -173,7 +170,7 @@ Without the schedule cross-check, a procurement chain is one supplier away from 
 
 **Slack of 0 days = "on time."** A line item delivered the morning of an activity start is technically on-time and operationally a disaster. Set your slack threshold to at least 2 days — preferably more depending on receiving/staging logistics on the jobsite. The example uses `slack >= 2`; tune it.
 
-**Hardcoding the BOM→activity mapping.** `LINE_TO_ACTIVITY` in the example is a fixture for clarity. In real projects, mapping line items to activities is its own coordination problem — sometimes the takeoff agent should emit it (`bom-v1.lineItems[].activityId`), sometimes a separate work-package planner agent owns it. Decide where the mapping lives; don't bury it in the procurement coordinator.
+**Hardcoding the BOM→activity mapping.** `LINE_TO_ACTIVITY` in the example is a fixture for clarity. In real projects, mapping line items to activities is its own coordination problem — sometimes the takeoff agent should emit it (`bom-v1` has no activity field, so that means an extension key on each line item that you agree on with the takeoff agent), sometimes a separate work-package planner agent owns it. Decide where the mapping lives; don't bury it in the procurement coordinator.
 
 **Ignoring weekends and holidays.** Calendar days vs working days is a real issue. A supplier's "5-day lead time" usually means business days; your schedule's `startDate` is calendar date. Convert to the same basis before comparing.
 
@@ -185,7 +182,7 @@ Without the schedule cross-check, a procurement chain is one supplier away from 
 
 **Dump the reconciliation payload, not just the summary.** The `decision` dict in the example has `slackDays`, `activityStart`, and `leadTimeDays` per item. Log the full structured record — when a procurement dispute happens, this is the audit trail.
 
-**Verify timezone alignment.** Schedules carry ISO timestamps; suppliers quote in business days. If the schedule's `startDate` is in UTC and your project is in EDT, "today" might be different. The example uses `datetime.utcnow()`; in production normalize everything to the project's site timezone.
+**Verify timezone alignment.** Schedules carry ISO timestamps; suppliers quote in business days. If the schedule's `startDate` is in UTC and your project is in EDT, "today" might be different. The example uses `datetime.now(timezone.utc)` and treats date-only `startDate` values as UTC; in production normalize everything to the project's site timezone.
 
 **Test with an obviously-late item.** A test fixture where the lead time exceeds the time-to-activity by a large margin catches reconciliation logic bugs immediately. Don't just test the happy path.
 

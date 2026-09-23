@@ -24,7 +24,7 @@ Produce a priced, sourced material plan for a project — fully agent-driven, no
 | **Mech Estimator Pro** | `mechanical` | `estimate`, `value-engineering` |
 | **PipeWorks Supply** | `mechanical` | `material-procurement` |
 
-Each agent advertises itself with a [Construction Agent Card](/docs/agent-card-extensions) at `/.well-known/agent-card.json`. The orchestrator discovers the other two via the [registry](/docs/sdk#agentregistry).
+Each agent advertises itself with a [Construction Agent Card](/docs/agent-card-extensions) at `/.well-known/agent-card.json`. The orchestrator discovers the other two via the [registry](/docs/sdk-reference/registry).
 
 ## Sequence
 
@@ -46,12 +46,6 @@ Each agent advertises itself with a [Construction Agent Card](/docs/agent-card-e
 ## Full code
 
 Each agent is a separate process; the orchestrator finds them via the registry and chains the calls.
-
-<p>
-  <a className="sandbox-open-link" href="/sandbox?preset=gc-estimator-supplier-chain">
-    ▶ Open this recipe in the in-browser sandbox →
-  </a>
-</p>
 
 <Tabs groupId="lang">
 <TabItem value="python" label="Python (taco-agent)" default>
@@ -95,8 +89,7 @@ async def main() -> None:
     async with TacoClient(agent_url=estimator.url) as client:
         est_task = await client.send_message("estimate", bom)
     estimate = extract_structured_data(est_task.artifacts[0].parts[0])
-    print(f"Estimator says total: ${estimate['summary']['total']:,} "
-          f"{estimate['currency']}")
+    print(f"Estimator says grand total: ${estimate['summary']['grandTotal']:,.2f}")
 
     # 4. Supplier hop — note the BOM (not the estimate) is sent;
     #    suppliers price the BOM directly
@@ -104,14 +97,14 @@ async def main() -> None:
         quote_task = await client.send_message("material-procurement", bom)
     quote = extract_structured_data(quote_task.artifacts[0].parts[0])
 
-    print(f"\nSupplier quote from {quote['supplier']['name']}:")
-    for item in quote["items"]:
-        line_total = item["unitPrice"] * item["quantity"]
-        print(f"  {item['sku']:<10} qty={item['quantity']:<4} "
-              f"unit=${item['unitPrice']:.2f}  →  ${line_total:.2f}  "
+    print(f"\nSupplier quote {quote['quoteNumber']} from {quote['supplierName']}:")
+    for item in quote["lineItems"]:
+        print(f"  {item['partNumber']:<10} qty={item['quantity']:<4} "
+              f"unit=${item['unitPrice']:.2f}  →  ${item['extendedPrice']:.2f}  "
               f"(lead {item['leadTimeDays']}d)")
 
-    print(f"\nQuote valid until: {quote['validUntil']}")
+    print(f"\nQuote total: ${quote['summary']['total']:,.2f}")
+    print(f"Quote valid until: {quote['validUntil']}")
 
 
 if __name__ == "__main__":
@@ -122,14 +115,18 @@ if __name__ == "__main__":
 <TabItem value="ts" label="TypeScript (wire format, no SDK)">
 
 ```typescript
-// TACO doesn't ship a TypeScript SDK yet, but the wire format is plain
+// TACO doesn't ship a TypeScript SDK, but the wire format is plain
 // JSON-RPC over HTTP. Everything here is fetch + standard types.
 
 type AgentCard = {
   name: string;
   url: string;
-  skills: Array<{id: string; taskType?: string; inputSchema?: string; outputSchema?: string}>;
-  'x-construction'?: {trade?: string; csiDivisions?: string[]};
+  skills: Array<{
+    id: string;
+    name: string;
+    'x-construction'?: {taskType: string; inputSchema?: string; outputSchema: string};
+  }>;
+  'x-construction'?: {trade: string; csiDivisions?: string[]};
 };
 
 type Task = {
@@ -151,13 +148,15 @@ async function sendMessage(
 ): Promise<Task> {
   const res = await fetch(agentUrl.replace(/\/$/, '') + '/', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: {'Content-Type': 'application/json', 'A2A-Version': '0.3'},
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: crypto.randomUUID(),
       method: 'message/send',
       params: {
         message: {
+          kind: 'message',
+          messageId: crypto.randomUUID(),
           role: 'user',
           parts: [{kind: 'data', data: payload}],
         },
@@ -193,29 +192,37 @@ async function main() {
   // Estimator hop
   const estTask = await sendMessage(estimator.url, 'estimate', bom);
   const estimate = estTask.artifacts[0].parts[0].data as {
-    summary: {total: number};
-    currency: string;
+    summary: {grandTotal: number};
   };
-  console.log(`Estimator says total: $${estimate.summary.total.toLocaleString()} ${estimate.currency}`);
+  console.log(`Estimator says grand total: $${estimate.summary.grandTotal.toLocaleString()}`);
 
   // Supplier hop — note the BOM (not the estimate) is sent
   const quoteTask = await sendMessage(supplier.url, 'material-procurement', bom);
   const quote = quoteTask.artifacts[0].parts[0].data as {
-    supplier: {name: string};
-    items: Array<{sku: string; unitPrice: number; quantity: number; leadTimeDays: number}>;
+    supplierName: string;
+    quoteNumber: string;
     validUntil: string;
+    lineItems: Array<{
+      bomItemId: string;
+      partNumber: string;
+      quantity: number;
+      unitPrice: number;
+      extendedPrice: number;
+      leadTimeDays: number;
+    }>;
+    summary: {total: number};
   };
 
-  console.log(`\nSupplier quote from ${quote.supplier.name}:`);
-  for (const item of quote.items) {
-    const lineTotal = item.unitPrice * item.quantity;
+  console.log(`\nSupplier quote ${quote.quoteNumber} from ${quote.supplierName}:`);
+  for (const item of quote.lineItems) {
     console.log(
-      `  ${item.sku.padEnd(10)} qty=${String(item.quantity).padEnd(4)}  ` +
-      `unit=$${item.unitPrice.toFixed(2)}  →  $${lineTotal.toFixed(2)}  ` +
+      `  ${item.partNumber.padEnd(10)} qty=${String(item.quantity).padEnd(4)}  ` +
+      `unit=$${item.unitPrice.toFixed(2)}  →  $${item.extendedPrice.toFixed(2)}  ` +
       `(lead ${item.leadTimeDays}d)`,
     );
   }
-  console.log(`\nQuote valid until: ${quote.validUntil}`);
+  console.log(`\nQuote total: $${quote.summary.total.toFixed(2)}`);
+  console.log(`Quote valid until: ${quote.validUntil}`);
 }
 
 main().catch((err) => {
@@ -224,10 +231,11 @@ main().catch((err) => {
 });
 ```
 
-:::info Where's the TypeScript SDK?
-A typed TS SDK with auto-generated types from the JSON Schemas is on the
-[roadmap](/docs/roadmap). The wire format shown above is stable; code
-written against it now will keep working once the SDK lands.
+:::info No TypeScript SDK
+TACO ships a Python SDK only. The TypeScript above talks to agents directly
+over A2A JSON-RPC, so any HTTP client works. The type sketches cover only the
+fields this example reads; the [schema reference](../schemas) has the full
+definitions.
 :::
 
 </TabItem>
@@ -235,7 +243,7 @@ written against it now will keep working once the SDK lands.
 
 ## Typed data flowing through
 
-The same `bom-v1` artifact reaches both the estimator and the supplier — that's the whole point. Neither agent has to guess at the input shape because both declared `inputSchema: "bom-v1"` in their Agent Cards.
+The same `bom-v1` artifact reaches both the estimator and the supplier — that's the whole point. Neither agent has to guess at the input shape because both declared `inputSchema: "bom-v1"` in the `x-construction` block of the relevant skill on their Agent Cards.
 
 The estimator returns an [`estimate-v1`](../schemas/estimate-v1), the supplier returns a [`quote-v1`](../schemas/quote-v1). The orchestrator can persist both as typed records linked to the project ID.
 
@@ -244,7 +252,7 @@ The estimator returns an [`estimate-v1`](../schemas/estimate-v1), the supplier r
 - **Add a value-engineering pass.** Insert a `value-engineering` call between the estimate and the supplier hops. The VE agent reads the estimate, suggests substitutions, and returns a revised BOM.
 - **Fan out to multiple suppliers.** Use the [BOM-to-Quote Marketplace](./bom-to-quote-marketplace) pattern to query several suppliers in parallel and select the best quote.
 - **Cross-check against schedule.** See [Schedule-Aware Procurement](./schedule-aware-procurement) — reject quotes whose lead time exceeds the activity's planned start.
-- **Streaming progress.** Replace `send_message` with `stream_message` and watch each agent's `TaskStatusUpdate` events as they work. Useful for long-running takeoffs.
+- **Streaming progress.** Replace `send_message` with `stream_message` and consume the SSE events as they arrive. An agent with a streaming handler for that task type emits an artifact-update event for each `Part` its handler yields, then a final status update when the task completes. Useful for long-running takeoffs.
 
 ## Common mistakes
 
@@ -264,7 +272,7 @@ The estimator returns an [`estimate-v1`](../schemas/estimate-v1), the supplier r
 
 **Use the Monitor UI on each agent.** `A2AServer(card, enable_monitor=True)` exposes `/monitor`. Watch a request flow through all three agents in real time. The visual is more useful than logs when debugging task lifecycle issues.
 
-**Check each agent against [SPEC-005](/docs/spec/SPEC-005-conformance).** `taco inspect <url>` on every agent in the chain catches a surprising fraction of chain bugs at the source: an estimator that doesn't declare `inputSchema: "bom-v1"` won't be discoverable by `registry.find(input_schema="bom-v1")`, which means future orchestrators won't find it even though it works fine for yours.
+**Check each agent against [SPEC-005](/docs/spec/SPEC-005-conformance).** `taco inspect <url>` on every agent in the chain catches a surprising fraction of chain bugs at the source. Discovery works by `trade`, `task_type`, `csi_division`, and `project_type`, so an estimator must advertise a skill whose `x-construction.taskType` is `"estimate"` (and the right `trade` on its card) to be found by `registry.find(trade="mechanical", task_type="estimate")`. An estimator that skips this works fine when you hardcode its URL, but future orchestrators won't find it.
 
 **Tag every log line with the task ID and context ID.** Multi-agent chains produce logs in three places. The two correlation handles from A2A are `task.id` (per-request) and `task.context_id` (per-conversation). Tag every log line with both, plus the agent's name — tracing a problem across three agents becomes a single grep.
 

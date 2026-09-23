@@ -148,7 +148,7 @@ GROUPS: list[GroupSpec] = [
         label="Registry",
         description=(
             "In-memory discovery layer with optional JSON persistence. Find "
-            "agents by trade, task type, CSI division, or trust tier."
+            "agents by trade, task type, CSI division, or project type."
         ),
         sidebar_position=5,
         symbols=[

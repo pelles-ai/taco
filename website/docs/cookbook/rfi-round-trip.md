@@ -16,7 +16,7 @@ End-to-end the round-trip is two messages and zero glue code.
 
 ## Goal
 
-Turn a design-coordination conflict into a typed, machine-readable RFI and a typed response — so both sides can analytics it, route it, escalate it, or feed it into the next phase of the project automatically.
+Turn a design-coordination conflict into a typed, machine-readable RFI and a typed response — so both sides can analyze it, route it, escalate it, or feed it into the next phase of the project automatically.
 
 ## Agents involved
 
@@ -35,23 +35,20 @@ Turn a design-coordination conflict into a typed, machine-readable RFI and a typ
   messages={[
     {from: 'auditor', to: 'auditor', label: 'audit drawings (local)', note: 'detect conflict at C/4'},
     {from: 'auditor', to: 'designer', label: 'send_message("rfi-response", rfi)', schema: 'rfi-v1'},
-    {from: 'designer', to: 'auditor', label: 'returns response', schema: 'rfi-response-v1', kind: 'return'},
+    {from: 'designer', to: 'auditor', label: 'returns response', schema: 'rfi-response-v1', note: 'schema planned', kind: 'return'},
   ]}
 />
 
 ## Full code
 
-<p>
-  <a className="sandbox-open-link" href="/sandbox?preset=rfi-round-trip">
-    ▶ Open this recipe in the in-browser sandbox →
-  </a>
-</p>
+The `rfi-response` task type returns `rfi-response-v1`, which is a planned schema: there is no published definition yet. The code below sends a fully typed `rfi-v1` and prints whatever structured data comes back, rather than assuming response field names.
 
 <Tabs groupId="lang">
 <TabItem value="python" label="Python (taco-agent)" default>
 
 ```python
 import asyncio
+import json
 from taco import (
     AgentRegistry,
     TacoClient,
@@ -88,11 +85,11 @@ async def main() -> None:
     async with TacoClient(agent_url=responder.url) as client:
         task = await client.send_message("rfi-response", rfi)
 
+    # rfi-response-v1 is planned, so its field names aren't defined yet.
+    # Treat the artifact as opaque structured data until the schema lands.
     response = extract_structured_data(task.artifacts[0].parts[0])
-    print(f"RFI {rfi['subject']} → response:")
-    print(response.get("response", "(no response text)"))
-    print(f"\nResponder: {response.get('respondedBy')}")
-    print(f"Status: {response.get('status')}")
+    print(f"RFI {rfi['subject']} → response (task {task.id}):")
+    print(json.dumps(response, indent=2))
 
 
 if __name__ == "__main__":
@@ -109,13 +106,18 @@ if __name__ == "__main__":
 async function sendMessage(agentUrl: string, taskType: string, payload: unknown) {
   const res = await fetch(agentUrl.replace(/\/$/, '') + '/', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: {'Content-Type': 'application/json', 'A2A-Version': '0.3'},
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: crypto.randomUUID(),
       method: 'message/send',
       params: {
-        message: {role: 'user', parts: [{kind: 'data', data: payload}]},
+        message: {
+          kind: 'message',
+          messageId: crypto.randomUUID(),
+          role: 'user',
+          parts: [{kind: 'data', data: payload}],
+        },
         metadata: {taskType},
       },
     }),
@@ -149,16 +151,12 @@ async function main() {
   };
 
   const task = await sendMessage(responderUrl, 'rfi-response', rfi);
-  const response = task.artifacts[0].parts[0].data as {
-    response?: string;
-    respondedBy?: string;
-    status?: string;
-  };
+  // rfi-response-v1 is planned, so its field names aren't defined yet.
+  // Treat the artifact as opaque structured data until the schema lands.
+  const response: unknown = task.artifacts[0].parts[0].data;
 
-  console.log(`RFI "${rfi.subject}" → response:`);
-  console.log(response.response ?? '(no response text)');
-  console.log(`\nResponder: ${response.respondedBy ?? 'unknown'}`);
-  console.log(`Status: ${response.status ?? 'unknown'}`);
+  console.log(`RFI "${rfi.subject}" → response (task ${task.id}):`);
+  console.log(JSON.stringify(response, null, 2));
 }
 
 main().catch((err) => {
@@ -195,8 +193,8 @@ The `category` and `priority` enums are part of [`rfi-v1`](../schemas/rfi-v1) �
 ## Variations
 
 - **Route by category.** Use `registry.find(task_type="rfi-response")` to discover multiple responders, then dispatch by `category` (structural conflicts → structural engineer agent, code-compliance → code reviewer agent).
-- **Persist + track.** Wire the responder's task ID back into your project record with [`reference_task_ids`](/docs/sdk) so the round-trip is auditable.
-- **Streaming.** Use `stream_message` to surface partial responses in a chat-style UI while the designer agent is still composing.
+- **Persist + track.** Store the responder's task ID in your project record, and pass it as [`reference_task_ids`](/docs/sdk-reference/client) on any follow-up message so the round-trip is auditable.
+- **Streaming.** If the responder registers a streaming handler for `rfi-response`, use `stream_message` to surface partial responses in a chat-style UI while the designer agent is still composing.
 - **Add a triage agent.** Insert a third agent between auditor and responder that classifies, deduplicates, or prioritizes incoming RFIs before they hit the design team.
 
 ## Common mistakes
@@ -207,13 +205,13 @@ The `category` and `priority` enums are part of [`rfi-v1`](../schemas/rfi-v1) �
 
 **Putting actual base64 image data in `references.markup`.** Inline base64 markup balloons RFI payloads to megabytes; this kills task queues and breaks audit logs. Use a file reference (URL or content-addressed hash) instead, and let the responder agent fetch the markup separately when it needs to.
 
-**Failing the task when the responder needs more info.** If the design responder can't answer without further clarification, returning `state: "failed"` is wrong — that's a *typed clarification request*, not a system failure. Return a `state: "completed"` artifact with `status: "needs-clarification"` and a typed follow-up question. See [Best Practices on error handling](../best-practices#error-handling).
+**Failing the task when the responder needs more info.** If the design responder can't answer without further clarification, returning `state: "failed"` is wrong — that's a *clarification request*, not a system failure. Complete the task and return the follow-up question as data in the artifact. The `rfi-response-v1` shape is still planned, so agree on the clarification fields with the other side for now. A2A also defines an `input-required` task state for this case, but TACO SDK handlers currently finish every task as `completed` or `failed`. See [Best Practices on error handling](../best-practices#error-handling).
 
 ## Debugging
 
 **Log the RFI's references before sending.** Drawing-sheet IDs are the most error-prone field — a typo (`M-201` vs `M-021`) makes the RFI unanswerable. A pre-send validation that the sheet IDs match a known drawing list catches this at the source.
 
-**Use `reference_task_ids` to link the response back to the original.** When the responder returns its typed reply, set `reference_task_ids=[original_rfi_task_id]` on its response. Later, querying for "all responses to this RFI" becomes a single registry call, not a manual lookup.
+**Use `reference_task_ids` to link follow-ups back to the original.** Keep the RFI task's `task.id`. When the auditor sends a follow-up (a clarification answer, a revised RFI), pass `reference_task_ids=[original_rfi_task_id]` to `send_message` so the new task points back to the original. The registry indexes agents, not tasks, so "all responses to this RFI" is a lookup in your own project record keyed by those task IDs.
 
 **Subscribe via push notification for slow responses.** If responder turnaround is hours-long, don't block — use the [push notification config](../sdk-reference/push-notifications) API so the responder calls back when ready instead of the orchestrator polling.
 

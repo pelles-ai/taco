@@ -48,12 +48,6 @@ The three `send_message` calls are dispatched concurrently with `asyncio.gather`
 
 ## Full Python
 
-<p>
-  <a className="sandbox-open-link" href="/sandbox?preset=bom-to-quote-marketplace">
-    ▶ Open this recipe in the in-browser sandbox →
-  </a>
-</p>
-
 ```python
 import asyncio
 from taco import (
@@ -75,11 +69,12 @@ async def quote_one(agent_card, bom):
 
 
 def quote_total(quote):
-    return sum(item["unitPrice"] * item["quantity"] for item in quote["items"])
+    # summary.total includes tax and freight, so it's the number to level on
+    return quote["summary"]["total"]
 
 
 def max_lead_time(quote):
-    return max(item["leadTimeDays"] for item in quote["items"])
+    return max(item["leadTimeDays"] for item in quote["lineItems"])
 
 
 async def main() -> None:
@@ -150,7 +145,21 @@ The example above uses *cheapest within a lead-time ceiling*. Real procurement t
 
 ## Variations
 
-- **Add a minimum trust tier.** `registry.find(trade="mechanical", min_trust_tier=1)` excludes unverified suppliers.
+- **Add a minimum trust tier.** `registry.find()` has no trust filter, so filter the returned cards yourself. The tier lives at `x-construction.security.trustTier` on each card:
+
+  ```python
+  from taco import get_construction_ext
+
+  def trust_tier(card) -> int:
+      xc = get_construction_ext(card)
+      if xc is None or xc.security is None or xc.security.trust_tier is None:
+          return 0
+      return xc.security.trust_tier
+
+  suppliers = [s for s in suppliers if trust_tier(s) >= 1]  # drop unverified
+  ```
+
+  The in-process `AgentRegistry` doesn't verify this value; it's whatever the card declares. Treat it as a claim until a registry has validated it (see [SPEC-004](/docs/spec/SPEC-004-security)).
 - **Cap concurrency.** Wrap each `quote_one` call in a semaphore if you don't want to hammer suppliers with N parallel requests.
 - **Combine with [Schedule-Aware Procurement](./schedule-aware-procurement).** Cross-check the winning lead time against the activity's planned start date before committing.
 - **Cache and re-level.** Persist quotes with their `validUntil`, re-level next time the BOM changes.
@@ -165,7 +174,7 @@ The example above uses *cheapest within a lead-time ceiling*. Real procurement t
 
 **Caching quotes too aggressively.** A BOM that changes by one line item invalidates every cached quote. If you cache, key by a hash of the normalized BOM, not by `projectId`.
 
-**Ignoring the supplier's `flaggedItems`.** A supplier returning a quote with `flaggedItems: [{itemId: "L-001", reason: "discontinued"}]` is telling you something important. Surface this in your selection logic before "the cheapest one won."
+**Ignoring each line's `availability` and `notes`.** A quote line with `availability: "backordered"`, or `notes: "Discontinued, substitute offered"` on `bomItemId: "L-001"`, is telling you something important. Surface this in your selection logic before "the cheapest one won."
 
 ## Debugging
 
@@ -178,7 +187,7 @@ The example above uses *cheapest within a lead-time ceiling*. Real procurement t
 ## See also
 
 - [`bom-v1`](../schemas/bom-v1) · [`quote-v1`](../schemas/quote-v1)
-- [`AgentRegistry`](/docs/sdk#agentregistry)
+- [`AgentRegistry`](/docs/sdk-reference/registry)
 - [Task type: `material-procurement`](../task-types)
 - [Best Practices](../best-practices)
 - [Common Pitfalls](../pitfalls)

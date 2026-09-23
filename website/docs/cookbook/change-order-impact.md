@@ -33,9 +33,9 @@ The Change Order Analyzer doesn't store anything itself. It pulls fresh state fr
     {id: 'sch', label: 'Scheduler', sub: 'baseline schedule'},
   ]}
   messages={[
-    {from: 'coa', to: 'est', label: 'get current estimate', schema: 'bom-v1'},
+    {from: 'coa', to: 'est', label: 'get current estimate', note: 'projectId lookup'},
     {from: 'est', to: 'coa', label: 'returns', schema: 'estimate-v1', kind: 'return'},
-    {from: 'coa', to: 'sch', label: 'get current schedule', schema: 'bom-v1'},
+    {from: 'coa', to: 'sch', label: 'get current schedule', note: 'projectId lookup'},
     {from: 'sch', to: 'coa', label: 'returns', schema: 'schedule-v1', kind: 'return'},
     {from: 'coa', to: 'coa', label: 'compute delta (local)', schema: 'change-order-v1'},
   ]}
@@ -44,12 +44,6 @@ The Change Order Analyzer doesn't store anything itself. It pulls fresh state fr
 The two upstream calls fan out in parallel; the analyzer joins them before computing the delta.
 
 ## Full Python
-
-<p>
-  <a className="sandbox-open-link" href="/sandbox?preset=change-order-impact">
-    ▶ Open this recipe in the in-browser sandbox →
-  </a>
-</p>
 
 ```python
 import asyncio
@@ -68,7 +62,7 @@ async def fetch_artifact(agent, task_type, payload):
 
 def compute_change_order(
     project_id: str,
-    change_description: str,
+    change_title: str,
     baseline_estimate: dict,
     baseline_schedule: dict,
     new_bom: dict,
@@ -79,33 +73,47 @@ def compute_change_order(
     Pricing the new BOM is delegated to the same estimator that produced
     the baseline (not shown — replace with a second `send_message`).
     """
-    baseline_total = baseline_estimate["summary"]["total"]
+    baseline_total = baseline_estimate["summary"]["grandTotal"]
     # Toy pricing for the delta — in practice ask the estimator agent.
-    delta_cost = sum(li["quantity"] * 14.50 for li in new_bom["lineItems"])
+    line_items = [
+        {
+            "id": f"CO-007-{n:02d}",
+            "description": li["description"],
+            "trade": new_bom["trade"],
+            "costImpact": round(li["quantity"] * 14.50, 2),
+            "bomItemIds": [li["id"]],
+        }
+        for n, li in enumerate(new_bom["lineItems"], start=1)
+    ]
+    delta_cost = round(sum(li["costImpact"] for li in line_items), 2)
     delta_days = max(delta_days_per_activity.values(), default=0)
-    affected_activities = list(delta_days_per_activity.keys())
+    affected = ", ".join(
+        f"{aid} (+{d}d)" for aid, d in delta_days_per_activity.items()
+    )
+    est_meta = baseline_estimate["metadata"]
+    sch_meta = baseline_schedule["metadata"]
 
     return {
         "projectId": project_id,
-        "changeOrderId": "CO-007",
-        "description": change_description,
-        "costImpact": {
-            "amount": round(delta_cost, 2),
-            "currency": baseline_estimate.get("currency", "USD"),
-            "baselineTotal": baseline_total,
-            "newTotal": round(baseline_total + delta_cost, 2),
-        },
-        "scheduleImpact": {
-            "deltaDays": delta_days,
-            "affectedActivities": affected_activities,
-        },
+        "changeOrderNumber": "CO-007",
+        "title": change_title,
+        "reason": "owner-request",
+        "status": "draft",  # a human approval step moves it forward
+        "lineItems": line_items,
+        "totalCostImpact": delta_cost,
+        "totalScheduleImpactDays": delta_days,
         "metadata": {
             "generatedBy": "change-order-analyzer-v1",
             "generatedAt": "2026-05-24T15:30:00Z",
-            "baselineSources": {
-                "estimate": baseline_estimate["metadata"].get("generatedBy"),
-                "schedule": baseline_schedule["metadata"].get("generatedBy"),
-            },
+            # Baseline provenance goes in metadata.notes, which the schema
+            # defines. change-order-v1 has no dedicated provenance field.
+            "notes": [
+                f"Baseline estimate: {est_meta['generatedBy']} at "
+                f"{est_meta['generatedAt']}, grand total ${baseline_total:,.2f}",
+                f"Baseline schedule: {sch_meta['generatedBy']} at "
+                f"{sch_meta['generatedAt']}",
+                f"Affected activities: {affected}",
+            ],
         },
     }
 
@@ -123,7 +131,10 @@ async def main() -> None:
 
     project = {"projectId": "PRJ-2026-OAKRIDGE-MEDICAL"}
 
-    # 1. Pull current baselines in parallel
+    # 1. Pull current baselines in parallel. This recipe assumes both agents
+    #    answer a bare projectId with their current artifact. That's a
+    #    convention between these agents, not a TACO schema; a strict
+    #    estimator expects a full bom-v1 as input.
     baseline_estimate, baseline_schedule = await asyncio.gather(
         fetch_artifact(estimator, "estimate", project),
         fetch_artifact(scheduler, "schedule-coordination", project),
@@ -151,19 +162,22 @@ async def main() -> None:
     # 3. Compute the typed delta
     co = compute_change_order(
         project_id=project["projectId"],
-        change_description="Add HVAC zoning for level 3 east wing",
+        change_title="Add HVAC zoning for level 3 east wing",
         baseline_estimate=baseline_estimate,
         baseline_schedule=baseline_schedule,
         new_bom=new_bom,
         delta_days_per_activity=delta_days_per_activity,
     )
 
-    print(f"Change Order {co['changeOrderId']}: {co['description']}")
-    print(f"  Cost:   ${co['costImpact']['amount']:>10,.2f} "
-          f"(new total ${co['costImpact']['newTotal']:,.2f})")
-    print(f"  Schedule: +{co['scheduleImpact']['deltaDays']}d across "
-          f"{len(co['scheduleImpact']['affectedActivities'])} activities")
-    print(f"  Baselines: {co['metadata']['baselineSources']}")
+    baseline_total = baseline_estimate["summary"]["grandTotal"]
+    print(f"Change Order {co['changeOrderNumber']}: {co['title']} "
+          f"[{co['status']}]")
+    print(f"  Cost:   ${co['totalCostImpact']:>10,.2f} "
+          f"(new total ${baseline_total + co['totalCostImpact']:,.2f})")
+    print(f"  Schedule: +{co['totalScheduleImpactDays']}d across "
+          f"{len(delta_days_per_activity)} activities")
+    for note in co["metadata"]["notes"]:
+        print(f"  Note: {note}")
 
 
 if __name__ == "__main__":
@@ -172,14 +186,14 @@ if __name__ == "__main__":
 
 ## Why pull baselines instead of caching them
 
-A change order is binding. If the analyzer used a stale snapshot of the estimate or schedule, the delta could be off by whatever's accumulated since — accepted RFI updates, prior change orders, value-engineering substitutions. Treating the estimator and scheduler as authoritative agents (read live, every time) is what makes `change-order-v1.metadata.baselineSources` defensible later.
+A change order is binding. If the analyzer used a stale snapshot of the estimate or schedule, the delta could be off by whatever's accumulated since — accepted RFI updates, prior change orders, value-engineering substitutions. Treating the estimator and scheduler as authoritative agents (read live, every time), and recording which agent produced each baseline and when, is what makes the change order defensible later. The example writes that provenance into `metadata.notes`.
 
 ## Variations
 
-- **Two-phase: propose → commit.** First call returns a draft change order with `status: "proposed"`. After human approval, a second call mutates the baseline estimate and schedule.
+- **Two-phase: draft → commit.** First call returns a change order with `status: "draft"`. After it is submitted and a human approves it, a second call mutates the baseline estimate and schedule.
 - **Multi-trade.** Iterate the orchestration across `mechanical`, `electrical`, `structural` estimators and sum the cost impact.
 - **Substitution analysis.** Add a value-engineering hop before the analyzer — the VE agent proposes alternates that reduce cost impact.
-- **Notify downstream.** Once the CO is computed, push it to subscribing agents via the [push notifications](/docs/sdk) channel.
+- **Notify downstream.** Once the CO is computed, let subscribers follow the task through [push notification configs](/docs/sdk-reference/push-notifications) instead of polling.
 
 ## Common mistakes
 
@@ -187,9 +201,9 @@ A change order is binding. If the analyzer used a stale snapshot of the estimate
 
 **Computing cost without a real pricing call.** The example uses toy pricing (`* 14.50`) for brevity. In production, the cost delta should come from the same estimator agent that produced the baseline — call it again with the proposed scope as a `bom-v1` and use its returned `estimate-v1` for the delta math. This way the change order inherits the estimator's actual pricing model, including labor rates and material markups.
 
-**Forgetting to record `baselineSources`.** `change-order-v1.metadata.baselineSources` is what makes the delta defensible later. Without it, when someone in 2028 asks "what schedule version did this change order target?", the answer is a shrug.
+**Forgetting to record baseline provenance.** `change-order-v1` has no dedicated field for it, so the example writes the baseline agents and their `generatedAt` timestamps into `metadata.notes`. You can also add your own extension key to `metadata`: the JSON Schema doesn't forbid extra properties, but the key isn't part of the schema, other consumers won't know it, and the SDK's typed `ChangeOrderV1` model drops unknown keys when it parses. Without provenance, when someone in 2028 asks "what schedule version did this change order target?", the answer is a shrug.
 
-**Setting `status: "approved"` directly from the analyzer.** Change orders need human approval. The analyzer should emit `status: "proposed"`; an approval workflow (often human-in-the-loop) flips it to `status: "approved"` with a signature. Skipping this skips the contract law.
+**Setting `status: "approved"` directly from the analyzer.** Change orders need human approval. The analyzer should emit `status: "draft"`; an approval workflow (often human-in-the-loop) moves it to `"submitted"` and then `"approved"` with a signature. Skipping this skips the contract law.
 
 **Mixing trades in one CO without distinguishing.** A change order that adds HVAC zoning AND moves an electrical panel needs per-trade cost rolls. Track impact by trade so the GC can chase the right sub for each scope item.
 
@@ -197,7 +211,7 @@ A change order is binding. If the analyzer used a stale snapshot of the estimate
 
 **Run the analyzer twice and diff.** If the baseline estimate is volatile (it shouldn't be, but reality), running the analyzer twice and diffing the outputs catches non-deterministic pricing. The delta should be identical for identical inputs; if it isn't, you have a downstream determinism bug.
 
-**Log `baselineSources` agent names + their `generatedAt`.** When a stakeholder challenges the CO, the trail of "which agent, at what time" makes triage instant. Without it you're guessing.
+**Log the baseline agent names + their `generatedAt`.** When a stakeholder challenges the CO, the trail of "which agent, at what time" makes triage instant. Without it you're guessing.
 
 **Make the analyzer's task type `change-order-analysis` (not just `estimate`).** A common mistake is reusing the estimator for change orders. They produce different artifacts (`estimate-v1` vs `change-order-v1`) and have different audit requirements. Separate agents, separate skills.
 
