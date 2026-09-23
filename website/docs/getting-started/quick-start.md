@@ -8,6 +8,10 @@ description: Run a TACO agent in under two minutes with `pip install taco-agent`
 
 Get a TACO agent running in under 2 minutes. No API keys, no configuration.
 
+:::tip Nothing installed yet?
+The [playground](/playground) runs the same SDK in your browser: define an agent card, serve it and send it a task, with nothing to install.
+:::
+
 ## Prerequisites
 
 - Python 3.10+

@@ -77,7 +77,7 @@ Handlers never touch the `EventQueue` directly; the SDK enqueues an event for ea
 **Why it happens.** The agent card's `securitySchemes` doesn't actually match the `Authorization` header the agent is checking, OR the project-scoped token doesn't match the `projectId` in the payload (see [Best Practices on auth](./best-practices#security-in-production)).
 
 **How to fix.** Three checks:
-1. The agent card's `security` array references a `securitySchemes` key that exists (`taco inspect <url>` shows both; [SPEC-005](/docs/spec/SPEC-005-conformance) lists this as a conformance check)
+1. The agent card's `security` array references a `securitySchemes` key that exists (`taco inspect <url>` shows both; [SPEC-005](/docs/spec/SPEC-005-conformance) lists this as a conformance check, and the [conformance check](/conformance) runs it)
 2. The agent's handler reads the bearer token from the right header and validates it against the same auth server that issued it
 3. If using project scopes, the token's `taco:project:PRJ-0042` matches `payload["projectId"]` — reject mismatches explicitly rather than treating them as "missing scope"
 

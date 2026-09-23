@@ -31,7 +31,7 @@ Future revisions of this spec **MAY** add behavioral conformance categories. Thi
 
 ## 3. Required conformance checks
 
-A TACO-compliant agent **SHALL** pass all of the following checks. A hosted conformance runner that automates these checks is planned; until then, `taco inspect <url>` shows the card fields the checks examine (name, version, URL, `x-construction`, and each skill's task type and schemas), and `taco discover <url>` prints the full card JSON, including `capabilities` and any security declarations.
+A TACO-compliant agent **SHALL** pass all of the following checks. The [conformance check](/conformance) on the TACO site runs them, and the recommended checks in §4.1–§4.3, against a pasted card or a live URL (see §5). From a terminal, `taco inspect <url>` shows the card fields the checks examine (name, version, URL, `x-construction`, and each skill's task type and schemas), and `taco discover <url>` prints the full card JSON, including `capabilities` and any security declarations.
 
 ### 3.1 Agent card reachable
 
@@ -106,20 +106,20 @@ The agent **SHOULD** emit OpenTelemetry spans for the request lifecycle, tagged 
 
 The agent **SHOULD** have a publicly accessible documentation page or README describing supported task types, schemas, and authentication model.
 
-## 5. The conformance runner (planned)
+## 5. The conformance runner
 
-A hosted reference runner for the structural checks above is planned; it is not yet available, and there is no conformance page on the TACO site. The planned runner would:
+The reference runner is the [conformance check](/conformance) page on the TACO site. It automates the checks in §3 and the recommended checks in §4.1–§4.3; §4.4–§4.6 describe operational behavior that a card cannot show and are not automated. The runner:
 
-- Operate entirely in the visitor's browser (no central service tracks tests)
-- Make cross-origin fetches to the agent's well-known path
-- Produce a structured report with per-check pass/fail/skip status and remediation hints
-- Handle CORS failures gracefully and offer an equivalent curl invocation
+- Operates entirely in the visitor's browser (no central service tracks tests)
+- Makes cross-origin fetches to the agent's well-known path and `/health`, or checks a pasted card when the agent is not reachable from a browser
+- Produces a structured report with per-check pass, fail, warning or skipped status and a remediation hint for each failure
+- Handles CORS failures gracefully and offers an equivalent curl invocation
 
-Agents tested by a browser-based runner would need a CORS configuration that permits the runner's origin (see [SPEC-001 §2.2](./SPEC-001-agent-cards)). Until the runner exists, operators can review the checks by hand with `taco inspect <url>` and `taco discover <url>`, or with curl against the well-known path.
+Agents tested from a URL need a CORS configuration that permits the runner's origin, `https://taco-protocol.com` (see [SPEC-001 §2.2](./SPEC-001-agent-cards)). An agent that does not allow it can still be checked by pasting its card, which skips §3.1 and §4.1. The recognized trades, task types and schema names the runner checks against are read from this specification when the site is built, so the runner and the spec cannot disagree.
 
 ## 6. Attestation
 
-A passing conformance report is an attestation, not a certification. Once the planned runner exists, the attestation:
+A passing conformance report is an attestation, not a certification. The attestation:
 
 - Is timestamped (the moment the runner executed)
 - Is reproducible by anyone running the checks against the same URL

@@ -20,6 +20,7 @@ const addFormats = require('ajv-formats').default;
 const SPEC_DIR = path.resolve(__dirname, '..', '..', '..', 'spec');
 const SCHEMA_DIR = path.join(SPEC_DIR, 'schemas');
 const TASK_TYPES_MD = path.join(SPEC_DIR, 'task-types.md');
+const EXTENSIONS_MD = path.join(SPEC_DIR, 'agent-card-extensions.md');
 const EXAMPLES_DIR = path.resolve(__dirname, '..', '..', 'src', 'data', 'schema-examples');
 
 /** Backticked identifiers in a table cell, e.g. "`bom-v1` + `estimate-v1`". */
@@ -64,7 +65,7 @@ module.exports = function tacoSpecPlugin(context) {
     name: 'taco-spec',
 
     getPathsToWatch() {
-      return [path.join(SCHEMA_DIR, '*.json'), TASK_TYPES_MD, path.join(EXAMPLES_DIR, '*.json')];
+      return [path.join(SCHEMA_DIR, '*.json'), TASK_TYPES_MD, EXTENSIONS_MD, path.join(EXAMPLES_DIR, '*.json')];
     },
 
     async loadContent() {
@@ -124,7 +125,23 @@ module.exports = function tacoSpecPlugin(context) {
         }
       }
 
-      return {schemas, examples, taskTypes, relationships};
+      // Recognized trades and the extension URI, from spec/agent-card-extensions.md.
+      const extMd = fs.readFileSync(EXTENSIONS_MD, 'utf8');
+      const tradeRow = extMd.split('\n').find((l) => /^\|\s*`trade`\s*\|/.test(l));
+      const trades = tradeRow ? codeNames(tradeRow.split('Values:')[1] || '') : [];
+      const uriMatch = extMd.match(/https:\/\/[^\s"`)]+\/extensions\/x-construction\/v\d+/);
+      if (!trades.length || !uriMatch) {
+        throw new Error('[taco-spec] Could not read trades or the extension URI from spec/agent-card-extensions.md');
+      }
+
+      return {
+        schemas,
+        examples,
+        taskTypes,
+        relationships,
+        trades,
+        extensionUri: uriMatch[0],
+      };
     },
 
     async contentLoaded({content, actions}) {
