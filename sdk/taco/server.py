@@ -234,7 +234,13 @@ class _TacoAgentExecutor(AgentExecutor):
             try:
                 collected_parts: list[Part] = []
                 handler = self._streaming_handlers[task_type]
+                # All chunks share one artifact id. The A2A spec only allows
+                # ``append=True`` for an artifact that already exists, so the
+                # first chunk creates the artifact and later chunks append to
+                # it. a2a-sdk >= 1.1 rejects an append to an unknown id.
+                stream_artifact_id = str(uuid.uuid4())
                 async for part in handler(task, input_data):
+                    is_first_chunk = not collected_parts
                     collected_parts.append(part)
                     await _enqueue(
                         event_queue,
@@ -244,8 +250,9 @@ class _TacoAgentExecutor(AgentExecutor):
                             artifact=make_artifact(
                                 parts=[part],
                                 name=f"{task_type}-stream-chunk",
+                                artifact_id=stream_artifact_id,
                             ),
-                            append=True,
+                            append=not is_first_chunk,
                         ),
                     )
 
