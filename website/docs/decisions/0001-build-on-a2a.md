@@ -41,7 +41,7 @@ Cons:
 
 ### MCP
 
-MCP is excellent at what it does — connecting an LLM to tools and data sources. It is the wrong layer for agent-to-agent communication. Several construction teams initially asked "isn't this MCP?" — the answer is *MCP is orthogonal*. A TACO agent often uses MCP internally to reach its own data and tools; agents talk to other agents over A2A. See [`/docs/protocol-stack`](../protocol-stack).
+MCP is excellent at what it does — connecting an LLM to tools and data sources. It is the wrong layer for agent-to-agent communication. A common first question is "isn't this MCP?" — the answer is *MCP is orthogonal*. A TACO agent often uses MCP internally to reach its own data and tools; agents talk to other agents over A2A. See [`/docs/protocol-stack`](../protocol-stack).
 
 ### OpenAPI / REST
 

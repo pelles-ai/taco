@@ -18,7 +18,7 @@ The key words **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** 
 
 ## 2. Recognized task types
 
-A TACO-compliant agent's `skills[].taskType` field **SHOULD** reference one of the 18 recognized task types defined in this section. Task types not listed here **MAY** be used but **SHOULD** be proposed for standardization (see §6).
+A TACO-compliant agent's `skills[].x-construction.taskType` field **SHOULD** reference one of the 18 recognized task types defined in this section. Task types not listed here **MAY** be used but **SHOULD** be proposed for standardization (see §6).
 
 ### 2.1 Preconstruction
 
@@ -69,20 +69,37 @@ Task type identifiers **SHOULD**:
 
 ## 4. Dispatch
 
-When an agent receives a `message/send` (or v1 `SendMessage`) request, the task type **SHALL** be communicated via:
+When a client sends a `message/send` or `message/stream` request, it **SHALL** communicate the task type in the request-level `params.metadata.taskType` field:
 
-- The request's `metadata.taskType` field, **OR**
-- A `taskType` field on the inbound message's metadata
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "1",
+  "method": "message/send",
+  "params": {
+    "message": { "role": "user", "parts": [ ... ], "messageId": "..." },
+    "metadata": { "taskType": "estimate" }
+  }
+}
+```
 
-Implementations **SHALL** accept either form. New implementations **SHOULD** emit `metadata.taskType` at the request level.
+The reference SDK's `TacoClient` always sets this field. The reference server reads only the request-level field; a `taskType` placed in the inbound message's own `metadata` is not used for dispatch.
 
-If the requested `taskType` matches no skill the agent declares, the agent **SHALL** respond with an A2A error of code `-32602` (Invalid params) and message indicating the unsupported task type.
+The reference server resolves the task type as follows:
+
+1. If `metadata.taskType` is present, that value is used.
+2. If it is absent and the agent has exactly one registered handler, that handler is used.
+3. Otherwise the task ends in the `failed` state, with a status message naming the available task types.
+
+If the resolved task type has no registered handler, the task ends in the `failed` state with a status message indicating that no handler exists for that task type. The request itself does not return a JSON-RPC error; the failure is reported through the task's status. Agents **SHOULD** follow the same behavior so that clients can handle both cases through the task lifecycle.
+
+Dispatch is by registered handler. The reference server does not check the requested task type against the `skills[]` declared on the Agent Card, so agents **SHOULD** keep their declared skills and registered handlers in step.
 
 ## 5. Output artifact conformance
 
-When an agent's skill declares an `outputSchema`, the artifact returned by that skill's handler **SHALL** validate against the declared schema's canonical JSON Schema document.
+When an agent's skill declares an `outputSchema`, the artifact returned by that skill's handler **SHALL** validate against the declared schema's JSON Schema document.
 
-If the declared `outputSchema` is a TACO canonical schema name, validation is against `https://taco-protocol.com/schemas/{name}.json`.
+If the declared `outputSchema` is a TACO canonical schema name, validation is against the canonical file [`spec/schemas/{name}.json`](https://github.com/pelles-ai/taco/tree/main/spec/schemas) in the TACO repository. The reference SDK does not validate handler output automatically; handlers can use the Pydantic models in `taco.schemas` to do so.
 
 Producing an artifact that fails strict validation against its declared schema **SHALL** be considered a non-compliant behavior.
 
@@ -108,6 +125,6 @@ Output schema references attached to a task type **MAY** be revised (e.g. when a
 
 ## 8. Companion material
 
-- [Task Types page](../task-types) — browse all 18 with the interactive filter
+- [Task Types page](../task-types) — all 18 task types in one place
 - [Cookbook](../cookbook/) — recipes exercising each task type in motion
 - [Data Schemas](../schemas/) — the canonical output schemas

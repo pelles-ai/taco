@@ -19,7 +19,7 @@ The question: define a construction-meaningful scope vocabulary, or punt to "use
 
 ## Decision
 
-TACO defines a typed scope taxonomy: `taco:{dimension}:{value}[:{action}]`. The dimensions are stable (`trade`, `task`, `csi`, `project`, `registry`), the values are construction-domain identifiers (`mechanical`, `estimate`, `23`, `PRJ-0042`), and the optional action narrows write access (`read`, `write`, `admin`; defaults to `write` if omitted).
+TACO defines a typed scope taxonomy: `taco:{dimension}:{value}[:{action}]`. The dimensions are stable (`trade`, `task`, `csi`, `project`, `registry`), the values are construction-domain identifiers (`mechanical`, `estimate`, `23`, `PRJ-0042`), and the optional action qualifies the access (`read`, `write`, or `admin`; defaults to `write` if omitted), as defined in the canonical [`spec/security.md`](https://github.com/pelles-ai/taco/blob/main/spec/security.md).
 
 Examples:
 - `taco:trade:mechanical` — access to mechanical-trade workflows
@@ -46,7 +46,7 @@ Cons:
 
 Pros: simple, easy to issue, hard to get wrong.
 
-Cons: lose all the structure we'd build the rest of the protocol around. Project-scoped delegation (the most-asked-for feature in early conversations) becomes impossible. Trust boundaries collapse to per-agent rather than per-project.
+Cons: lose all the structure we'd build the rest of the protocol around. Project-scoped delegation becomes impossible. Trust boundaries collapse to per-agent rather than per-project.
 
 ### Resource-server-specific scopes (`procore:projects/PRJ-0042:read`)
 
@@ -57,15 +57,15 @@ This is what the construction software space does today. The pattern works *with
 ### Positive
 
 - Token Exchange becomes meaningful. A GC token holding `taco:trade:mechanical taco:project:PRJ-0042:write` can be narrowed to `taco:task:estimate taco:project:PRJ-0042:write` before calling the estimator, then to `taco:task:material-procurement taco:project:PRJ-0042:write` before calling the supplier. Each hop holds only what it needs.
-- The registry can filter agents by scope coverage (`find me agents that accept tokens with taco:trade:electrical`).
+- Scope coverage becomes something a registry could filter on (`find me agents that accept tokens with taco:trade:electrical`), since agents list the scopes they accept in `x-construction.security.scopesOffered`. The SDK's in-process `AgentRegistry.find()` does not do this today; it filters only by trade, task type, CSI division, and project type.
 - Auditing becomes possible. A project-scoped token narrowed at every hop produces an audit trail where each agent's exact authority is recorded.
-- Trust tiers become composable. Combining `taco:registry:read` with project scopes lets owners enforce "only cert-attested agents can read this project's artifacts."
+- Trust tiers and scopes can be combined. A future registry or authorization server could pair trust tiers with project scopes to enforce policies such as "only cert-attested agents can read this project's artifacts." Nothing in the SDK enforces this today.
 
 ### Negative
 
 - Auth servers have to be configured to issue TACO-shaped scopes. We provide a taxonomy spec, not a token issuer. Operators need to configure their IdP (Auth0, Okta, Keycloak, in-house) to emit these scopes — non-trivial.
 - The taxonomy is opinionated. Edge cases ("what scope does a value-engineering agent need?") have to be decided in a spec working group, which means RFCs and slower iteration than per-vendor extension.
-- Scope-string parsing has to be implemented per language. We provide it for Python; other-language SDKs need to mirror it.
+- Scope-string parsing has to be implemented per language. The Python SDK does not yet provide scope parsing or enforcement; agents parse and check scopes themselves, and future SDKs in any language will need a matching implementation.
 
 ### Reversibility
 

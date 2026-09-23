@@ -26,7 +26,7 @@ A TACO-compliant agent **SHALL** serve a valid Agent Card document at:
 GET /.well-known/agent-card.json
 ```
 
-An agent **MAY** also serve the legacy path `GET /.well-known/agent.json` for backward compatibility with pre-A2A-v1 clients.
+An agent **MAY** also serve the legacy path `GET /.well-known/agent.json` for backward compatibility with older clients. The reference SDK's `A2AServer` serves the same card at both paths, and its client, registry, and CLI fetch `/.well-known/agent-card.json` first and fall back to the legacy path on a 404.
 
 The response **SHALL**:
 
@@ -38,7 +38,7 @@ The well-known path **SHALL** be reachable without authentication. Agent identit
 
 ### 2.2 CORS
 
-The well-known path **SHOULD** permit cross-origin requests via an appropriate `Access-Control-Allow-Origin` header. The conformance runner ([SPEC-005](./SPEC-005-conformance)) operates by making cross-origin fetches from a browser context.
+The well-known path **SHOULD** permit cross-origin requests via an appropriate `Access-Control-Allow-Origin` header when the card is meant to be read from browser contexts. The reference SDK adds no CORS headers unless `cors_origins` is passed to `A2AServer` / `TacoAgent`. A hosted, browser-based conformance runner ([SPEC-005](./SPEC-005-conformance)) is planned and would depend on this.
 
 ## 3. Required fields
 
@@ -47,6 +47,7 @@ A TACO-compliant Agent Card **SHALL** contain the following top-level fields:
 | Field | Type | Notes |
 |------|------|-------|
 | `name` | string | Human-readable agent name |
+| `description` | string | One-paragraph description of the agent's purpose (the reference SDK rejects an empty value) |
 | `version` | string | Agent implementation version (e.g. `"1.4.2"`) |
 | `url` | string | Base URL where the agent serves its A2A endpoints |
 | `skills` | array | At least one skill **SHALL** be declared |
@@ -55,16 +56,15 @@ A TACO-compliant Agent Card **SHOULD** contain:
 
 | Field | Type | Notes |
 |------|------|-------|
-| `description` | string | One-paragraph description of the agent's purpose |
-| `capabilities` | object | A2A capabilities object including extension declarations (see §6) |
+| `capabilities` | object | A2A capabilities object including extension declarations (see §4.2) |
 
 ## 4. The `x-construction` extension
 
-A TACO-compliant Agent Card **SHALL** declare the construction extension via **at least one** of the following two mechanisms:
+A TACO-compliant Agent Card **SHALL** carry the inline `x-construction` field (§4.1) and **SHOULD** also declare the extension URI (§4.2).
 
 ### 4.1 Inline `x-construction` field
 
-The Agent Card **MAY** include a top-level `x-construction` object containing construction-specific metadata:
+The Agent Card **SHALL** include a top-level `x-construction` object containing construction-specific metadata. This is the field the reference SDK's registry filters on:
 
 ```json
 {
@@ -79,7 +79,7 @@ The Agent Card **MAY** include a top-level `x-construction` object containing co
 
 ### 4.2 Extension URI declaration
 
-The Agent Card **MAY** declare the construction extension in `capabilities.extensions[]`:
+The Agent Card **SHOULD** also declare the construction extension in `capabilities.extensions[]`, so A2A v1 clients can detect support without parsing the inline field. The reference SDK's `ConstructionAgentCard.to_a2a()` adds this declaration automatically; `taco.apply_construction_extension_declaration(card)` adds it to a card built another way:
 
 ```json
 {
@@ -93,7 +93,7 @@ The Agent Card **MAY** declare the construction extension in `capabilities.exten
 
 The canonical URI is `https://taco.construction/extensions/x-construction/v1` (see [ADR-0009](../decisions/extension-uri-naming)).
 
-When both mechanisms are present, they **SHALL** be consistent.
+An Agent Card that declares this URI **SHALL** also carry the inline `x-construction` field.
 
 ## 5. The `x-construction` field schema
 
@@ -101,15 +101,19 @@ When the inline `x-construction` field is present, it **SHALL** conform to:
 
 | Field | Type | Required | Description |
 |------|------|--------|---------------------|
-| `trade` | string | SHOULD | One of the recognized TACO trades (§5.1) |
-| `csiDivisions` | string[] | MAY | Two-digit MasterFormat division numbers (§5.2) |
-| `projectTypes` | string[] | MAY | Project type identifiers the agent specializes in |
-| `integrations` | string[] | MAY | Platform identifiers the agent integrates with |
+| `trade` | string | SHALL | One of the recognized TACO trades (§5.1) |
+| `csiDivisions` | string[] | SHALL | Two-digit MasterFormat division numbers (§5.2); **MAY** be empty |
+| `projectTypes` | string[] | MAY | One or more of `commercial`, `residential`, `healthcare`, `education`, `industrial`, `infrastructure`, `mixed-use` |
+| `certifications` | string[] | MAY | Self-declared certifications: `SOC2`, `ISO27001`, `FedRAMP` |
+| `dataFormats` | object | MAY | `input` and `output` arrays of file formats the agent accepts and produces |
+| `integrations` | string[] | MAY | One or more of `procore`, `acc`, `bluebeam`, `plangrid`, `p6`, `ms-project`, `sage`, `viewpoint` |
 | `security` | object | MAY | Security advertisement (see [SPEC-004](./SPEC-004-security)) |
+
+The reference SDK's card model rejects `trade`, `projectTypes`, `certifications`, and `integrations` values outside the lists above.
 
 ### 5.1 Recognized trades
 
-The `trade` field **SHOULD** be one of:
+The `trade` field **SHALL** be one of:
 
 `mechanical`, `electrical`, `plumbing`, `structural`, `civil`, `architectural`, `fire-protection`, `general`, `multi-trade`
 
@@ -128,29 +132,38 @@ Each entry in `skills[]` **SHALL** contain:
 | Field | Type | Required | Description |
 |------|------|--------|---------------------|
 | `id` | string | SHALL | Unique skill identifier within the agent |
-| `taskType` | string | SHALL | A recognized TACO task type (see [SPEC-002](./SPEC-002-task-types)) |
-| `inputSchema` | string | MAY | Canonical schema name or full URL |
-| `outputSchema` | string | MAY | Canonical schema name or full URL |
-| `name` | string | SHOULD | Human-readable label |
-| `description` | string | SHOULD | One-sentence description of what the skill does |
+| `name` | string | SHALL | Human-readable label |
+| `description` | string | SHALL | One-sentence description of what the skill does |
+| `x-construction` | object | SHALL | Construction routing metadata for the skill (§7) |
 
-When `inputSchema` or `outputSchema` is a bare schema name (e.g. `"bom-v1"`), it **SHALL** refer to a canonical TACO schema published at `https://taco-protocol.com/schemas/{name}.json`. When it is a fully-qualified URL, the URL **SHOULD** resolve to a JSON Schema document.
+The reference SDK's skill model requires `id`, `name`, and `description`; its `ConstructionSkill` factory fills `name` and `description` with defaults when they are not given, and always sets `x-construction`.
 
 ## 7. Skill-level construction extension
 
-A skill **MAY** include its own `x-construction` sub-object overriding agent-level defaults for that skill specifically:
+Each skill's `x-construction` object carries the skill's task type and schemas:
+
+| Field | Type | Required | Description |
+|------|------|--------|---------------------|
+| `taskType` | string | SHALL | A TACO task type (see [SPEC-002](./SPEC-002-task-types)) |
+| `inputSchema` | string | MAY | Expected input schema identifier |
+| `outputSchema` | string | SHALL | Output schema identifier |
 
 ```json
 {
-  "id": "estimate-residential",
-  "taskType": "estimate",
+  "id": "generate-bom",
+  "name": "Generate Bill of Materials",
+  "description": "Generates a detailed BOM from construction plan sheets",
   "x-construction": {
-    "projectTypes": ["residential"]
+    "taskType": "takeoff",
+    "inputSchema": "plan-sheets",
+    "outputSchema": "bom-v1"
   }
 }
 ```
 
-When present, the skill-level extension **SHALL** be merged over the agent-level extension for purposes of registry filtering.
+When `inputSchema` or `outputSchema` matches the name of a canonical TACO schema (e.g. `"bom-v1"`), it **SHALL** refer to that schema, defined in [`spec/schemas/{name}.json`](https://github.com/pelles-ai/taco/tree/main/spec/schemas) in the TACO repository (see [SPEC-003](./SPEC-003-data-schemas)). Other bare identifiers, such as `"plan-sheets"` above, are descriptive and not standardized. When the value is a fully-qualified URL, the URL **SHOULD** resolve to a JSON Schema document. The reference SDK does not check these identifiers.
+
+The skill-level `x-construction` object contains only the three fields above. Agent-level fields such as `projectTypes` are not supported at skill level, and registries do not merge skill-level values over the agent-level extension.
 
 ## 8. Versioning of this specification
 

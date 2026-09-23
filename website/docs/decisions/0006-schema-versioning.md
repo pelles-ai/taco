@@ -55,7 +55,7 @@ Cons: explosion of version identifiers in code (each agent supports a list of da
 
 Pros: simplest, no proliferation.
 
-Cons: every schema change is a breaking change for some downstream. Audit trails reference "the schema" without specifying which version. We've seen this pattern fail badly in older construction file formats.
+Cons: every schema change is a breaking change for some downstream. Audit trails reference "the schema" without specifying which version. This pattern has a poor track record in older construction file formats.
 
 ## Consequences
 
@@ -63,7 +63,7 @@ Cons: every schema change is a breaking change for some downstream. Audit trails
 
 - A project's audit trail is stable. A `bom-v1` artifact stored in 2026 reads correctly in 2030 even if `bom-v2` exists by then.
 - The versioned name itself is the API contract. No "API version" header, no negotiation per request — the type identifies its own version.
-- Agents can support multiple versions simultaneously by advertising different skills (`generate-bom-v1`, `generate-bom-v2`). The registry filters do the work.
+- Agents can support multiple versions simultaneously by advertising different skills (`generate-bom-v1`, `generate-bom-v2`), each declaring its own `outputSchema`. Callers pick the skill whose schema they understand.
 - New optional fields can land without coordination across the ecosystem.
 
 ### Negative

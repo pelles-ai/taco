@@ -30,14 +30,14 @@ https://taco.construction/extensions/x-construction/v1
 
 The URI structure is:
 
-- `https://taco.construction/` — the protocol's stable identity authority (this is a domain we own; we commit to keeping the URI resolvable)
+- `https://taco.construction/` — the authority part of the identifier, naming the protocol
 - `extensions/` — namespace for TACO-defined extensions (future extensions go here)
 - `x-construction/` — the extension name (matches the field name on the Agent Card)
 - `v1` — the version
 
 The constant is exposed in the SDK as `taco.X_CONSTRUCTION_EXTENSION_URI` so applications never hardcode the string. `ConstructionAgentCard.to_a2a()` declares the URI under `capabilities.extensions[]` automatically; agents built outside the factory can call `apply_construction_extension_declaration(card)` to add it.
 
-The URI resolves to a documentation page describing the extension's contract — what fields it adds, what the version commitment is, where the source schema lives.
+The URI is an identifier. URIs used as A2A extension identifiers need not resolve, and clients compare the string rather than fetching it. The extension's contract (what fields it adds, what the version commitment is) is documented in [`spec/agent-card-extensions.md`](https://github.com/pelles-ai/taco/blob/main/spec/agent-card-extensions.md) and on the [Agent Card Extensions](../agent-card-extensions) page.
 
 ## Alternatives considered
 
@@ -80,9 +80,9 @@ Cons: browsers and tooling treat non-`http(s)` schemes as suspicious. The "is th
 
 ### Negative
 
-- We're now committed to keeping `https://taco.construction/` resolvable. Domain ownership is a quasi-permanent obligation; if the project ever stops being actively maintained, the URI becomes a broken dependency for every deployed agent.
+- The identifier is only as unambiguous as the name behind it. Because the URI isn't fetched, nothing breaks if it doesn't resolve, but if someone other than the project ever serves content at `taco.construction`, humans reading an agent card could be misled about what the extension means.
 - Cool URIs don't change. Once we ship v1, the v1 URI is permanent — we can't fix it later if we discover a problem with the structure.
-- The URI authority (`taco.construction`) is implicitly tied to a single owner. If TACO ever needs to fork governance (Linux Foundation takeover, e.g.), the URI either follows the project (good) or stays with the original owner (awkward). We accept this.
+- The URI authority (`taco.construction`) reads as a single naming authority. If TACO's governance ever changes hands (a Linux Foundation takeover, e.g.), the identifier either keeps meaning the project (good) or becomes associated with the original maintainers (awkward). We accept this.
 
 ### Reversibility
 
@@ -90,8 +90,8 @@ Changing the URI breaks every deployed agent that declares it. Adding a new URI 
 
 ## What this URI does NOT commit us to
 
-- The URI does not require the documentation at that path to stay identical. We can revise the page that describes the extension as long as we don't break the contract.
-- The URI does not require that fetching it returns the JSON Schema. It's an identifier, not a fetchable schema document. (The JSON Schema for the inline `x-construction` object lives at `/schemas/x-construction.json` — separately, identifiable by name.)
+- The URI does not require any document to be served at that path. The extension's documentation lives in the TACO repository and on this site, and can be revised as long as we don't break the contract.
+- The URI does not require that fetching it returns the JSON Schema. It's an identifier, not a fetchable schema document. (The inline `x-construction` object is specified in [`spec/agent-card-extensions.md`](https://github.com/pelles-ai/taco/blob/main/spec/agent-card-extensions.md); there is no standalone JSON Schema file for it yet.)
 - The URI does not require any specific deserialization behavior. v1-aware clients use it for capability detection; the actual on-the-wire shape is still determined by the agent card itself.
 
 ## References

@@ -81,4 +81,3 @@ Fully reversible. The sidecar pattern is a *recommendation*, not a requirement. 
 ## References
 
 - [Integrate Your Platform guide](/docs/getting-started/integrate-platform)
-- [Integrate Your Platform](/docs/getting-started/integrate-platform)

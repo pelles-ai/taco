@@ -15,21 +15,21 @@ Agent discovery is one of the four pillars of TACO. The question is *where the r
 
 The obvious answer for a "real protocol" is a hosted, public registry — like npm, PyPI, or Docker Hub for agents. Sign up, publish your Agent Card, and become discoverable globally. This is what most spectators expected when we described agent discovery.
 
-But TACO's earliest users aren't building agents for the open internet. They're building agents that talk to other agents inside a single project, often within a single VPC, often with credentials too sensitive to publish anywhere. The hosted-registry model would force them to either:
+But early TACO deployments are likely to run inside one organisation, often within a single VPC, with agents that talk to other agents inside a single project and credentials too sensitive to publish anywhere. The hosted-registry model would force them to either:
 
 1. Run their own private registry instance (operational burden we'd be handing them), or
 2. Publish private project data to a shared service (security disaster they'd refuse)
 
-Either choice slows down the first 100 deployments.
+Either choice slows down early deployments.
 
 ## Decision
 
 The reference SDK ships an **in-process Python `AgentRegistry` class** with optional JSON-file persistence (`persistence_path`). Discovery is a Python call (`registry.find(trade="mechanical", task_type="estimate")`). The registry is part of the orchestrator agent's process, not a separate service.
 
-A hosted public registry is on the [roadmap](/docs/roadmap) as a follow-on, scoped to be:
+A hosted public registry is on the [roadmap](/docs/roadmap) as a follow-on. The current intent is for it to be:
 - Opt-in (private projects never publish to it)
 - Federated (each org can run their own registry instance; the hosted one is a default, not a gatekeeper)
-- Bound to the trust tier model from day one (publishing requires at minimum tier-1 verification)
+- Possibly bound to the trust tier model from day one (one possible design would require at least tier-1 verification to publish; this is not a commitment)
 
 ## Alternatives considered
 
@@ -58,7 +58,7 @@ A "registry server" with a defined gRPC API that anyone can implement. Closer to
 
 - Zero operational overhead. A registry is a Python import; persistence is one config option. No hosted service to keep up.
 - Privacy by default. No data leaves the orchestrator process unless the operator opts in.
-- The `AgentRegistry` API is the same shape it'll be when extracted into a service. Code written today (`registry.find(...)`) keeps working when a hosted backend lands.
+- The `AgentRegistry` API is the same shape it'll be when extracted into a service. The intent is that code written today (`registry.find(...)`) keeps working if a hosted backend lands.
 - Multi-tenant projects can run their own registry instance per project / per environment without coordination.
 
 ### Negative

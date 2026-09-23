@@ -20,6 +20,10 @@ The key words **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** 
 
 TACO inherits A2A's authentication model. An agent **MAY** require authentication on its endpoints. When it does, the agent's Agent Card **SHALL** advertise the authentication requirements in `securitySchemes` and `security[]` per the A2A specification.
 
+:::note Reference SDK status
+The 0.3 reference SDK does not yet implement this section. Its `AgentCard` model has no `securitySchemes` or `security` fields, so they are not included in the card it serves, and `A2AServer` does not authenticate requests to the JSON-RPC endpoint (only the optional `/admin/skills` endpoints take a bearer token). Agents that require authentication today enforce it outside the SDK, for example in middleware or a gateway in front of the agent.
+:::
+
 ### 2.1 Supported scheme types
 
 A TACO agent's `securitySchemes` **MAY** use any A2A-supported scheme type:
@@ -34,11 +38,11 @@ The agent **SHALL** correctly implement validation for whichever scheme(s) it ad
 
 ### 2.2 Consistency
 
-If `security[]` is present, every named scheme referenced in `security[]` **SHALL** have a matching definition in `securitySchemes`. Mismatched declarations are non-conformant (the conformance runner — see [SPEC-005](./SPEC-005-conformance) — checks this).
+If `security[]` is present, every named scheme referenced in `security[]` **SHALL** have a matching definition in `securitySchemes`. Mismatched declarations are non-conformant. This is one of the checks in [SPEC-005](./SPEC-005-conformance); a hosted conformance runner that automates them is planned, and until then `taco discover <url>` prints the full card JSON, including these fields, for manual review.
 
 ### 2.3 The well-known path
 
-Per [SPEC-001 §2.2](./SPEC-001-agent-cards), the `/.well-known/agent-card.json` path **SHALL** be reachable without authentication. Discovery is public; usage is what gets gated.
+Per [SPEC-001 §2.1](./SPEC-001-agent-cards), the `/.well-known/agent-card.json` path **SHALL** be reachable without authentication. Discovery is public; usage is what gets gated.
 
 ## 3. The construction scope taxonomy
 
@@ -54,7 +58,9 @@ taco:{dimension}:{value}[:{action}]
 
 - `dimension` is one of: `trade`, `task`, `csi`, `project`, `registry`
 - `value` is a construction-domain identifier
-- `action` (optional) is one of: `read`, `write`, `admin`. When omitted, the default action **SHALL** be `write`.
+- `action` (optional) is one of: `read`, `write`, `admin`. When omitted, the action defaults to `write`.
+
+The format, dimensions, actions, and default above are those defined in the canonical [`spec/security.md`](https://github.com/pelles-ai/taco/blob/main/spec/security.md).
 
 ### 3.2 Defined dimensions
 
@@ -63,18 +69,21 @@ taco:{dimension}:{value}[:{action}]
 | `trade` | trade identifier from [SPEC-001 §5.1](./SPEC-001-agent-cards) | `taco:trade:mechanical` | Access to mechanical-trade workflows |
 | `task` | task type from [SPEC-002](./SPEC-002-task-types) | `taco:task:estimate` | Permission to submit estimate tasks |
 | `csi` | 2-digit MasterFormat division | `taco:csi:23` | Access scoped to a CSI division |
-| `project` | project identifier (deployment-defined) | `taco:project:PRJ-0042:write` | Write access to a specific project |
-| `registry` | predefined value: `read` or `publish` | `taco:registry:read` | Discover agents in the registry |
+| `project` | project identifier (deployment-defined; should match the payload's `projectId`) | `taco:project:PRJ-0042:read`, `taco:project:PRJ-0042:write` | Read access to a project's artifacts; write (task submission) access on a project |
+| `registry` | predefined value: `read` or `publish` | `taco:registry:read`, `taco:registry:publish` | Discover agents in the registry; publish or update an Agent Card in the registry |
 
 ### 3.3 Scope combination rules
 
 - **Scopes are additive.** A token bearing both `taco:trade:mechanical` and `taco:task:estimate` is permitted to submit estimate tasks against mechanical-trade agents.
 - **Project scopes require a task or trade scope.** A token bearing only `taco:project:PRJ-0042:write` (no `taco:task:*` or `taco:trade:*`) **SHALL NOT** be considered sufficient to perform work — project scope is qualified by task or trade scope.
-- **Action narrows authority.** `:read` permits read-only operations; `:write` permits state-changing operations; `:admin` permits configuration mutations.
+- **Agents validate scope against task type.** An agent **SHOULD** reject a token whose scopes do not include the task type being requested; for example, an agent advertising `taco:task:takeoff` should reject a token that only carries `taco:task:estimate`.
+- **Action qualifies access.** For project scopes, `:read` grants read access to the project's artifacts and `:write` grants task submission. `spec/security.md` lists `admin` as an action but does not yet define its meaning.
 
 ### 3.4 Validation
 
 Agents that accept OAuth tokens **SHALL** validate that the token's scopes are sufficient for the requested operation per the agent's published authorization model. Agents **SHALL NOT** accept tokens whose project scope mismatches the project ID in the payload (see §5).
+
+The reference SDK does not parse or enforce TACO scopes; validation is the agent's responsibility. `x-construction.security.scopesOffered` is informational, and the authoritative scope declaration is the Agent Card's `securitySchemes`.
 
 ## 4. Token Exchange between agents
 
@@ -112,19 +121,13 @@ payload.projectId === "PRJ-0042"
 → rejected (cross-project assertion)
 ```
 
-Cross-project requests **SHALL** be rejected with an authentication error (HTTP 403 or equivalent JSON-RPC error) rather than silently processed.
+Cross-project requests **SHALL** be rejected with an authorization error (HTTP 403 or equivalent JSON-RPC error) rather than silently processed. Per `spec/security.md`, a request with no token is rejected with HTTP 401, and a token that lacks a required scope with HTTP 403.
 
-## 6. mTLS, PKCE, Device Code
+## 6. mTLS, PKCE, Device Code (planned)
 
-For deployments using non-OAuth-bearer authentication, TACO agents **MAY** advertise additional capabilities on `x-construction.security`:
+A2A v1 formalizes the `mutualTLS` scheme, adds PKCE on the OAuth Authorization Code flow ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)), and adds the Device Authorization Grant ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)). Surfacing these on `x-construction.security` is planned (`feat/mtls-pkce-device-code-security` in [`sdk/V1_MIGRATION.md`](https://github.com/pelles-ai/taco/blob/main/sdk/V1_MIGRATION.md)) but not yet defined.
 
-| Field | Type | Meaning |
-|------|------|------|
-| `mtlsSupported` | boolean | Agent supports mutual TLS client cert authentication |
-| `pkceRequired` | boolean | OAuth Authorization Code flow requires PKCE ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)) |
-| `deviceCodeSupported` | boolean | OAuth Device Authorization Grant ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)) supported |
-
-These advertisements let registries and orchestrators filter agents by auth modality without parsing the full `securitySchemes` block.
+In this version, `x-construction.security` defines exactly five fields: `trustTier`, `scopesOffered`, `projectScoped`, `delegationSupported`, and `extendedCardUrl` (see [`spec/security.md`](https://github.com/pelles-ai/taco/blob/main/spec/security.md)). Agents **SHALL** advertise mTLS and OAuth flow details through the standard A2A `securitySchemes` block.
 
 ## 7. Trust tiers
 
@@ -136,7 +139,9 @@ The TACO registry model defines three trust tiers (see [`security.md`](../securi
 | 1 | Org Verified | Domain ownership verified by the registry |
 | 2 | Cert Attested | Compliance certification (SOC2, ISO 27001, etc.) confirmed by the registry |
 
-The agent **MAY** declare its trust tier in `x-construction.security.trustTier`. Registries **SHALL** validate any tier-1 or tier-2 claim before publishing the agent at that tier; unverified self-claims **SHALL** be displayed at tier 0.
+The `x-construction.security.trustTier` field is assigned by the registry. Agents **SHOULD NOT** self-declare a tier they have not achieved. A registry that assigns trust tiers **SHALL** validate any tier-1 or tier-2 claim before publishing the agent at that tier; unverified self-claims **SHALL** be displayed at tier 0.
+
+The reference SDK's in-process `AgentRegistry` does not verify, assign, or filter by trust tier; until a hosted registry exists, trust tiers are advisory (see [ADR-0005](../decisions/in-memory-registry-first)).
 
 ## 8. Companion material
 

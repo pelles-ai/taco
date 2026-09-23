@@ -1,6 +1,6 @@
 ---
 title: ADR-0002 — JSON Schema 2020-12 as the schema source of truth
-description: Why TACO's data schemas are authored as JSON Schema 2020-12 files, with Pydantic models generated to mirror them — not the other way around.
+description: Why TACO's data schemas are authored as JSON Schema 2020-12 files, with Pydantic models written to mirror them — not the other way around.
 sidebar_position: 2
 ---
 
@@ -15,13 +15,13 @@ Every typed protocol has the same question on day one: **what is the canonical f
 
 For a Python-first SDK, the obvious answer is "Pydantic models" — they're ergonomic to write, they validate at runtime, and the IDE understands them. For a JSON-first protocol, the obvious answer is "JSON Schema files" — language-neutral, validatable from any runtime, and standardized.
 
-These two answers point at different futures. Pick the Python source and JS, Go, and Java SDKs all have to derive their types from a Python tool. Pick the JSON Schema source and the Python SDK becomes a thin generated wrapper.
+These two answers point at different futures. Pick the Python source and JS, Go, and Java SDKs all have to derive their types from a Python tool. Pick the JSON Schema source and the Python SDK becomes a thin wrapper that mirrors the schemas (and could eventually be generated from them).
 
 ## Decision
 
 TACO's schemas are authored as **JSON Schema 2020-12** files committed at [`/spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas). The Pydantic models in `taco/schemas.py` mirror those files faithfully but are not the source of truth. When the JSON Schema changes, the Python models must change to match.
 
-Both forms ship: the canonical JSON Schema is published at `https://taco-protocol.com/schemas/{name}.json` and embedded interactively in the [Schema Explorer](/docs/schemas/) on every schema page; the Pydantic models are part of the `taco-agent` package.
+Both forms ship: the canonical JSON Schema files live in the repository at [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas), each identified by its `$id` (for example `https://taco-protocol.dev/schemas/bom-v1.json`), and each has a reference page under [Data Schemas](/docs/schemas/); the Pydantic models are part of the `taco-agent` package. The site does not yet serve the schema documents themselves.
 
 ## Alternatives considered
 
@@ -55,9 +55,9 @@ Cons:
 
 ### Positive
 
-- The [Schema Explorer](/docs/schemas/) is just a renderer over the canonical JSON Schema files. The live validator on each schema page uses the exact same schema document the SDK validates against.
-- Other-language SDKs (a future TypeScript SDK, for instance) can be generated directly from `/spec/schemas/*.json` using off-the-shelf JSON Schema codegen.
-- RFP responses that ask "where is your schema definition?" get a single URL per schema, no Python install required.
+- Any JSON Schema 2020-12 validator can check a payload against the exact files in `spec/schemas/`, with no TACO code involved.
+- Other-language SDKs (a future TypeScript SDK, for instance) can be generated directly from `spec/schemas/*.json` using off-the-shelf JSON Schema codegen.
+- RFP responses that ask "where is your schema definition?" can point to a single file per schema in `spec/schemas/`, no Python install required.
 - Static analysis tools that consume JSON Schema (linters, mock generators, contract testers) work out of the box.
 
 ### Negative
@@ -73,6 +73,6 @@ Reversible if we ever find a Python-source workflow that round-trips losslessly 
 ## References
 
 - [JSON Schema 2020-12 specification](https://json-schema.org/draft/2020-12/schema)
-- [Schema Explorer](/docs/schemas/)
-- [`/spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas)
+- [Data Schemas](/docs/schemas/)
+- [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas)
 - [`taco.schemas`](/docs/sdk-reference/) (the Pydantic mirror)
