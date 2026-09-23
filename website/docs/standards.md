@@ -42,7 +42,7 @@ Each entry follows the same shape: **what it is**, **how TACO uses it**, **what 
 
 **What it is.** The buildingSMART open BIM data model — the file format that lets design tools exchange 3D building information without vendor lock-in.
 
-**How TACO uses it.** TACO is agent-protocol, not file-format. A clash-detection agent or a takeoff agent that reads IFC files is a perfectly valid TACO agent — the IFC stays the input, the typed TACO artifact (`bom-v1`, `clash-report-v1`) is the output.
+**How TACO uses it.** TACO is agent-protocol, not file-format. A clash-detection agent or a takeoff agent that reads IFC files is a perfectly valid TACO agent — the IFC stays the input, the typed TACO artifact (`bom-v1` today; `clash-report-v1` once that planned schema exists) is the output.
 
 **What TACO does not claim.** TACO does not parse or emit IFC. There is no TACO data schema that mirrors IFC entities.
 
@@ -58,7 +58,7 @@ Each entry follows the same shape: **what it is**, **how TACO uses it**, **what 
 
 **What it is.** The American Institute of Architects' contract forms — and ConsensusDocs, the alternative family — define the legal relationships between owners, GCs, designers, and subs.
 
-**How TACO uses it.** Not directly. TACO's RFI, change order, and submittal schemas reflect *workflow* artifacts that exist regardless of contract family. Nothing in TACO contradicts AIA or ConsensusDocs.
+**How TACO uses it.** Not directly. TACO's RFI and change order schemas (and the planned submittal-review schema) reflect *workflow* artifacts that exist regardless of contract family. Nothing in TACO contradicts AIA or ConsensusDocs.
 
 **What TACO does not claim.** TACO is not a contract-execution platform. The typed artifacts agents exchange have no legal force on their own — that's the human-in-the-loop's job.
 
@@ -76,7 +76,7 @@ Each entry follows the same shape: **what it is**, **how TACO uses it**, **what 
 
 ### Model Context Protocol (MCP)
 
-**What it is.** Anthropic's open protocol for connecting AI models to external tools and data sources.
+**What it is.** The open protocol for connecting AI models to external tools and data sources, created by Anthropic and now governed under the Linux Foundation's Agentic AI Foundation.
 
 **How TACO uses it.** Orthogonally. A2A is between agents; MCP is between an agent and its tools/data. TACO doesn't depend on MCP, and TACO doesn't dictate that you use MCP. But MCP is the natural choice for an LLM-driven TACO agent that needs to reach Procore, AutoCAD, or a database. See [A2A, MCP, and TACO](/docs/protocol-stack).
 
@@ -86,7 +86,7 @@ Each entry follows the same shape: **what it is**, **how TACO uses it**, **what 
 
 **What it is.** The most recent stable draft of the JSON Schema spec — the format used to describe the structure of JSON documents.
 
-**How TACO uses it.** Every TACO data schema (`bom-v1`, `rfi-v1`, `estimate-v1`, `quote-v1`, `schedule-v1`, `change-order-v1`) is published as a JSON Schema 2020-12 document. The canonical files are served at `/schemas/{name}.json` and embedded in the [interactive Schema Explorer](/docs/schemas/) on each schema page.
+**How TACO uses it.** Every TACO data schema (`bom-v1`, `rfi-v1`, `estimate-v1`, `quote-v1`, `schedule-v1`, `change-order-v1`) is published as a JSON Schema 2020-12 document. The canonical files live in the repository at [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas) (each declares a `$id` of the form `https://taco-protocol.dev/schemas/<name>.json`) and are embedded in the [interactive Schema Explorer](/docs/schemas/) on each schema page.
 
 ### OAuth 2.0 + RFC 8693 Token Exchange
 
@@ -98,13 +98,13 @@ Each entry follows the same shape: **what it is**, **how TACO uses it**, **what 
 
 **What it is.** Standard auth flows beyond plain OAuth 2.0. mTLS for high-assurance deployments. [PKCE (RFC 7636)](https://datatracker.ietf.org/doc/html/rfc7636) for public clients. [Device Authorization Grant (RFC 8628)](https://datatracker.ietf.org/doc/html/rfc8628) for input-constrained devices.
 
-**How TACO uses it.** First-class advertisement. `SecurityExt` on the construction agent card carries `mtlsSupported`, `pkceRequired`, and `deviceCodeSupported` booleans so registries and orchestrators can filter on auth modality without parsing the full `securitySchemes` block.
+**How TACO uses it.** Planned, not shipped. A2A v1 formalizes these flows, and surfacing mTLS, PKCE-required, and device-code support on `SecurityExt` is an open item in the [v1 migration plan](https://github.com/pelles-ai/taco/blob/main/sdk/V1_MIGRATION.md). Today `SecurityExt` carries `trustTier`, `scopesOffered`, `projectScoped`, `delegationSupported`, and `extendedCardUrl`; declare the flows themselves in the standard A2A `securitySchemes` block.
 
 ### Server-Sent Events (SSE)
 
 **What it is.** A one-way HTTP streaming format. The W3C standard for server-pushed updates over a single long-lived connection.
 
-**How TACO uses it.** SSE is the transport for `message/stream`. A TACO agent that handles long-running work (a 30-minute takeoff, an iterative bid-leveling pass) streams `TaskStatusUpdate` events to its caller as it makes progress.
+**How TACO uses it.** SSE is the transport for `message/stream`. A TACO agent that handles long-running work (a 30-minute takeoff, an iterative bid-leveling pass) streams partial results to its caller as it makes progress: the handler yields `Part`s and the SDK sends each one as a `TaskArtifactUpdateEvent`, followed by a final status update when the task completes.
 
 ---
 

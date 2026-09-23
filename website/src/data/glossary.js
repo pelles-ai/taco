@@ -147,7 +147,7 @@ export const TERMS = [
     audience: 'construction',
     short:
       'The contractor responsible for delivering the project — coordinates all trade subs, manages schedule and budget, interfaces with the owner.',
-    long: 'TACO has a dedicated landing page for this audience.',
+    long: 'In a TACO workflow the GC typically sits at the orchestration end, sending tasks to agents run by subs, suppliers, and designers.',
     aliases: ['General Contractor'],
     seeAlso: [{label: 'Why TACO?', href: '/docs/why-taco'}],
   },
@@ -202,7 +202,7 @@ export const TERMS = [
     short:
       'Coordinated 3D digital model of a building, carrying geometry plus metadata about every component.',
     long:
-      'BIM tools (Revit, Navisworks, IFC, ArchiCAD) are common TACO agent dependencies — a clash-detection or takeoff agent typically reads BIM internally and emits typed TACO artifacts externally.',
+      'BIM tools (Revit, Navisworks, ArchiCAD) and the IFC open data format are common TACO agent dependencies — a clash-detection or takeoff agent typically reads BIM internally and emits typed TACO artifacts externally.',
     aliases: ['Building Information Modeling'],
   },
   {
@@ -276,7 +276,7 @@ export const TERMS = [
     full: 'Model Context Protocol',
     audience: 'protocol',
     short:
-      'Anthropic\'s open protocol that lets an LLM-driven agent reach external tools and data sources (databases, APIs, file systems).',
+      'The open protocol that lets an LLM-driven agent reach external tools and data sources (databases, APIs, file systems). Created by Anthropic and now governed under the Linux Foundation\'s Agentic AI Foundation.',
     long:
       'MCP is vertical (agent → tools); A2A is horizontal (agent → agent). A TACO agent typically uses MCP internally to talk to its data sources and A2A externally to talk to other agents.',
     aliases: ['Model Context Protocol'],
@@ -303,7 +303,7 @@ export const TERMS = [
     full: 'Task (A2A)',
     audience: 'protocol',
     short:
-      'A unit of work in A2A. Has a lifecycle (`submitted` → `working` → `completed`/`failed`/`canceled`), a list of inbound messages, and a list of outbound artifacts.',
+      'A unit of work in A2A. Has a lifecycle (`submitted` → `working` → `completed`/`failed`/`canceled`/`rejected`, with `input-required` and `auth-required` when it waits on the caller), a list of inbound messages, and a list of outbound artifacts.',
     seeAlso: [{label: 'Core Concepts', href: '/docs/core-concepts'}],
   },
   {
@@ -346,9 +346,9 @@ export const TERMS = [
     full: 'Agent Registry',
     audience: 'protocol',
     short:
-      'A directory of TACO agents that can be queried by trade, CSI division, task type, or trust tier.',
+      'A directory of TACO agents that can be queried by trade, task type, CSI division, or project type.',
     long:
-      'Today the SDK ships an in-memory registry with optional JSON-file persistence. A publicly hosted registry is on the roadmap.',
+      'Today the SDK ships an in-memory registry with optional JSON-file persistence. A publicly hosted registry is possible future work on the roadmap.',
     seeAlso: [
       {label: 'AgentRegistry', href: '/docs/sdk-reference/registry'},
       {label: 'Roadmap', href: '/docs/roadmap'},
@@ -364,7 +364,6 @@ export const TERMS = [
     long:
       'The sidecar translates incoming A2A messages into the platform\'s native API and shapes the responses into typed TACO artifacts. The platform stays untouched.',
     seeAlso: [
-      {label: 'Integrate Your Platform', href: '/docs/getting-started/integrate-platform'},
       {label: 'Integrate Your Platform', href: '/docs/getting-started/integrate-platform'},
     ],
   },
@@ -384,7 +383,7 @@ export const TERMS = [
     audience: 'protocol',
     short:
       'A simple remote-procedure-call protocol over JSON, used as A2A\'s primary message format.',
-    long: 'TACO agents speak JSON-RPC at `/` (or specific `message:send` paths in v1). You rarely need to construct JSON-RPC by hand if you use `TacoClient`.',
+    long: 'TACO agents built with the reference SDK speak JSON-RPC at `/` (for example the `message/send` method). You rarely need to construct JSON-RPC by hand if you use `TacoClient`.',
   },
   {
     id: 'sse',
@@ -410,7 +409,7 @@ export const TERMS = [
     full: 'JSON Schema (Draft 2020-12)',
     audience: 'protocol',
     short:
-      'The standard for describing the structure of JSON data. TACO\'s schemas are JSON Schema 2020-12 — published at `/schemas/{name}.json`.',
+      'The standard for describing the structure of JSON data. TACO\'s schemas are JSON Schema 2020-12 — the canonical files are in the repository at https://github.com/pelles-ai/taco/tree/main/spec/schemas.',
     seeAlso: [{label: 'Data Schemas', href: '/docs/schemas/'}],
   },
 

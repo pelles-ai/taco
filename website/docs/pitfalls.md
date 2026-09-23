@@ -1,14 +1,14 @@
 ---
 title: Common Pitfalls
-description: The top issues teams hit on their first attempt building a TACO agent — what each looks like, why it happens, and how to fix it. Diagnostic-style, not lecture-style.
+description: The issues most likely to trip up a first TACO agent — what each looks like, why it happens, and how to fix it. Diagnostic-style, not lecture-style.
 sidebar_position: 5
 ---
 
 # Common Pitfalls
 
-The mistakes we see most often when teams build their first TACO agent. Each entry is structured the same way: **what it looks like**, **why it happens**, **how to fix**.
+The issues most likely to trip up a first TACO agent. Each entry is structured the same way: **what it looks like**, **why it happens**, **how to fix**.
 
-If you hit one of these and it isn't documented here, [open an issue](https://github.com/pelles-ai/taco/issues) — we add to this list as patterns emerge.
+If you hit one of these and it isn't documented here, [open an issue](https://github.com/pelles-ai/taco/issues) — this list grows as new patterns come up.
 
 ---
 
@@ -46,21 +46,27 @@ If you hit one of these and it isn't documented here, [open an issue](https://gi
 
 **What it looks like.** Caller receives `state: "completed"` but `task.artifacts` is `[]` or contains parts with no data. No error anywhere.
 
-**Why it happens.** The handler returned something other than an `Artifact` (often `None` or a raw dict). The SDK doesn't error on this in v0.3 — the task just transitions to completed without an artifact.
+**Why it happens.** The handler returned a valid `Artifact`, but with nothing useful in it. Two ways this happens:
+- The request carried no `DataPart`, so the handler's `payload` was `{}` and it wrapped that empty dict in an artifact. The SDK logs `Message has no DataPart; handler receives empty input` when this happens.
+- A streaming handler yielded no parts. The task completes with no artifacts at all.
 
-**How to fix.** Every handler should `return make_artifact(parts=[make_data_part(payload)], name="...")`. Add a type annotation on the handler signature (`async def handle_estimate(task: Task, payload: dict) -> Artifact:`) and run mypy — it catches this in CI.
+Returning `None` or a raw dict is a different failure: the SDK can't build the artifact event, so the task ends `failed` and the status message carries the Pydantic validation error (for example `Task handler failed for type 'estimate': 1 validation error for TaskArtifactUpdateEvent`).
+
+**How to fix.** Check the caller sends its input as a `DataPart`, and have the handler reject an empty payload rather than returning an empty result. Every handler should `return make_artifact(parts=[make_data_part(payload)], name="...")`. Add a type annotation on the handler signature (`async def handle_estimate(task: Task, payload: dict) -> Artifact:`) and run mypy — it catches this in CI.
 
 ---
 
 ## 5. Streaming events fire but the caller never sees them
 
-**What it looks like.** The agent uses `register_streaming_handler` and yields `TaskStatusUpdateEvent`s. Logs on the agent side show events being emitted. The caller's `async for event in client.stream_message(...)` loop receives nothing until the final completion event.
+**What it looks like.** The agent uses `register_streaming_handler` and yields `Part`s, which the SDK wraps in `TaskArtifactUpdateEvent`s. Logs on the agent side show chunks being produced. The caller's `async for event in client.stream_message(...)` loop receives nothing until the final completion event.
 
 **Why it happens.** Streaming is over SSE. Two common breakage points:
 - The agent is behind a proxy that buffers responses (nginx default `proxy_buffering on`)
-- The agent's `EventQueue.enqueue_event(...)` is called without `await` — it returns a coroutine that never runs
+- The handler does its slow work before the first `yield` (or collects everything into a list and yields at the end), so there is nothing to send until it finishes
 
-**How to fix.** Check the proxy first: `proxy_buffering off` for SSE routes. Then check the handler — `enqueue_event` is async, every call needs `await`. If both look right, point the conformance runner at the agent; it'll surface the streaming issue.
+Handlers never touch the `EventQueue` directly; the SDK enqueues an event for each `Part` you yield.
+
+**How to fix.** Check the proxy first: `proxy_buffering off` for SSE routes. Then check the handler yields each chunk as soon as it is ready. If both look right, call the agent directly with `curl -N` against the `message/stream` method, bypassing the proxy, to see whether chunks arrive incrementally.
 
 ---
 
@@ -71,23 +77,23 @@ If you hit one of these and it isn't documented here, [open an issue](https://gi
 **Why it happens.** The agent card's `securitySchemes` doesn't actually match the `Authorization` header the agent is checking, OR the project-scoped token doesn't match the `projectId` in the payload (see [Best Practices on auth](./best-practices#security-in-production)).
 
 **How to fix.** Three checks:
-1. The agent card's `security` array references a `securitySchemes` key that exists (the conformance runner verifies this)
+1. The agent card's `security` array references a `securitySchemes` key that exists (`taco inspect <url>` shows both; [SPEC-005](/docs/spec/SPEC-005-conformance) lists this as a conformance check)
 2. The agent's handler reads the bearer token from the right header and validates it against the same auth server that issued it
 3. If using project scopes, the token's `taco:project:PRJ-0042` matches `payload["projectId"]` — reject mismatches explicitly rather than treating them as "missing scope"
 
 ---
 
-## 7. CORS blocks the browser-side conformance runner
+## 7. CORS blocks a browser-based client
 
 **What it looks like.** A browser-based client or dashboard fails to load the agent card with a CORS error in the console. `curl` from your laptop works fine.
 
-**Why it happens.** Browsers enforce CORS for cross-origin requests. Your agent's CORS configuration probably allows your own UI's origin but not `https://taco-protocol.com`.
+**Why it happens.** Browsers enforce CORS for cross-origin requests. Your agent's CORS configuration probably allows your own UI's origin but not the origin of the page making the request.
 
 **How to fix.** Two options:
-1. Add `https://taco-protocol.com` to your agent's `cors_origins` list — `A2AServer(card, cors_origins=["https://taco-protocol.com"])`
-2. Run the equivalent curl locally (the conformance report includes the exact invocation)
+1. Add the calling page's origin to your agent's `cors_origins` list — `A2AServer(card, cors_origins=["https://dashboard.example.com"])`
+2. Check from outside the browser with `curl` or `taco inspect <url>`, which aren't subject to CORS
 
-For public-facing agents you'd want anyone to be able to verify, `cors_origins=["*"]` for the well-known path is acceptable since the agent card is intentionally public.
+Note that `cors_origins` applies to the whole app, not just the well-known path: `cors_origins=["*"]` also lets any origin call your task endpoints from a browser. The agent card is intentionally public, but if you want it readable from anywhere without opening the task endpoints, add a CORS rule for `/.well-known/` at your reverse proxy instead.
 
 ---
 
@@ -110,7 +116,7 @@ For public-facing agents you'd want anyone to be able to verify, `cors_origins=[
 **How to fix.** Three options:
 1. Re-register on every orchestrator startup with the current URL set
 2. Background task in the orchestrator that re-`register()`s every known URL on a schedule (5 minutes is a good default; surfaces 404s as visible errors)
-3. Wait for the hosted registry ([on the roadmap](./roadmap)) which will have push-notification updates
+3. A hosted registry with push updates is possible future work ([see the roadmap](./roadmap)), not something to plan around yet
 
 ---
 
@@ -136,11 +142,11 @@ For public-facing agents you'd want anyone to be able to verify, `cors_origins=[
 
 ## 12. Schema validator passes; production breaks anyway
 
-**What it looks like.** Conformance runner returns all-green. Pydantic models validate the payload. Production downstream consumers still reject it.
+**What it looks like.** Your own schema checks pass. Pydantic models validate the payload. Production downstream consumers still reject it.
 
 **Why it happens.** Strict schema validation (`additionalProperties: false`) is not the default in older JSON Schema validators. A payload with extra fields validates green against a permissive validator but breaks a strict one downstream. Or — a field is technically optional but the consumer treats it as required ("we always have a `metadata.generatedAt`...").
 
-**How to fix.** Use a strict validator everywhere — set `additionalProperties: false` on your schemas. Run the conformance runner against both your producer AND consumer agents. If a consumer treats an optional field as required, file it as a schema bug: either the field should be required in `v2`, or the consumer should gracefully handle its absence.
+**How to fix.** Use a strict validator everywhere — set `additionalProperties: false` on your schemas. Validate sample payloads against the canonical schema in the test suites of both your producer AND consumer agents. If a consumer treats an optional field as required, file it as a schema bug: either the field should be required in `v2`, or the consumer should gracefully handle its absence.
 
 ---
 

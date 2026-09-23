@@ -13,7 +13,7 @@ The shortest version: **TACO is a construction-specific ontology layer on top of
 ## What TACO is
 
 - **A shared vocabulary for construction agent communication.** 18 named task types, 6 typed JSON schemas, a construction extension on the standard A2A Agent Card.
-- **A discovery model for construction agents.** Filter by trade, CSI division, task type, platform integration, trust tier.
+- **A discovery model for construction agents.** Agent Cards declare trade, CSI divisions, project types, task types, and platform integrations, and carry a registry-assigned trust tier; the reference `AgentRegistry` filters by trade, task type, CSI division, and project type.
 - **A security model that respects construction's multi-organization reality.** Trade-, task-, project-, and CSI-scoped OAuth tokens; mandatory Token Exchange between agents from different organizations.
 - **A reference Python SDK.** `taco-agent` on PyPI. Server, client, registry, CLI, monitor UI.
 - **Apache 2.0, open governance.** Spec lives in [a public repo](https://github.com/pelles-ai/taco). Decisions go through Architecture Decision Records.
@@ -25,12 +25,12 @@ The shortest version: **TACO is a construction-specific ontology layer on top of
 - **Not a competitor to MCP.** MCP connects an agent to its tools and data. A2A (and TACO on top) connects agents to each other. They're orthogonal. See [the protocol stack](./protocol-stack).
 - **Not a construction platform.** We don't host projects, store documents, or run workflows ourselves. TACO is a wire protocol and a vocabulary; platforms run on top.
 - **Not a file format.** TACO doesn't read or write IFC, BIM, DWG, COBie, or any other construction file format. Agents that consume those formats produce TACO-typed artifacts as output.
-- **Not a contract-execution platform.** TACO's typed RFI, change order, and submittal artifacts represent workflow state. Whether they have legal force depends on AIA/ConsensusDocs forms and human signatures — TACO doesn't legislate that.
-- **Not a managed service.** Today, the SDK is what we ship. A hosted public registry is [on the roadmap](./roadmap); a managed agent runtime is not, and won't be from us.
+- **Not a contract-execution platform.** TACO's typed RFI and change order artifacts (and the planned submittal-review schema) represent workflow state. Whether they have legal force depends on AIA/ConsensusDocs forms and human signatures — TACO doesn't legislate that.
+- **Not a managed service.** Today, the SDK is what we ship. A hosted public registry is possible future work [on the roadmap](./roadmap); a managed agent runtime is not, and won't be from us.
 
 ## What we will keep saying no to
 
-Some asks come up repeatedly. We've thought hard about each and consistently land on "not in scope":
+Some asks are predictable for a protocol like this. We've thought hard about each and consistently land on "not in scope":
 
 ### "Add a `procore-v1` schema."
 
@@ -60,7 +60,7 @@ For things TACO explicitly doesn't do, here's where we point people:
 |------|---------------------|
 | Tool access for LLM agents | [MCP](https://modelcontextprotocol.io) |
 | Generic agent runtime | LangChain, LlamaIndex, OpenAI Agents SDK, custom |
-| Construction file parsing (IFC, DWG, COBie) | buildingSMART tools, Autodesk Forge, your existing tooling |
+| Construction file parsing (IFC, DWG, COBie) | buildingSMART tools, Autodesk Platform Services (APS, formerly Forge), your existing tooling |
 | Contract / legal execution | AIA / ConsensusDocs forms, e-signature platforms |
 | BIM coordination | Navisworks, Revizto, Solibri |
 | Hosted project storage | Procore, ACC, Bluebeam Studio, your existing platform |

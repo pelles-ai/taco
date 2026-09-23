@@ -63,6 +63,8 @@ Exceptions in the handler become `state: failed` and the caller loses the struct
 
 Internal stack traces leak deployment detail, library versions, and sometimes credentials embedded in URLs. Translate exceptions into the project's error vocabulary before sending them out.
 
+Note that the reference SDK currently includes the exception message in the `failed` status it sends back (`Task handler failed for type '...': <message>`), so keep the messages of exceptions your handlers raise free of secrets, URLs with credentials, and other internal detail.
+
 ## Observability
 
 ### Log the task ID, the context ID, and the agent name on every log line
@@ -78,7 +80,7 @@ Tag every log line with both, plus the agent's name from the card. Tracing acros
 
 The A2A request lifecycle (received → working → completed) maps cleanly onto OpenTelemetry spans. A handler that emits a span per significant phase (`input validation`, `LLM call`, `database query`, `output validation`) lets you produce flame graphs across an entire multi-agent chain.
 
-There's no built-in helper for this in `taco-agent` yet (tracking issue: roadmap). Until there is, instrument your handler manually with `opentelemetry-api`.
+There's no built-in helper for this in `taco-agent` yet. Until there is, instrument your handler manually with `opentelemetry-api`.
 
 ### The Monitor UI is for development, not production
 
@@ -127,7 +129,10 @@ A token holding `taco:project:PRJ-0042:write` should be rejected if it arrives w
 
 ```python
 async def handle_estimate(task: Task, payload: dict) -> Artifact:
-    token_project = get_token_project_scope(task.metadata.get("auth_token"))
+    # Placeholder: your auth layer's scope check. The SDK doesn't validate
+    # tokens or put them in task.metadata; read the project scope from the
+    # token your own middleware verified for this request.
+    token_project = my_auth.project_scope_for_current_request()
     payload_project = payload.get("projectId")
     if token_project and token_project != payload_project:
         raise PermissionError(f"Token scoped to {token_project}, payload says {payload_project}")
@@ -153,11 +158,11 @@ A single Python process per agent (managed by uvicorn, gunicorn, or your contain
 
 ### Run the registry where it's queried
 
-The in-process `AgentRegistry` lives next to the orchestrator that uses it. Don't try to run it as a separate service — that's what a hosted registry will be, and it's on the [roadmap](./roadmap). Until then, every orchestrator that needs discovery instantiates its own registry and `register()`s the peers it needs.
+The in-process `AgentRegistry` lives next to the orchestrator that uses it. Don't try to run it as a separate service — a hosted registry is possible future work on the [roadmap](./roadmap), not something that exists today. Until then, every orchestrator that needs discovery instantiates its own registry and `register()`s the peers it needs.
 
 ### Health endpoints are cheap; serve one
 
-`GET /health` should be a fast, no-auth, no-side-effects endpoint that returns 200 if the process is alive. Container orchestrators and load balancers expect this. `A2AServer` exposes it automatically since v0.3.
+`GET /health` should be a fast, no-auth, no-side-effects endpoint that returns 200 if the process is alive. Container orchestrators and load balancers expect this. `A2AServer` has exposed it automatically since v0.1.
 
 ## Testing
 
@@ -170,14 +175,14 @@ async def test_estimate_handler():
     bom = {"projectId": "PRJ", "trade": "mechanical", "lineItems": [...]}
     artifact = await handle_estimate(Task(id="t1", ...), bom)
     estimate = extract_structured_data(artifact.parts[0])
-    assert estimate["summary"]["total"] > 0
+    assert estimate["summary"]["grandTotal"] > 0
 ```
 
 You don't need a running server for this. The A2A wire format is implementation detail; the handler's input/output contract is what your callers see.
 
-### Use the conformance runner before every release
+### Check conformance before every release
 
-Run `taco inspect <staging-url>` and check the card against the requirements in [SPEC-005 Conformance](/docs/spec/SPEC-005-conformance). A clean card doesn't mean every claim is true, but a broken one means something is wrong in your Agent Card or its declarations. Fix it before you ship.
+A hosted conformance runner is planned but not available yet. Until then, run `taco inspect <staging-url>` and check the card against the requirements in [SPEC-005 Conformance](/docs/spec/SPEC-005-conformance). A clean card doesn't mean every claim is true, but a broken one means something is wrong in your Agent Card or its declarations. Fix it before you ship.
 
 ### Mock peer agents, don't run real ones
 

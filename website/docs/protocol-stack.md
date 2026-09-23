@@ -38,7 +38,7 @@ It defines:
 
 - **Agent Cards** — a `/.well-known/agent-card.json` document each agent serves to advertise its name, capabilities, and how to reach it.
 - **JSON-RPC messaging** — `message/send` and `message/stream` for sending tasks.
-- **Task lifecycle** — `submitted` → `working` → `completed` / `failed` / `canceled`.
+- **Task lifecycle** — `submitted` → `working` → `completed` / `failed` / `canceled` / `rejected`, with `input-required` and `auth-required` as interrupted states where the task waits on the caller.
 - **Streaming** — Server-Sent Events for incremental responses.
 - **Authentication** — five scheme types: `apiKey`, `http`, `oauth2`, `openIdConnect`, `mutualTLS`.
 
@@ -46,7 +46,7 @@ A2A is **domain-agnostic** on purpose. It does not know what a "takeoff" is. It 
 
 ## MCP — Model Context Protocol
 
-**[MCP](https://modelcontextprotocol.io)** is Anthropic's open standard for connecting an AI model (usually inside an agent) to external tools and data sources.
+**[MCP](https://modelcontextprotocol.io)** is the open standard, created by Anthropic and now governed under the Linux Foundation's Agentic AI Foundation, for connecting an AI model (usually inside an agent) to external tools and data sources.
 
 It defines:
 
@@ -69,7 +69,7 @@ It adds four things:
 
 1. **Task types** — a vocabulary of construction workflows: `takeoff`, `estimate`, `rfi-generation`, `schedule-coordination`, and 14 more. See [Task Types](/docs/task-types).
 2. **Data schemas** — typed JSON schemas for the artifacts agents exchange: `bom-v1`, `rfi-v1`, `estimate-v1`, `schedule-v1`, `quote-v1`, `change-order-v1`. See [Data Schemas](/docs/schemas/).
-3. **Agent discovery** — Agent Card extensions that let you find agents by trade, CSI division, project type, and platform integration. See [Agent Card Extensions](/docs/agent-card-extensions).
+3. **Agent discovery** — Agent Card extensions that declare trade, CSI divisions, project types, and platform integrations, so a registry can find agents by trade, CSI division, task type, and project type. See [Agent Card Extensions](/docs/agent-card-extensions).
 4. **Security scopes** — a construction-shaped OAuth scope taxonomy. See [Security](/docs/security).
 
 Every TACO agent is a **valid A2A agent**. Non-TACO clients ignore the `x-construction` extension gracefully — no lock-in.

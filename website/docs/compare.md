@@ -6,7 +6,7 @@ description: How TACO compares with proprietary platform APIs, raw A2A, and home
 
 # TACO vs. Alternatives
 
-A practical comparison of how TACO stacks up against the realistic alternatives. None of these are strawmen — each one is a path real teams take.
+A practical comparison of how TACO stacks up against the realistic alternatives. None of these are strawmen — each is a realistic option.
 
 ## TACO vs. proprietary platform APIs
 
@@ -31,11 +31,11 @@ A2A is the transport. You can build everything on raw A2A without TACO — and f
 
 | | Raw A2A | TACO on A2A |
 |---|---------|-------------|
-| **Agent discovery** | By name/URL | By trade, CSI division, task type, platform |
+| **Agent discovery** | By name/URL | By trade, CSI division, task type, project type |
 | **Task semantics** | Freeform strings | 18 named task types |
 | **Data interchange** | Unstructured artifacts | 6 typed schemas with cross-references |
 | **Security scopes** | Generic OAuth | Construction-scoped (`taco:trade:mechanical`, `taco:project:PRJ-0042:write`) |
-| **Registry** | Not defined by the spec | Trade-aware registry with trust tiers |
+| **Registry** | Not defined by the spec | Trade-aware registry; trust tiers defined in the security spec |
 | **Lock-in** | None | None — every TACO agent is a valid A2A agent |
 | **Best for** | Non-construction agent ecosystems | Construction-specific workflows |
 
