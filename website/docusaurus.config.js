@@ -168,6 +168,7 @@ const config = {
         docs: {
           sidebarPath: './sidebars.js',
           editUrl: 'https://github.com/pelles-ai/taco/tree/main/website/',
+          showLastUpdateTime: true,
         },
         blog: {
           showReadingTime: true,
@@ -177,6 +178,22 @@ const config = {
         theme: {
           customCss: './src/css/custom.css',
         },
+      }),
+    ],
+  ],
+
+  themes: [
+    [
+      '@easyops-cn/docusaurus-search-local',
+      /** @type {import('@easyops-cn/docusaurus-search-local').PluginOptions} */
+      ({
+        hashed: true,
+        indexDocs: true,
+        indexBlog: true,
+        indexPages: false,
+        docsRouteBasePath: '/docs',
+        highlightSearchTermsOnTargetPage: true,
+        explicitSearchResultPath: true,
       }),
     ],
   ],
@@ -271,7 +288,7 @@ const config = {
               {label: 'GitHub Discussions', href: 'https://github.com/pelles-ai/taco/discussions'},
               {label: 'Issues', href: 'https://github.com/pelles-ai/taco/issues'},
               {label: 'Contributing', href: 'https://github.com/pelles-ai/taco/blob/main/CONTRIBUTING.md'},
-              {label: 'Changelog', href: 'https://github.com/pelles-ai/taco/blob/main/CHANGELOG.md'},
+              {label: 'Changelog', to: '/docs/changelog'},
             ],
           },
           {

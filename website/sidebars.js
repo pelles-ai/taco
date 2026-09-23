@@ -39,6 +39,7 @@ const sidebars = {
     'cli',
     'security',
     'examples',
+    'changelog',
   ],
 };
 

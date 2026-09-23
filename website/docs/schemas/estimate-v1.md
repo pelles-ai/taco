@@ -1,5 +1,6 @@
 ---
 title: "estimate-v1 — Cost Estimate"
+description: Cost estimate schema — material, labor, equipment, summary totals, and overhead/profit calculations.
 ---
 
 # estimate-v1 — Cost Estimate

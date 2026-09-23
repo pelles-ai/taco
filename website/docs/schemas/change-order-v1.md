@@ -1,5 +1,6 @@
 ---
 title: "change-order-v1 — Change Order"
+description: Change order analysis schema — cost impact, schedule impact, and scope modifications.
 ---
 
 # change-order-v1 — Change Order

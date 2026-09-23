@@ -1,6 +1,7 @@
 ---
 sidebar_position: 6
 title: Security
+description: TACO security model — A2A auth plus project-scoped credentials, trade-level boundaries, OAuth scopes, and registry trust tiers.
 ---
 
 # Security

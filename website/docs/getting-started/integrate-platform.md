@@ -1,6 +1,7 @@
 ---
 sidebar_position: 3
 title: Integrate Your Platform
+description: Wrap your existing construction platform as a TACO agent with a thin sidecar — no rewrites required.
 ---
 
 # Integrate Your Platform

@@ -1,6 +1,7 @@
 ---
 sidebar_position: 1
 title: Introduction
+description: A construction-specific ontology built on the A2A protocol. Task types, data schemas, and agent discovery for the built environment.
 ---
 
 # TACO — The A2A Construction Open-standard
