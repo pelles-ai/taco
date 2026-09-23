@@ -117,6 +117,50 @@ export default function SequenceDiagram({actors, messages, ariaLabel}) {
           const labelMid = (x1 + x2) / 2;
           const badgeW = m.schema ? m.schema.length * 7.2 + 18 : 0;
 
+          if (fromIdx === toIdx) {
+            // Local work by one agent: a small loop off its lifeline, with
+            // the label, schema and note left-aligned beside the loop.
+            // Loops point right, except on the last actor where they point
+            // left to stay inside the drawing.
+            const dir = fromIdx === actors.length - 1 ? -1 : 1;
+            const loopW = 34;
+            const loopH = 20;
+            const textX = x1 + dir * (loopW + 12);
+            const anchor = dir === 1 ? 'start' : 'end';
+            const badgeX = dir === 1 ? textX : textX - badgeW;
+            return (
+              <g key={i} className="seq__msg">
+                <Keynote x={GUTTER_W / 2} y={y} n={i + 1} />
+                <path
+                  d={`M ${x1} ${y - loopH / 2} h ${dir * loopW} v ${loopH} h ${-dir * (loopW - 2)}`}
+                  className="seq__line"
+                  fill="none"
+                  markerEnd="url(#seq-arrow)"
+                />
+                <text x={textX} y={y - 3} textAnchor={anchor} className="seq__label">
+                  {m.label}
+                </text>
+                {m.schema ? (
+                  <g transform={`translate(${badgeX}, ${y + 5})`}>
+                    <rect width={badgeW} height={19} rx={2} className="seq__schema-bg" />
+                    <text x={badgeW / 2} y={13.5} textAnchor="middle" className="seq__schema">
+                      {m.schema}
+                    </text>
+                  </g>
+                ) : null}
+                {m.note ? (
+                  <text
+                    x={textX}
+                    y={y + (m.schema ? 38 : 16)}
+                    textAnchor={anchor}
+                    className="seq__note">
+                    {m.note}
+                  </text>
+                ) : null}
+              </g>
+            );
+          }
+
           return (
             <g key={i} className="seq__msg">
               <Keynote x={GUTTER_W / 2} y={y} n={i + 1} />
