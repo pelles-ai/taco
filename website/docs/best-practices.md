@@ -182,7 +182,7 @@ You don't need a running server for this. The A2A wire format is implementation 
 
 ### Check conformance before every release
 
-A hosted conformance runner is planned but not available yet. Until then, run `taco inspect <staging-url>` and check the card against the requirements in [SPEC-005 Conformance](/docs/spec/SPEC-005-conformance). A clean card doesn't mean every claim is true, but a broken one means something is wrong in your Agent Card or its declarations. Fix it before you ship.
+Run the [conformance check](/conformance) against your staging URL, or paste the output of `taco discover <staging-url>` into it if the agent does not allow browser requests. It runs the checks in [SPEC-005 Conformance](/docs/spec/SPEC-005-conformance). A clean card doesn't mean every claim is true, but a broken one means something is wrong in your Agent Card or its declarations. Fix it before you ship.
 
 ### Mock peer agents, don't run real ones
 

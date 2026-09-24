@@ -70,3 +70,39 @@ jobs:
       - name: Run tests
         run: pytest -v
         working-directory: sdk
+
+  website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags drive the SDK version shown on the site
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install site dependencies
+        run: npm ci
+        working-directory: website
+
+      # Also validates every schema example against its schema.
+      - name: Build the site
+        run: npm run build
+        working-directory: website
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build the SDK wheel
+        run: pip wheel --no-deps ./sdk -w dist
+
+      - name: Run the playground examples in Pyodide
+        working-directory: website
+        run: |
+          version=$(sed -n "s/^export const PYODIDE_VERSION = '\(.*\)';$/\1/p" src/data/playground-presets.js)
+          npm install --no-save "pyodide@${version}"
+          node scripts/check-playground.mjs ../dist/taco_agent-*.whl

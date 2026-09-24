@@ -14,6 +14,8 @@ This page is the high-level guide. For the full signature, docstring, and source
 
 ## Installation
 
+To try the SDK before installing it, use the [playground](/playground), which runs `taco-agent` in your browser.
+
 ```bash
 # Core models and schemas
 pip install taco-agent

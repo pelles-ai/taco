@@ -38,7 +38,7 @@ The agent **SHALL** correctly implement validation for whichever scheme(s) it ad
 
 ### 2.2 Consistency
 
-If `security[]` is present, every named scheme referenced in `security[]` **SHALL** have a matching definition in `securitySchemes`. Mismatched declarations are non-conformant. This is one of the checks in [SPEC-005](./SPEC-005-conformance); a hosted conformance runner that automates them is planned, and until then `taco discover <url>` prints the full card JSON, including these fields, for manual review.
+If `security[]` is present, every named scheme referenced in `security[]` **SHALL** have a matching definition in `securitySchemes`. Mismatched declarations are non-conformant. This is one of the checks in [SPEC-005](./SPEC-005-conformance), and the [conformance check](/conformance) runs it. `taco discover <url>` prints the full card JSON, including these fields, for manual review.
 
 ### 2.3 The well-known path
 

@@ -28,9 +28,8 @@ The format follows the [Michael Nygard ADR template](https://github.com/joelpark
 | [0005](./in-memory-registry-first) | In-memory registry first, hosted registry second | Accepted |
 | [0006](./schema-versioning) | Schema versioning: additive within a major, rename for breaking | Accepted |
 | [0007](./v1-wire-cutover) | Phased A2A v1 wire cutover (polish → compat layer → wire flip, with additive v1 features alongside) | Accepted (in flight) |
+| [0008](./in-browser-playground) | Run the real SDK in the browser for the playground | Accepted |
 | [0009](./extension-uri-naming) | Construction extension URI naming convention | Accepted |
-
-ADR-0008 (in-browser sandbox) is not listed yet; it will be published with the sandbox itself.
 
 ## When to write a new ADR
 

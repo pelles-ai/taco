@@ -69,6 +69,9 @@ const config = {
     protocolVersion: PROTOCOL_VERSION,
     taskTypeCount: TASK_TYPE_COUNT,
     schemaCount: SCHEMA_COUNT,
+    // Where the playground loads Pyodide from. Unset means the Pyodide CDN;
+    // set it at build time to self-host Pyodide or to test without the CDN.
+    pyodideIndexUrl: process.env.PYODIDE_INDEX_URL || null,
   },
 
   future: {
@@ -233,6 +236,11 @@ const config = {
             position: 'left',
           },
           {
+            to: '/playground',
+            label: 'Playground',
+            position: 'left',
+          },
+          {
             href: 'https://github.com/pelles-ai/taco/tree/main/spec',
             label: 'Spec',
             position: 'left',
@@ -278,6 +286,8 @@ const config = {
             title: 'SDK',
             items: [
               {label: 'SDK guide', to: '/docs/sdk'},
+              {label: 'Playground', to: '/playground'},
+              {label: 'Conformance check', to: '/conformance'},
               {label: 'CLI', to: '/docs/cli'},
               {label: 'PyPI', href: 'https://pypi.org/project/taco-agent/'},
               {label: 'Agent card extensions', to: '/docs/agent-card-extensions'},

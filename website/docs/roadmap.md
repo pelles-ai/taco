@@ -75,7 +75,7 @@ The `AgentRegistry` is in-process today with optional JSON persistence. A public
 A reference set of [MCP](/docs/protocol-stack) servers for common construction data sources (drawings, BIM, specifications, project DBs) so any TACO agent can plug in without inventing its own connectors.
 
 ### Conformance test suite
-A test pack that an agent can run against its own endpoint to verify TACO compliance — schema round-trips, advertised task types, auth declarations. What conformance means is drafted in [SPEC-005](/docs/spec/SPEC-005-conformance); until a runner exists, `taco inspect <url>` is the quickest check of a live Agent Card.
+The structural checks in [SPEC-005](/docs/spec/SPEC-005-conformance) already run in the browser: the [conformance check](/conformance) tests a pasted Agent Card or a live URL. Next is a test pack that exercises the agent itself: send each advertised skill a reference payload and check that the response validates against the declared output schema (the behavioral conformance SPEC-005 leaves to a future revision).
 
 ## Open questions
 

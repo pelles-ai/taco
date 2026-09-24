@@ -1,0 +1,51 @@
+{
+  "name": "Mechanical Estimator",
+  "description": "Prices mechanical bills of materials for Divisions 22 and 23.",
+  "url": "https://estimator.example.com",
+  "version": "1.0.0",
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
+  "capabilities": {
+    "extensions": [
+      {
+        "description": "TACO construction-domain agent metadata: trade, CSI divisions, project types, certifications, data formats, integrations, security.",
+        "required": false,
+        "uri": "https://taco.construction/extensions/x-construction/v1"
+      }
+    ],
+    "streaming": false
+  },
+  "skills": [
+    {
+      "id": "estimate-mech",
+      "name": "Estimate mechanical BOM",
+      "description": "Turns a bom-v1 into a priced estimate-v1.",
+      "tags": [
+        "estimate"
+      ],
+      "x-construction": {
+        "taskType": "estimate",
+        "inputSchema": "bom-v1",
+        "outputSchema": "estimate-v1"
+      }
+    }
+  ],
+  "x-construction": {
+    "trade": "mechanical",
+    "csiDivisions": [
+      "22",
+      "23"
+    ],
+    "projectTypes": [
+      "healthcare",
+      "commercial"
+    ],
+    "certifications": [],
+    "dataFormats": {},
+    "integrations": []
+  }
+}

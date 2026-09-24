@@ -126,6 +126,7 @@ const sidebars = {
             'decisions/in-memory-registry-first',
             'decisions/schema-versioning',
             'decisions/v1-wire-cutover',
+            'decisions/in-browser-playground',
             'decisions/extension-uri-naming',
           ],
         },

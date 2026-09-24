@@ -38,7 +38,7 @@ The well-known path **SHALL** be reachable without authentication. Agent identit
 
 ### 2.2 CORS
 
-The well-known path **SHOULD** permit cross-origin requests via an appropriate `Access-Control-Allow-Origin` header when the card is meant to be read from browser contexts. The reference SDK adds no CORS headers unless `cors_origins` is passed to `A2AServer` / `TacoAgent`. A hosted, browser-based conformance runner ([SPEC-005](./SPEC-005-conformance)) is planned and would depend on this.
+The well-known path **SHOULD** permit cross-origin requests via an appropriate `Access-Control-Allow-Origin` header when the card is meant to be read from browser contexts. The reference SDK adds no CORS headers unless `cors_origins` is passed to `A2AServer` / `TacoAgent`. The browser-based [conformance check](/conformance) ([SPEC-005 §5](./SPEC-005-conformance)) depends on this to check a card from its URL.
 
 ## 3. Required fields
 
