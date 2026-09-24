@@ -4,6 +4,8 @@ title: Data Schemas
 description: Typed JSON schemas for construction artifacts — bom-v1, rfi-v1, estimate-v1, schedule-v1, quote-v1, change-order-v1.
 ---
 
+import SchemaGraph from '@site/src/components/SchemaGraph';
+
 # Data Schemas
 
 TACO defines typed JSON schemas for construction artifacts. These schemas ensure that the output from one agent is valid input for the next — enabling multi-agent workflows without custom integration code.
@@ -21,6 +23,10 @@ All schemas follow [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/s
 | [`schedule-v1`](./schedule-v1) | **Defined** | Project Schedule — activities, dependencies, milestones |
 | [`change-order-v1`](./change-order-v1) | **Defined** | Change Order — impact analysis, cost/schedule deltas |
 
+## How the schemas connect
+
+<SchemaGraph />
+
 ## Schema Design Principles
 
 1. **Flat where possible.** Schemas avoid deep nesting. A BOM is a flat list of line items with metadata.
@@ -30,7 +36,7 @@ All schemas follow [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/s
 
 ## JSON Schema Files
 
-The canonical JSON Schema definitions live in the repository at [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas).
+The canonical JSON Schema definitions live in the repository at [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas). The site republishes them unchanged at `/schemas/<name>.json` (for example [`/schemas/bom-v1.json`](pathname:///schemas/bom-v1.json)) on every deploy, and each schema page above renders its fields and a validator straight from that file.
 
 ## Python SDK Models
 

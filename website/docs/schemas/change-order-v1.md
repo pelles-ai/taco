@@ -3,6 +3,8 @@ title: "change-order-v1 — Change Order"
 description: Change order analysis schema — cost impact, schedule impact, and scope modifications.
 ---
 
+import SchemaExplorer, {SchemaExample} from '@site/src/components/SchemaExplorer';
+
 # change-order-v1 — Change Order
 
 The Change Order schema defines a standardized format for construction change order analysis, including cost impact, schedule impact, and scope modifications.
@@ -11,50 +13,11 @@ The Change Order schema defines a standardized format for construction change or
 
 **Status:** Defined.
 
-## Structure
+## Fields
 
-### ChangeOrderV1 (top-level)
+Generated from [`spec/schemas/change-order-v1.json`](https://github.com/pelles-ai/taco/blob/main/spec/schemas/change-order-v1.json). Open a field to see what it holds, or switch to **Validate** to check a payload of your own.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `projectId` | string | Yes | Project identifier |
-| `changeOrderNumber` | string (min 1) | Yes | Change order number |
-| `title` | string (min 1) | Yes | Change order title |
-| `reason` | ChangeOrderReason | Yes | Reason for the change order |
-| `status` | ChangeOrderStatus | Yes | Current status |
-| `lineItems` | ChangeOrderLineItem[] | Yes (min 1) | Line items with cost/schedule impact |
-| `totalCostImpact` | float | Yes | Total cost impact (can be negative for savings) |
-| `totalScheduleImpactDays` | integer | No | Total schedule impact in days (default 0) |
-| `relatedRfis` | string[] | No | Related RFI identifiers |
-| `metadata` | ChangeOrderMetadata | Yes | Generation metadata |
-
-### ChangeOrderLineItem
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string (min 1) | Yes | Unique line item identifier |
-| `description` | string | Yes | Description of the change |
-| `trade` | Trade | No | Associated trade |
-| `costImpact` | float | Yes | Cost impact (negative for credits/savings) |
-| `scheduleImpactDays` | integer | No | Schedule impact in days (default 0) |
-| `bomItemIds` | string[] | No | Related BOM item identifiers |
-
-### ChangeOrderReason
-
-One of: `design-change`, `unforeseen-condition`, `owner-request`, `value-engineering`, `code-compliance`, `error-omission`
-
-### ChangeOrderStatus
-
-One of: `draft`, `submitted`, `approved`, `rejected`, `withdrawn`
-
-### ChangeOrderMetadata
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `generatedBy` | string | Yes | System or agent that generated the change order |
-| `generatedAt` | string | Yes | ISO-8601 timestamp |
-| `confidence` | float (0-1) | No | Confidence score |
-| `notes` | string[] | No | Additional notes |
+<SchemaExplorer schemaId="change-order-v1" />
 
 ## Validation Rules
 
@@ -67,33 +30,7 @@ One of: `draft`, `submitted`, `approved`, `rejected`, `withdrawn`
 
 ## Example
 
-```json
-{
-  "projectId": "PRJ-2026-OAKRIDGE",
-  "changeOrderNumber": "CO-001",
-  "title": "HVAC rerouting due to structural conflict",
-  "reason": "design-change",
-  "status": "draft",
-  "lineItems": [
-    {
-      "id": "COL-001",
-      "description": "Reroute ductwork around beam",
-      "trade": "mechanical",
-      "costImpact": 15000.00,
-      "scheduleImpactDays": 3,
-      "bomItemIds": ["LI-001", "LI-002"]
-    }
-  ],
-  "totalCostImpact": 15000.00,
-  "totalScheduleImpactDays": 3,
-  "relatedRfis": ["RFI-001"],
-  "metadata": {
-    "generatedBy": "change-order-agent",
-    "generatedAt": "2026-02-28T14:00:00Z",
-    "confidence": 0.85
-  }
-}
-```
+<SchemaExample schemaId="change-order-v1" />
 
 ## Python SDK
 

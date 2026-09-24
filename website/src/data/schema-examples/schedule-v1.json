@@ -1,0 +1,48 @@
+{
+  "projectId": "PRJ-2026-OAKRIDGE",
+  "startDate": "2026-03-01",
+  "endDate": "2026-09-30",
+  "activities": [
+    {
+      "id": "ACT-001",
+      "name": "Foundation pour",
+      "trade": "structural",
+      "durationDays": 5,
+      "startDate": "2026-03-01",
+      "endDate": "2026-03-06",
+      "successors": [
+        "ACT-002"
+      ],
+      "percentComplete": 100.0,
+      "isCritical": true,
+      "resources": [
+        "Crew A",
+        "Concrete pump"
+      ]
+    },
+    {
+      "id": "ACT-002",
+      "name": "Framing",
+      "trade": "structural",
+      "durationDays": 15,
+      "startDate": "2026-03-07",
+      "predecessors": [
+        "ACT-001"
+      ],
+      "percentComplete": 0.0
+    }
+  ],
+  "milestones": [
+    {
+      "id": "MS-001",
+      "name": "Foundation complete",
+      "date": "2026-03-06",
+      "isMet": true
+    }
+  ],
+  "metadata": {
+    "generatedBy": "schedule-agent",
+    "generatedAt": "2026-02-28T10:00:00Z",
+    "confidence": 0.9
+  }
+}

@@ -182,6 +182,8 @@ const config = {
     ],
   ],
 
+  plugins: ['./plugins/taco-spec'],
+
   themes: [
     [
       '@easyops-cn/docusaurus-search-local',

@@ -1,0 +1,30 @@
+{
+  "projectId": "PRJ-2026-OAKRIDGE",
+  "changeOrderNumber": "CO-001",
+  "title": "HVAC rerouting due to structural conflict",
+  "reason": "design-change",
+  "status": "draft",
+  "lineItems": [
+    {
+      "id": "COL-001",
+      "description": "Reroute ductwork around beam",
+      "trade": "mechanical",
+      "costImpact": 15000.0,
+      "scheduleImpactDays": 3,
+      "bomItemIds": [
+        "LI-001",
+        "LI-002"
+      ]
+    }
+  ],
+  "totalCostImpact": 15000.0,
+  "totalScheduleImpactDays": 3,
+  "relatedRfis": [
+    "RFI-001"
+  ],
+  "metadata": {
+    "generatedBy": "change-order-agent",
+    "generatedAt": "2026-02-28T14:00:00Z",
+    "confidence": 0.85
+  }
+}
