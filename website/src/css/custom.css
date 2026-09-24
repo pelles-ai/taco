@@ -1390,18 +1390,30 @@ h1, h2 {
   text-decoration: none;
 }
 
-div[class*='announcementBar'] {
+/* The bar only: its inner placeholder and content divs have class names that
+   contain "announcementBar" too, and must not get the background or border. */
+.theme-announcement-bar {
   background: var(--taco-navy) !important;
   color: #eef1f6 !important;
   font-size: 0.85rem;
   border-bottom: 1px solid var(--taco-gold);
 }
 
-[data-theme='dark'] div[class*='announcementBar'] {
+[data-theme='dark'] .theme-announcement-bar {
   background: var(--taco-paper-2) !important;
 }
 
-div[class*='announcementBar'] a {
+.theme-announcement-bar .close {
+  color: #eef1f6;
+  opacity: 0.7;
+}
+
+.theme-announcement-bar .close:hover,
+.theme-announcement-bar .close:focus-visible {
+  opacity: 1;
+}
+
+.theme-announcement-bar a {
   color: var(--taco-gold) !important;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -1766,6 +1778,19 @@ div[class*='announcementBar'] a {
 
 .navbar__search-input::placeholder {
   color: var(--taco-ink-3);
+}
+
+/* Between the mobile breakpoint (996px) and about 1180px the full navbar is
+   tight: keep each link on one line and trim the spacing so nothing wraps. */
+.navbar__link {
+  white-space: nowrap;
+}
+
+@media (min-width: 997px) and (max-width: 1180px) {
+  .navbar__item {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
 }
 
 /* Search results page */
