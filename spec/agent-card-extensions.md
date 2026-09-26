@@ -119,6 +119,9 @@ The `security` sub-object carries TACO-specific security metadata. See [`securit
 | `projectScoped` | boolean | No | If `true`, incoming requests must include a `taco:project:{id}` scope. |
 | `delegationSupported` | boolean | No | If `true`, the agent supports downstream Token Exchange ([RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)) sub-delegation. |
 | `extendedCardUrl` | string | No | URL of the extended Agent Card, revealed after initial authentication. |
+| `mtlsSupported` | boolean | No | If `true`, the agent accepts mTLS client certificates. Lets a registry/orchestrator filter on mTLS-capable agents without parsing the full `securitySchemes` block. |
+| `pkceRequired` | boolean | No | If `true`, the agent requires PKCE ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)) on OAuth Authorization Code flows. Mirrors the v1 `pkceRequired` field on the AuthorizationCode flow. |
+| `deviceCodeSupported` | boolean | No | If `true`, the agent supports the OAuth Device Authorization Grant flow ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)). Useful for headless / CI / TV-style clients. |
 
 ```json
 {
@@ -129,8 +132,37 @@ The `security` sub-object carries TACO-specific security metadata. See [`securit
       "trustTier": 1,
       "scopesOffered": ["taco:trade:mechanical", "taco:task:estimate"],
       "projectScoped": true,
-      "delegationSupported": false
+      "delegationSupported": false,
+      "mtlsSupported": true,
+      "pkceRequired": true,
+      "deviceCodeSupported": false
     }
   }
 }
 ```
+
+### Discovery filtering
+
+Registries MAY use the auth-modality flags to narrow agent search results:
+
+```
+GET /agents?mtlsSupported=true&trade=mechanical
+GET /agents?deviceCodeSupported=true
+```
+
+A consumer that does not understand these flags treats them as informational only — the canonical security configuration still lives in the top-level `securitySchemes` block.
+
+### Declaring v1 OAuth flows on the agent card
+
+A2A v1 added two OAuth features that the v0.3 wire format's `OAuthFlows` object did not carry:
+
+- **`pkceRequired`** on the AuthorizationCode flow ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636))
+- **DeviceCode flow** ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628))
+
+TACO exports Pydantic models for both so agent cards can declare them today even while the SDK still emits v0.3-shaped wire payloads:
+
+- `taco.AuthorizationCodeOAuthFlowV1` — adds the optional `pkceRequired` field.
+- `taco.DeviceCodeOAuthFlow` — full RFC 8628 flow shape.
+- `taco.MutualTLSSecurityScheme` — re-exported from the A2A SDK for convenience.
+
+These models will become direct pass-throughs to `a2a.types` after the v1 wire-format cutover. Clients reading a card serialized with a `deviceCode` flow today MUST treat it as a forward-compatible extension and ignore it if their A2A SDK does not understand the field.
