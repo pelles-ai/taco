@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime, timedelta, timezone
+
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from taco.schemas import (
     BOMV1,
@@ -18,6 +20,8 @@ from taco.schemas import (
     ChangeOrderMetadata,
     ChangeOrderSchema,
     ChangeOrderV1,
+    DateString,
+    DateTimeString,
     EstimateLineItem,
     EstimateMetadata,
     EstimateSummary,
@@ -1026,3 +1030,144 @@ class TestUnknownFields:
         }
         co = ChangeOrderV1.model_validate(payload)
         assert co.model_dump(mode="json", by_alias=True, exclude_none=True) == payload
+
+
+class TestDateFormats:
+    """format: date / date-time fields validate the spec format and stay strings."""
+
+    date_time = TypeAdapter(DateTimeString)
+    full_date = TypeAdapter(DateString)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T09:30:00.123456-05:00",
+            "2026-01-01t09:30:00z",
+            "2026-06-30T23:59:60Z",  # RFC 3339 leap second
+            "2024-02-29T12:00:00+14:00",
+        ],
+    )
+    def test_valid_date_time_is_kept_verbatim(self, value: str):
+        assert self.date_time.validate_python(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "2026-01-01T09:30:00",  # naive: no offset
+            "2026-01-01",  # date only
+            "2026-01-01 09:30:00Z",  # space separator
+            "2026-02-30T00:00:00Z",  # no such day
+            "2026-01-01T24:00:00Z",
+            "2026-01-01T09:60:00Z",
+            "2026-01-01T09:30:00+24:00",
+            "2026-01-01T09:30Z",  # seconds are mandatory
+            "2026-01-01T09:30:00Z\n",
+            "",
+        ],
+    )
+    def test_invalid_date_time_fails(self, value: str):
+        with pytest.raises(ValidationError):
+            self.date_time.validate_python(value)
+
+    def test_aware_datetime_is_serialized_as_rfc3339(self):
+        value = datetime(2026, 1, 1, 9, 30, tzinfo=timezone(timedelta(hours=-5)))
+        assert self.date_time.validate_python(value) == "2026-01-01T09:30:00-05:00"
+
+    def test_naive_datetime_fails(self):
+        with pytest.raises(ValidationError, match="timezone offset"):
+            self.date_time.validate_python(datetime(2026, 1, 1, 9, 30))
+
+    def test_date_object_for_date_time_fails(self):
+        with pytest.raises(ValidationError):
+            self.date_time.validate_python(date(2026, 1, 1))
+
+    @pytest.mark.parametrize("value", ["2026-01-01", "2024-02-29"])
+    def test_valid_date_is_kept_verbatim(self, value: str):
+        assert self.full_date.validate_python(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        ["2026-1-1", "20260101", "2026-13-01", "2026-02-29", "2026-01-01T00:00:00Z", ""],
+    )
+    def test_invalid_date_fails(self, value: str):
+        with pytest.raises(ValidationError):
+            self.full_date.validate_python(value)
+
+    def test_date_object_is_serialized_as_full_date(self):
+        assert self.full_date.validate_python(date(2026, 3, 15)) == "2026-03-15"
+
+    def test_datetime_object_for_date_fails(self):
+        with pytest.raises(ValidationError, match="date"):
+            self.full_date.validate_python(datetime(2026, 3, 15, tzinfo=timezone.utc))
+
+    @pytest.mark.parametrize("model", [BOMMetadata, EstimateMetadata, QuoteMetadata, RFIMetadata])
+    def test_metadata_generated_at_requires_offset(self, model):
+        with pytest.raises(ValidationError):
+            model(generated_by="test", generated_at="2026-01-01T00:00:00")
+        meta = model(generated_by="test", generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
+        assert meta.model_dump(mode="json")["generatedAt"] == "2026-01-01T00:00:00+00:00"
+
+    @pytest.mark.parametrize("model", [ScheduleMetadata, ChangeOrderMetadata])
+    def test_generated_at_without_spec_format_is_plain_string(self, model):
+        """schedule-v1 / change-order-v1 declare no format on generatedAt."""
+        meta = model(generated_by="test", generated_at="2026-01-01")
+        assert meta.generated_at == "2026-01-01"
+
+    def test_schedule_dates_without_spec_format_are_plain_strings(self):
+        act = ScheduleActivity(
+            id="ACT-001", name="Mobilize", duration_days=1, start_date="Week 1", end_date="Week 2"
+        )
+        ms = ScheduleMilestone(id="MS-001", name="NTP", date="TBD")
+        assert (act.start_date, act.end_date, ms.date) == ("Week 1", "Week 2", "TBD")
+
+    def test_model_date_fields(self):
+        meta = EstimateMetadata(
+            generated_by="test",
+            generated_at="2026-01-01T00:00:00Z",
+            pricing_date=date(2026, 1, 1),
+        )
+        assert meta.pricing_date == "2026-01-01"
+        with pytest.raises(ValidationError):
+            EstimateMetadata(
+                generated_by="test", generated_at="2026-01-01T00:00:00Z", pricing_date="Jan 2026"
+            )
+        with pytest.raises(ValidationError):
+            RFIV1(
+                project_id="PRJ-001",
+                subject="S",
+                question="Q?",
+                category="clarification",
+                priority="low",
+                references=[],
+                due_date="next week",
+                metadata=RFIMetadata(generated_by="test", generated_at="2026-01-01T00:00:00Z"),
+            )
+        with pytest.raises(ValidationError):
+            QuoteV1(
+                project_id="PRJ-001",
+                supplier_name="ACME",
+                quote_number="Q-1",
+                valid_until="2026-03-01T00:00:00Z",
+                line_items=[],
+                summary=QuoteSummary(subtotal=0, tax_rate=0, tax_amount=0, freight=0, total=0),
+                terms=QuoteTerms(
+                    payment_terms="Net 30",
+                    delivery_method="Pickup",
+                    warranty="None",
+                    return_policy="None",
+                ),
+                metadata=QuoteMetadata(generated_by="test", generated_at="2026-01-01T00:00:00Z"),
+            )
+
+
+class TestRFIAssigneeRole:
+    @pytest.mark.parametrize(
+        "role", ["architect", "engineer", "owner", "contractor", "subcontractor"]
+    )
+    def test_spec_roles_are_valid(self, role: str):
+        assert RFIAssignee(role=role).role == role
+
+    def test_unknown_role_fails(self):
+        with pytest.raises(ValidationError):
+            RFIAssignee(role="plumber")

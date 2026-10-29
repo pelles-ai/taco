@@ -17,14 +17,27 @@ these models mirror them:
   none of the canonical schemas forbid ``additionalProperties`` and
   SPEC-003 §4.2 recommends extending ``metadata`` (for example
   ``metadata.vendorExtensions``) rather than dropping such keys.
+- Fields the schema marks ``format: date`` or ``format: date-time`` are
+  stored as strings but validated against that format (see
+  :data:`DateString` and :data:`DateTimeString`). Fields without a
+  ``format`` in the schema are plain strings.
 """
 
 from __future__ import annotations
 
-from typing import Literal
+import datetime as _dt
+import re
+from typing import Annotated, Literal
 
 from a2a._base import A2ABaseModel
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import (
+    AfterValidator,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    WithJsonSchema,
+    model_validator,
+)
 
 from .types import (
     Availability,
@@ -34,6 +47,101 @@ from .types import (
     RFIPriority,
     Trade,
 )
+
+# ---------------------------------------------------------------------------
+# JSON Schema string formats
+# ---------------------------------------------------------------------------
+
+# RFC 3339 §5.6 full-date and date-time. "T" and "Z" may be lower case.
+_FULL_DATE_RE = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})", re.ASCII)
+_DATE_TIME_RE = re.compile(
+    r"([0-9]{4})-([0-9]{2})-([0-9]{2})[Tt]"
+    r"([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?"
+    r"(?:[Zz]|[+-]([0-9]{2}):([0-9]{2}))",
+    re.ASCII,
+)
+
+
+def _coerce_date(value: object) -> object:
+    if isinstance(value, _dt.datetime):
+        raise ValueError(
+            "expected a calendar date (YYYY-MM-DD), got a datetime; pass value.date() instead"
+        )
+    if isinstance(value, _dt.date):
+        return value.isoformat()
+    return value
+
+
+def _check_date(value: str) -> str:
+    match = _FULL_DATE_RE.fullmatch(value)
+    try:
+        if match is None:
+            raise ValueError
+        _dt.date(int(match[1]), int(match[2]), int(match[3]))
+    except ValueError:
+        raise ValueError(
+            f"{value!r} is not a valid RFC 3339 full-date (YYYY-MM-DD)",
+        ) from None
+    return value
+
+
+def _coerce_date_time(value: object) -> object:
+    if isinstance(value, _dt.datetime):
+        if value.utcoffset() is None:
+            raise ValueError(
+                "naive datetime: a date-time needs a timezone offset (RFC 3339); "
+                "use e.g. datetime.now(timezone.utc)"
+            )
+        return value.isoformat()
+    if isinstance(value, _dt.date):
+        raise ValueError("expected a date-time with a timezone offset, got a date")
+    return value
+
+
+def _check_date_time(value: str) -> str:
+    match = _DATE_TIME_RE.fullmatch(value)
+    try:
+        if match is None:
+            raise ValueError
+        _dt.date(int(match[1]), int(match[2]), int(match[3]))
+        hour, minute, second = int(match[4]), int(match[5]), int(match[6])
+        # second 60 is an RFC 3339 leap second.
+        if hour > 23 or minute > 59 or second > 60:
+            raise ValueError
+        if match[7] is not None and (int(match[7]) > 23 or int(match[8]) > 59):
+            raise ValueError
+    except ValueError:
+        raise ValueError(
+            f"{value!r} is not a valid RFC 3339 date-time; it needs a date, a time "
+            "and a timezone offset, e.g. '2026-01-01T09:30:00Z' or "
+            "'2026-01-01T09:30:00-05:00'",
+        ) from None
+    return value
+
+
+DateString = Annotated[
+    str,
+    BeforeValidator(_coerce_date),
+    AfterValidator(_check_date),
+    WithJsonSchema({"type": "string", "format": "date"}),
+]
+"""A JSON Schema ``format: date`` value (RFC 3339 full-date, ``YYYY-MM-DD``).
+
+Accepts a string or a :class:`datetime.date`; always stored and serialized
+as a string.
+"""
+
+DateTimeString = Annotated[
+    str,
+    BeforeValidator(_coerce_date_time),
+    AfterValidator(_check_date_time),
+    WithJsonSchema({"type": "string", "format": "date-time"}),
+]
+"""A JSON Schema ``format: date-time`` value (RFC 3339, offset required).
+
+Accepts a string or a timezone-aware :class:`datetime.datetime`; always
+stored and serialized as a string. Naive datetimes are rejected.
+"""
 
 
 class SchemaModel(A2ABaseModel):
@@ -80,10 +188,10 @@ class EstimateSummary(SchemaModel):
 
 class EstimateMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
-    generated_at: str = Field(alias="generatedAt")
+    generated_at: DateTimeString = Field(alias="generatedAt")
     confidence: float | None = Field(None, ge=0.0, le=1.0)
     pricing_region: str | None = Field(None, alias="pricingRegion")
-    pricing_date: str | None = Field(None, alias="pricingDate")
+    pricing_date: DateString | None = Field(None, alias="pricingDate")
     notes: list[str] | None = None
 
 
@@ -132,7 +240,7 @@ class QuoteTerms(SchemaModel):
 
 class QuoteMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
-    generated_at: str = Field(alias="generatedAt")
+    generated_at: DateTimeString = Field(alias="generatedAt")
     confidence: float | None = Field(None, ge=0.0, le=1.0)
 
 
@@ -140,7 +248,7 @@ class QuoteV1(SchemaModel):
     project_id: str = Field(alias="projectId")
     supplier_name: str = Field(alias="supplierName")
     quote_number: str = Field(alias="quoteNumber")
-    valid_until: str = Field(alias="validUntil")
+    valid_until: DateString = Field(alias="validUntil")
     line_items: list[QuoteLineItem] = Field(alias="lineItems")
     summary: QuoteSummary
     terms: QuoteTerms
@@ -185,7 +293,7 @@ class BOMFlaggedItem(SchemaModel):
 
 class BOMMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
-    generated_at: str = Field(alias="generatedAt")
+    generated_at: DateTimeString = Field(alias="generatedAt")
     confidence: float | None = Field(None, ge=0.0, le=1.0)
     source_documents: list[BOMSourceDocument] | None = Field(None, alias="sourceDocuments")
     flagged_items: list[BOMFlaggedItem] | None = Field(None, alias="flaggedItems")
@@ -219,15 +327,24 @@ class RFIReference(SchemaModel):
     markup: str | None = None
 
 
+RFIAssigneeRole = Literal[
+    "architect",
+    "engineer",
+    "owner",
+    "contractor",
+    "subcontractor",
+]
+
+
 class RFIAssignee(SchemaModel):
-    role: str | None = None
+    role: RFIAssigneeRole | None = None
     company: str | None = None
     contact: str | None = None
 
 
 class RFIMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
-    generated_at: str = Field(alias="generatedAt")
+    generated_at: DateTimeString = Field(alias="generatedAt")
     confidence: float | None = Field(None, ge=0.0, le=1.0)
     related_rfis: list[str] | None = Field(None, alias="relatedRfis")
 
@@ -241,7 +358,7 @@ class RFIV1(SchemaModel):
     references: list[RFIReference]
     suggested_resolution: str | None = Field(None, alias="suggestedResolution")
     related_bom_items: list[str] | None = Field(None, alias="relatedBomItems")
-    due_date: str | None = Field(None, alias="dueDate")
+    due_date: DateString | None = Field(None, alias="dueDate")
     assigned_to: RFIAssignee | None = Field(None, alias="assignedTo")
     metadata: RFIMetadata
 
@@ -265,6 +382,7 @@ class ScheduleActivity(SchemaModel):
     # Free text in schedule-v1 (unlike the Trade enum on bom/estimate).
     trade: str | None = None
     duration_days: int = Field(ge=0, alias="durationDays")
+    # schedule-v1 dates declare no ``format``, so any string is accepted.
     start_date: str | None = Field(None, alias="startDate")
     end_date: str | None = Field(None, alias="endDate")
     predecessors: list[str] | None = None
@@ -283,6 +401,7 @@ class ScheduleMilestone(SchemaModel):
 
 class ScheduleMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
+    # schedule-v1 declares no ``format`` here (unlike bom/estimate/quote/rfi).
     generated_at: str = Field(alias="generatedAt")
     confidence: float | None = Field(None, ge=0.0, le=1.0)
     notes: list[str] | None = None
@@ -344,6 +463,7 @@ class ChangeOrderLineItem(SchemaModel):
 
 class ChangeOrderMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
+    # change-order-v1 declares no ``format`` here (unlike bom/estimate/quote/rfi).
     generated_at: str = Field(alias="generatedAt")
     confidence: float | None = Field(None, ge=0.0, le=1.0)
     notes: list[str] | None = None
