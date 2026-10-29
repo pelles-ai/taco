@@ -2,12 +2,24 @@
 """Minimal TACO agent — a single-file starting point.
 
 Run:
-    pip install taco-agent[all]
+    pip install "taco-agent[all]"     # or, from this repo: pip install -e "../sdk[all]"
     python quick_start.py
 
 Then:
-    curl http://localhost:8080/.well-known/agent.json
+    curl http://localhost:8080/.well-known/agent-card.json
     curl http://localhost:8080/monitor        # live tracing UI
+
+    # Send it a task (A2A JSON-RPC; every message needs a messageId)
+    curl -X POST http://localhost:8080/ \\
+      -H "Content-Type: application/json" \\
+      -d '{
+        "jsonrpc": "2.0", "id": "1", "method": "message/send",
+        "params": {
+          "message": {"role": "user", "messageId": "msg-1",
+                      "parts": [{"kind": "data", "data": {"hello": "TACO"}}]},
+          "metadata": {"taskType": "echo"}
+        }
+      }'
 """
 
 from taco import (
@@ -60,6 +72,6 @@ if __name__ == "__main__":
     import uvicorn
 
     print("Starting agent on http://localhost:8080")
-    print("Agent card: http://localhost:8080/.well-known/agent.json")
+    print("Agent card: http://localhost:8080/.well-known/agent-card.json")
     print("Monitor UI: http://localhost:8080/monitor")
     uvicorn.run(app, host="0.0.0.0", port=8080)
