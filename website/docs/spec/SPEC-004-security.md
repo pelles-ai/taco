@@ -21,7 +21,7 @@ The key words **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** 
 TACO inherits A2A's authentication model. An agent **MAY** require authentication on its endpoints. When it does, the agent's Agent Card **SHALL** advertise the authentication requirements in `securitySchemes` and `security[]` per the A2A specification.
 
 :::note Reference SDK status
-The 0.3 reference SDK does not yet implement this section. Its `AgentCard` model has no `securitySchemes` or `security` fields, so they are not included in the card it serves, and `A2AServer` does not authenticate requests to the JSON-RPC endpoint (only the optional `/admin/skills` endpoints take a bearer token). Agents that require authentication today enforce it outside the SDK, for example in middleware or a gateway in front of the agent.
+The reference SDK's `AgentCard` carries `securitySchemes` and `security` (set them with `ConstructionAgentCard(security_schemes=..., security=...)`), and `A2AServer(card, token_verifier=...)` authenticates the JSON-RPC endpoint with a bearer token: HTTP 401 for a missing or rejected token, HTTP 403 for a token without `taco:task:{taskType}`. Validating the token itself (JWT signature, introspection) is the agent's verifier function. The Agent Card and `/health` stay unauthenticated. See [Security: implementing it with the SDK](../security#implementing-it-with-the-sdk).
 :::
 
 ### 2.1 Supported scheme types
@@ -83,7 +83,7 @@ The format, dimensions, actions, and default above are those defined in the cano
 
 Agents that accept OAuth tokens **SHALL** validate that the token's scopes are sufficient for the requested operation per the agent's published authorization model. Agents **SHALL NOT** accept tokens whose project scope mismatches the project ID in the payload (see §5).
 
-The reference SDK does not parse or enforce TACO scopes; validation is the agent's responsibility. `x-construction.security.scopesOffered` is informational, and the authoritative scope declaration is the Agent Card's `securitySchemes`.
+The reference SDK enforces one scope: with a `token_verifier`, `A2AServer` rejects a task request whose token lacks `taco:task:{taskType}` (unless `require_task_scope=False`). Trade, CSI and project scopes are the agent's responsibility; handlers read the caller's scopes with `taco.current_auth()`. `x-construction.security.scopesOffered` is informational, and the authoritative scope declaration is the Agent Card's `securitySchemes`.
 
 ## 4. Token Exchange between agents
 
@@ -122,6 +122,8 @@ payload.projectId === "PRJ-0042"
 ```
 
 Cross-project requests **SHALL** be rejected with an authorization error (HTTP 403 or equivalent JSON-RPC error) rather than silently processed. Per `spec/security.md`, a request with no token is rejected with HTTP 401, and a token that lacks a required scope with HTTP 403.
+
+The reference SDK's bearer-token check runs before the payload is read, so it cannot compare the project. A handler can (`taco.current_auth()` gives the caller's scopes), but by then the request has been accepted, and the SDK reports the rejection as a `failed` task with the handler's `TacoTaskError` message rather than HTTP 403. Agents that need the HTTP status check the payload in a gateway or middleware in front of the agent.
 
 ## 6. mTLS, PKCE, Device Code (planned)
 

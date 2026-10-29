@@ -680,11 +680,13 @@
       </div>
       <div class="card-example-body"><span class="comment">// GC Orchestrator discovers subcontractor agents</span>
 
-GET /agents?<span class="key">trade</span>=<span class="str">mechanical</span>
-           &<span class="key">skill</span>=<span class="str">takeoff</span>
-           &<span class="key">projectType</span>=<span class="str">healthcare</span>
-           &<span class="key">integration</span>=<span class="str">procore</span>
+registry.find(<span class="key">trade</span>=<span class="str">"mechanical"</span>,
+              <span class="key">task_type</span>=<span class="str">"takeoff"</span>,
+              <span class="key">project_type</span>=<span class="str">"healthcare"</span>,
+              <span class="key">integration</span>=<span class="str">"procore"</span>)
 
+<span class="comment">// In-process AgentRegistry in the SDK today;</span>
+<span class="comment">// a hosted registry over HTTP is future work</span>
 <span class="comment">// Returns matching TACO agents with full cards</span>
 <span class="comment">// Any A2A client can call them &mdash; zero TACO lock-in</span>
 

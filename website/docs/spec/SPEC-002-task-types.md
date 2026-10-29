@@ -99,7 +99,7 @@ Dispatch is by registered handler. The reference server does not check the reque
 
 When an agent's skill declares an `outputSchema`, the artifact returned by that skill's handler **SHALL** validate against the declared schema's JSON Schema document.
 
-If the declared `outputSchema` is a TACO canonical schema name, validation is against the canonical file [`spec/schemas/{name}.json`](https://github.com/pelles-ai/taco/tree/main/spec/schemas) in the TACO repository. The reference SDK does not validate handler output automatically; handlers can use the Pydantic models in `taco.schemas` to do so.
+If the declared `outputSchema` is a TACO canonical schema name, validation is against the canonical file [`spec/schemas/{name}.json`](https://github.com/pelles-ai/taco/tree/main/spec/schemas) in the TACO repository. The reference SDK does not validate handler output automatically; handlers can use the Pydantic models in `taco.schemas` to do so, and `taco.get_schema_model(name)` returns the model for a canonical schema name.
 
 Producing an artifact that fails strict validation against its declared schema **SHALL** be considered a non-compliant behavior.
 
