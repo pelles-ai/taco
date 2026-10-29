@@ -230,6 +230,20 @@ For production deployments:
 6. If the agent is project-scoped, extract `projectId` from the incoming data payload and verify the token carries a matching `taco:project:{id}` scope.
 7. Submit to the TACO Registry for trust tier elevation after achieving SOC2, ISO27001, or equivalent certification.
 
+### With the Python reference SDK
+
+The `taco-agent` SDK implements steps 2–4 and provides the hooks for 5 and 6. Token validation itself (JWT signature checks, introspection, API keys) is deployment-specific, so the agent supplies it as a function.
+
+| Step | SDK support |
+|------|-------------|
+| 2. Declare `securitySchemes` and `security` | `ConstructionAgentCard(security_schemes={...}, security=[...])`. The served card carries both, and `taco inspect <url>` prints them. |
+| 3. Scopes in `scopesOffered` | `ConstructionAgentCard(construction_security=SecurityExt(scopes_offered=[...], project_scoped=True))`. Leave `trust_tier` unset; the registry assigns it. |
+| 4. Validate bearer tokens; 401 / 403 | `A2AServer(card, token_verifier=verify)`, where `async def verify(token) -> AuthContext \| None`. Missing or rejected tokens get HTTP 401. With `require_task_scope=True` (the default), a `message/send` or `message/stream` token without `taco:task:{taskType}` gets HTTP 403. The Agent Card and `/health` stay public. Each caller's `subject` owns the tasks it creates, so callers only see their own tasks. |
+| 5. No token passthrough | Outbound calls take explicit headers (`TacoClient(headers=...)`, `send_message(..., headers=...)`, `TacoAgent.send_to_peer(..., headers=...)`). Send a token obtained for that hop; the SDK never forwards the inbound token on its own. |
+| 6. Project scope matches `projectId` | Inside a handler, `taco.current_auth()` returns the caller's `AuthContext`; compare its scopes with `projectId` and raise `taco.TacoTaskError` on a mismatch. The request has been accepted by then, so this fails the task rather than returning HTTP 403; a deployment that needs a 403 checks the payload in front of the agent. |
+
+The agent monitor (`enable_monitor=True`) shows every request and response; give it its own `monitor_auth_token` before the agent's port is reachable by others. See the [security guide](https://taco-protocol.com/docs/security#implementing-it-with-the-sdk) for worked examples.
+
 ## Adding New Scopes
 
 New scope dimensions or patterns can be proposed via GitHub issue. A proposal should include:
