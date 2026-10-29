@@ -23,6 +23,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationError
+from taco import TacoTaskError
 
 load_dotenv()
 
@@ -46,8 +47,13 @@ _REQUEST_FAILED = "LLM request failed (see the agent's log for details)"
 _BAD_OUTPUT = "LLM output did not match the expected schema"
 
 
-class LLMError(RuntimeError):
-    """An LLM call failed. The message is safe to return to A2A callers."""
+class LLMError(TacoTaskError):
+    """An LLM call failed. The message is safe to return to A2A callers.
+
+    It is a ``TacoTaskError``, so the TACO server passes the message to the
+    caller as the failed task's status; any other exception is reported
+    generically with an error id.
+    """
 
 
 class LLMProvider:
