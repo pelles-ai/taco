@@ -22,6 +22,7 @@ TACO 0.3.x.
 
 from __future__ import annotations
 
+import asyncio
 import hmac
 import logging
 import time
@@ -65,7 +66,7 @@ from .types import (
     TaskStatusUpdateEvent,
 )
 
-logger = logging.getLogger("a2a")
+logger = logging.getLogger("taco.server")
 
 TaskHandler = Callable[[Task, dict], Coroutine[Any, Any, Artifact]]
 StreamingTaskHandler = Callable[[Task, dict], AsyncIterator[Part]]
@@ -136,6 +137,9 @@ class _TacoAgentExecutor(AgentExecutor):
     def __init__(self) -> None:
         self._handlers: dict[str, TaskHandler] = {}
         self._streaming_handlers: dict[str, StreamingTaskHandler] = {}
+        # Running handler jobs by task id, so cancel() can stop them.
+        self._running: dict[str, asyncio.Future[None]] = {}
+        self._canceled: set[str] = set()
 
     def _resolve_task_type(self, metadata: dict[str, Any] | None) -> str:
         """Determine task_type from request metadata, or auto-select sole handler."""
@@ -209,10 +213,25 @@ class _TacoAgentExecutor(AgentExecutor):
     # ------------------------------------------------------------------
 
     async def execute(self, context, event_queue: EventQueue) -> None:
+        """Run the handler for this task as a job :meth:`cancel` can stop."""
+        task_id = context.task_id or str(uuid.uuid4())
+        work = asyncio.ensure_future(self._run(context, event_queue, task_id))
+        self._running[task_id] = work
+        try:
+            await work
+        except asyncio.CancelledError:
+            work.cancel()
+            if task_id in self._canceled:
+                return  # cancel() already reported the task as canceled
+            raise
+        finally:
+            self._running.pop(task_id, None)
+            self._canceled.discard(task_id)
+
+    async def _run(self, context, event_queue: EventQueue, task_id: str) -> None:
         """Dispatch to the registered TACO handler for this task type."""
         metadata = context.metadata
         message = _pb_message_to_compat(context.message)
-        task_id = context.task_id or str(uuid.uuid4())
         context_id = context.context_id or str(uuid.uuid4())
 
         try:
@@ -223,14 +242,28 @@ class _TacoAgentExecutor(AgentExecutor):
 
         input_data = self._extract_input(message) if message else {}
 
-        # Build a TACO-style Task object for the handler
+        # Report the task as working before the handler runs. Without an
+        # early event, return_immediately callers and streaming clients saw
+        # nothing until the handler had finished.
         task = _pb_task_to_compat(context.current_task)
         if task is None:
             task = Task(
                 id=task_id,
                 context_id=context_id,
                 status=TaskStatus(state=TaskState.working),
+                history=[message] if message else None,
                 metadata={"taskType": task_type},
+            )
+            await _enqueue(event_queue, task)
+        else:
+            await _enqueue(
+                event_queue,
+                TaskStatusUpdateEvent(
+                    task_id=task_id,
+                    context_id=context_id,
+                    status=TaskStatus(state=TaskState.working),
+                    final=False,
+                ),
             )
 
         # A ``message/stream`` request uses the streaming handler when there is
@@ -310,9 +343,13 @@ class _TacoAgentExecutor(AgentExecutor):
             )
 
     async def cancel(self, context, event_queue: EventQueue) -> None:
-        """Handle task cancellation."""
+        """Stop the task's handler, if it is still running, and report it canceled."""
         task_id = context.task_id or str(uuid.uuid4())
         context_id = context.context_id or str(uuid.uuid4())
+        work = self._running.get(task_id)
+        if work is not None and not work.done():
+            self._canceled.add(task_id)
+            work.cancel()
         await _enqueue(
             event_queue,
             TaskStatusUpdateEvent(
@@ -345,6 +382,12 @@ class A2AServer:
         monitor_auth_token: str | None = None,
     ) -> None:
         self.agent_card = agent_card
+        if not agent_card.url:
+            logger.info(
+                "Agent card %r has no url; the served card will use the address "
+                "each request reached. Set url= to the agent's public address.",
+                agent_card.name,
+            )
         self._executor = _TacoAgentExecutor()
         self._start_time = time.monotonic()
         self._admin_auth_token = admin_auth_token
@@ -507,10 +550,14 @@ class A2AServer:
     # Agent card endpoint (serves TACO card with x-construction)
     # ------------------------------------------------------------------
 
-    async def _serve_agent_card(self) -> JSONResponse:
-        return JSONResponse(
-            self.agent_card.model_dump(by_alias=True, exclude_none=True),
-        )
+    async def _serve_agent_card(self, request: Request) -> JSONResponse:
+        card = self.agent_card.model_dump(mode="json", by_alias=True, exclude_none=True)
+        if not card.get("url"):
+            # A2A clients connect to the card's url; an empty one makes the
+            # agent unreachable through standard clients. Fall back to the
+            # address this request reached.
+            card["url"] = str(request.base_url).rstrip("/")
+        return JSONResponse(card)
 
     # ------------------------------------------------------------------
     # A2A SDK card sync

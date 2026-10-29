@@ -44,17 +44,17 @@ def _msg_payload(
 
     Uses the A2A SDK message format with DataPart.
     """
-    msg = {
+    msg: dict = {
         "role": "user",
         "parts": [{"kind": "data", "data": input_data}],
         "messageId": "test-msg-1",
     }
+    if context_id:
+        msg["contextId"] = context_id
     params: dict = {
         "message": msg,
         "metadata": {"taskType": task_type},
     }
-    if context_id:
-        params["contextId"] = context_id
     return _rpc(method, params)
 
 

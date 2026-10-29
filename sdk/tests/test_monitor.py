@@ -201,7 +201,7 @@ class TestFailureMessages:
         async def leaky(task: Task, input_data: dict) -> Artifact:
             raise RuntimeError("postgres://admin:hunter2@10.0.0.5/db")
 
-        with caplog.at_level("ERROR", logger="a2a"):
+        with caplog.at_level("ERROR", logger="taco.server"):
             text = await self._failed_text(leaky)
         assert "hunter2" not in text
         error_id = re.search(r"error id ([0-9a-f]+)", text)

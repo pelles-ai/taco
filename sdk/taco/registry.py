@@ -16,7 +16,7 @@ except ImportError:
 
 from .types import AgentCard, get_construction_ext, get_skill_construction_ext
 
-logger = logging.getLogger("a2a")
+logger = logging.getLogger("taco.registry")
 
 
 class AgentRegistry:
@@ -141,6 +141,15 @@ class AgentRegistry:
     def list_agents(self) -> list[AgentCard]:
         """Return all registered agent cards."""
         return list(self._agents.values())
+
+    def entries(self) -> list[tuple[str, AgentCard]]:
+        """Return ``(url, card)`` pairs, ``url`` being where each agent was found.
+
+        Send requests to that URL rather than to the card's self-declared
+        ``url``: the card may be empty, point at ``localhost`` inside a
+        container, or name any host the peer chooses.
+        """
+        return list(self._agents.items())
 
     def remove(self, agent_url: str) -> bool:
         """Remove an agent by URL. Returns True if it was present."""

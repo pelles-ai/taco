@@ -16,7 +16,7 @@ except ImportError:
     ) from None
 
 from ._compat import make_data_part, make_message
-from .types import AgentCard, PushNotificationConfig, Task
+from .types import AgentCard, Message, PushNotificationConfig, Task
 
 _log = logging.getLogger("taco.client")
 
@@ -48,8 +48,25 @@ class RpcError(TacoClientError):
         super().__init__(f"RPC error {code}: {message}")
 
 
+class MessageReplyError(TacoClientError):
+    """The agent answered with a ``Message`` where a ``Task`` was expected.
+
+    TACO agents always return a Task, but other A2A agents may reply to
+    ``message/send`` with a plain Message. The reply is on :attr:`reply`.
+    """
+
+    def __init__(self, reply: Message) -> None:
+        self.reply = reply
+        super().__init__("Agent replied with a Message instead of a Task")
+
+
 class TacoClient:
-    """Async client for sending tasks to a TACO-compatible agent."""
+    """Async client for sending tasks to a TACO-compatible agent.
+
+    ``headers`` are sent on every request (for example an
+    ``Authorization`` header for an agent that requires a token);
+    per-call ``headers`` arguments are merged on top of them.
+    """
 
     def __init__(
         self,
@@ -57,11 +74,17 @@ class TacoClient:
         agent_url: str,
         http_client: httpx.AsyncClient | None = None,
         timeout: float = 120.0,
+        headers: dict[str, str] | None = None,
     ) -> None:
         self.agent_url = agent_url.rstrip("/")
         self._owns_client = http_client is None
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
         self._agent_card: AgentCard | None = None
+        self._default_headers = dict(headers or {})
+
+    def _headers(self, headers: dict[str, str] | None = None) -> dict[str, str]:
+        """Protocol header, then client defaults, then per-call headers."""
+        return _merge_protocol_headers({**self._default_headers, **(headers or {})})
 
     # -- context manager --
 
@@ -84,7 +107,7 @@ class TacoClient:
         falling back to the legacy ``/.well-known/agent.json`` on 404.
         Sends the ``A2A-Version`` header so v1 peers can negotiate.
         """
-        headers = _merge_protocol_headers(None)
+        headers = self._headers()
         resp = await self._client.get(
             f"{self.agent_url}/.well-known/agent-card.json",
             headers=headers,
@@ -123,7 +146,7 @@ class TacoClient:
         resp = await self._client.post(
             f"{self.agent_url}/",
             json=payload,
-            headers=_merge_protocol_headers(headers),
+            headers=self._headers(headers),
         )
         resp.raise_for_status()
         body = resp.json()
@@ -147,13 +170,12 @@ class TacoClient:
             "user",
             [make_data_part(input_data)],
             reference_task_ids=reference_task_ids,
+            context_id=context_id,
         )
         params: dict[str, Any] = {
             "message": msg.model_dump(mode="json", by_alias=True, exclude_none=True),
             "metadata": {"taskType": task_type},
         }
-        if context_id is not None:
-            params["contextId"] = context_id
         if return_immediately:
             # v1's ``returnImmediately`` maps to v0.3's
             # ``configuration.blocking=false`` on the wire: tell the
@@ -189,16 +211,22 @@ class TacoClient:
             task_type, input_data, context_id, reference_task_ids, return_immediately
         )
         result = await self._rpc_call("message/send", params, headers=headers)
+        return self._task_result(result)
+
+    @staticmethod
+    def _task_result(result: dict[str, Any]) -> Task:
+        if isinstance(result, dict) and result.get("kind") == "message":
+            raise MessageReplyError(Message.model_validate(result))
         return Task.model_validate(result)
 
-    async def get_task(self, task_id: str) -> Task:
+    async def get_task(self, task_id: str, *, headers: dict[str, str] | None = None) -> Task:
         """Retrieve a task by ID."""
-        result = await self._rpc_call("tasks/get", {"id": task_id})
+        result = await self._rpc_call("tasks/get", {"id": task_id}, headers=headers)
         return Task.model_validate(result)
 
-    async def cancel_task(self, task_id: str) -> Task:
+    async def cancel_task(self, task_id: str, *, headers: dict[str, str] | None = None) -> Task:
         """Cancel a task by ID."""
-        result = await self._rpc_call("tasks/cancel", {"id": task_id})
+        result = await self._rpc_call("tasks/cancel", {"id": task_id}, headers=headers)
         return Task.model_validate(result)
 
     async def run_task(
@@ -245,9 +273,7 @@ class TacoClient:
         if context_id is not None:
             params["contextId"] = context_id
 
-        merged_headers: dict[str, str] = {"A2A-Version": "1.0"}
-        if headers:
-            merged_headers.update(headers)
+        merged_headers: dict[str, str] = {"A2A-Version": "1.0", **(headers or {})}
 
         result = await self._rpc_call("ListTasks", params, headers=merged_headers)
         # The v1 wire format returns SCREAMING_SNAKE enums; round-trip
@@ -369,7 +395,7 @@ class TacoClient:
             "POST",
             f"{self.agent_url}/",
             json=payload,
-            headers=_merge_protocol_headers(headers),
+            headers=self._headers(headers),
         ) as resp:
             resp.raise_for_status()
             event_type = "message"

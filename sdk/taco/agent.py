@@ -23,6 +23,7 @@ Usage::
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -57,9 +58,14 @@ class TacoAgent:
             Defaults to ``InMemoryTaskStore`` (state lost on restart).
             Pass a :class:`JsonFileTaskStore` or ``DatabaseTaskStore``
             for durable storage.
-        peer_retry_attempts: How many times to retry discovering each peer
-            at startup (default 5).
+        peer_retry_attempts: How many times to try discovering each peer
+            in the background after startup (default 5). A peer still
+            missing after that is tried again when a request needs it.
         peer_retry_delay: Seconds between retry attempts (default 2.0).
+        peer_startup_wait: Seconds startup waits for the first discovery
+            round before the agent starts serving (default 2.0). Discovery
+            carries on in the background, so agents that list each other
+            as peers find each other once both are up.
         cors_origins: CORS origins for the server. ``None`` (the default)
             disables CORS middleware entirely.
         enable_monitor: Whether to enable the Agent Monitor UI at
@@ -78,6 +84,7 @@ class TacoAgent:
         peers: list[str] | str | None = None,
         peer_retry_attempts: int = 5,
         peer_retry_delay: float = 2.0,
+        peer_startup_wait: float = 2.0,
         cors_origins: list[str] | None = None,
         enable_monitor: bool = False,
         monitor_auth_token: str | None = None,
@@ -97,6 +104,9 @@ class TacoAgent:
         self._peer_urls: list[str] = []
         self._peer_retry_attempts = peer_retry_attempts
         self._peer_retry_delay = peer_retry_delay
+        self._peer_startup_wait = peer_startup_wait
+        self._pending_peers: set[str] = set()
+        self._discovery_task: asyncio.Task[None] | None = None
         self._has_monitor = enable_monitor
 
         if peers is not None:
@@ -105,6 +115,7 @@ class TacoAgent:
 
             self._client_cls = _TacoClient
             self._peer_urls = self._load_peers(peers)
+            self._pending_peers = set(self._peer_urls)
             self._registry = _AgentRegistry()
 
             # Instrument registry for the monitor
@@ -119,10 +130,17 @@ class TacoAgent:
             @asynccontextmanager
             async def _lifespan(app: Any) -> AsyncIterator[None]:
                 async with existing_lifespan(app):
-                    await self._discover_peers()
+                    # Discovery runs in the background: if startup waited
+                    # for it, two agents that list each other would each
+                    # wait for the other to start serving, and neither would.
+                    self._discovery_task = asyncio.create_task(self._discover_peers())
+                    await asyncio.wait({self._discovery_task}, timeout=self._peer_startup_wait)
                     try:
                         yield
                     finally:
+                        self._discovery_task.cancel()
+                        with contextlib.suppress(asyncio.CancelledError):
+                            await self._discovery_task
                         await self._close_clients()
 
             self._server.app.router.lifespan_context = _lifespan
@@ -208,16 +226,8 @@ class TacoAgent:
         Raises:
             ValueError: No peers configured or no peer has the skill.
         """
-        if self._registry is None:
-            raise ValueError(
-                "No peers configured. Pass peers=... to TacoAgent() to enable peer communication."
-            )
-
-        card = self._find_peer_by_skill(task_type)
-        if card is None:
-            raise ValueError(f"No peer agent found for task type: {task_type}")
-
-        client = self._get_or_create_client(card.url)
+        peer_url = await self._peer_url_for(task_type)
+        client = self._get_or_create_client(peer_url)
         return await client.send_message(
             task_type,
             input_data,
@@ -245,16 +255,8 @@ class TacoAgent:
         Raises:
             ValueError: No peers configured or no peer has the skill.
         """
-        if self._registry is None:
-            raise ValueError(
-                "No peers configured. Pass peers=... to TacoAgent() to enable peer communication."
-            )
-
-        card = self._find_peer_by_skill(task_type)
-        if card is None:
-            raise ValueError(f"No peer agent found for task type: {task_type}")
-
-        client = self._get_or_create_client(card.url)
+        peer_url = await self._peer_url_for(task_type)
+        client = self._get_or_create_client(peer_url)
         async for event in client.stream_message(
             task_type,
             input_data,
@@ -313,17 +315,46 @@ class TacoAgent:
                 logger.warning("Skipping malformed peer entry: %s", entry)
         return urls
 
-    def _find_peer_by_skill(self, skill_id: str) -> AgentCard | None:
-        """Find the first peer agent with a skill matching *skill_id*.
+    async def _peer_url_for(self, task_type: str) -> str:
+        """Return the URL of a peer that handles *task_type*.
 
-        Matches on ``skill.id`` or ``skill.tags``.
+        Peers that have not been discovered yet are tried once more first.
+        Requests go to the URL the peer was discovered at, never to the
+        ``url`` its card declares (which may be empty, unreachable from
+        here, or any host the peer chooses).
+
+        Raises:
+            ValueError: No peers configured or no peer has the skill.
+        """
+        if self._registry is None:
+            raise ValueError(
+                "No peers configured. Pass peers=... to TacoAgent() to enable peer communication."
+            )
+        found = self._find_peer_by_skill(task_type)
+        if found is None and self._pending_peers:
+            await self._discover_pending_once()
+            found = self._find_peer_by_skill(task_type)
+        if found is None:
+            raise ValueError(f"No peer agent found for task type: {task_type}")
+        return found[0]
+
+    def _find_peer_by_skill(self, task_type: str) -> tuple[str, AgentCard] | None:
+        """Find the first peer with a skill for *task_type*.
+
+        Matches the skill's x-construction ``taskType``, its ``id`` or its
+        ``tags``. Returns ``(url, card)`` with the URL the peer was found at.
         """
         if self._registry is None:
             return None
-        for card in self._registry.list_agents():
+        for url, card in self._registry.entries():
             for skill in card.skills:
-                if skill.id == skill_id or skill_id in (skill.tags or []):
-                    return card
+                xc = skill.x_construction
+                if (
+                    (xc is not None and xc.task_type == task_type)
+                    or skill.id == task_type
+                    or task_type in (skill.tags or [])
+                ):
+                    return url, card
         return None
 
     def _get_or_create_client(self, agent_url: str) -> TacoClient:
@@ -338,42 +369,61 @@ class TacoAgent:
         return self._client_pool[agent_url]
 
     async def _discover_peers(self) -> None:
-        """Discover all configured peer agents with retries.
+        """Discover all configured peers concurrently, retrying each.
 
-        Called automatically on app startup when peers are configured.
+        Started in the background on app startup when peers are configured.
+        A peer still missing after its retries stays pending and is tried
+        again by :meth:`_peer_url_for` when a request needs it.
         """
         if self._registry is None:
             logger.warning("No registry available — skipping peer discovery")
             return
-        for url in self._peer_urls:
-            for attempt in range(1, self._peer_retry_attempts + 1):
-                try:
-                    card = await self._registry.register(url)
-                    skills = [s.id for s in card.skills]
-                    logger.info(
-                        "Discovered peer: %s at %s (skills: %s)",
-                        card.name,
+        pending = sorted(self._pending_peers)
+        await asyncio.gather(*(self._discover_with_retries(url) for url in pending))
+
+    async def _discover_with_retries(self, url: str) -> None:
+        for attempt in range(1, self._peer_retry_attempts + 1):
+            try:
+                await self._discover_one(url)
+                return
+            except Exception as e:
+                if attempt < self._peer_retry_attempts:
+                    logger.warning(
+                        "Peer at %s not ready (attempt %d/%d): %s",
                         url,
-                        skills,
+                        attempt,
+                        self._peer_retry_attempts,
+                        e,
                     )
-                    break
-                except Exception as e:
-                    if attempt < self._peer_retry_attempts:
-                        logger.warning(
-                            "Peer at %s not ready (attempt %d/%d): %s",
-                            url,
-                            attempt,
-                            self._peer_retry_attempts,
-                            e,
-                        )
-                        await asyncio.sleep(self._peer_retry_delay)
-                    else:
-                        logger.error(
-                            "Failed to discover peer at %s after %d attempts: %s",
-                            url,
-                            self._peer_retry_attempts,
-                            e,
-                        )
+                    await asyncio.sleep(self._peer_retry_delay)
+                else:
+                    logger.error(
+                        "Failed to discover peer at %s after %d attempts: %s",
+                        url,
+                        self._peer_retry_attempts,
+                        e,
+                    )
+
+    async def _discover_one(self, url: str) -> None:
+        assert self._registry is not None
+        card = await self._registry.register(url)
+        self._pending_peers.discard(url)
+        logger.info(
+            "Discovered peer: %s at %s (skills: %s)",
+            card.name,
+            url,
+            [s.id for s in card.skills],
+        )
+
+    async def _discover_pending_once(self) -> None:
+        """Try each still-undiscovered peer once, concurrently."""
+        results = await asyncio.gather(
+            *(self._discover_one(url) for url in sorted(self._pending_peers)),
+            return_exceptions=True,
+        )
+        for result in results:
+            if isinstance(result, Exception):
+                logger.warning("Peer still not reachable: %s", result)
 
     async def _close_clients(self) -> None:
         """Close all pooled TacoClients. Called on app shutdown."""

@@ -44,6 +44,7 @@ def make_message(
     *,
     message_id: str | None = None,
     reference_task_ids: list[str] | None = None,
+    context_id: str | None = None,
 ) -> Message:
     """Create an A2A Message with auto-generated message_id.
 
@@ -51,6 +52,9 @@ def make_message(
     follows up on (A2A v1 spec). TACO uses it to thread RFI responses
     back to the originating RFI task, change-order approvals back to
     the proposal task, etc.
+
+    ``context_id`` puts the message in an existing conversation. A2A
+    carries it on the message itself, not on the request params.
     """
     kwargs: dict[str, Any] = {
         "role": Role(role),
@@ -59,6 +63,8 @@ def make_message(
     }
     if reference_task_ids:
         kwargs["reference_task_ids"] = list(reference_task_ids)
+    if context_id is not None:
+        kwargs["context_id"] = context_id
     return Message(**kwargs)
 
 
