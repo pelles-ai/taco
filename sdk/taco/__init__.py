@@ -25,6 +25,7 @@ from ._compat import (
     new_agent_text_message,
     new_data_artifact,
     new_text_artifact,
+    restore_integers,
 )
 
 # Convenience factories
@@ -165,6 +166,7 @@ __all__ = [
     "make_data_part",
     "make_message",
     "make_text_part",
+    "restore_integers",
     # Upstream a2a.utils re-exports
     "get_text_parts",
     "get_data_parts",

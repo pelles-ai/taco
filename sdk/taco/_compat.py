@@ -93,10 +93,30 @@ def extract_text(part: Part) -> str | None:
     return None
 
 
+def restore_integers(value: Any) -> Any:
+    """Turn whole-number floats back into ints, recursively.
+
+    A2A v1 carries ``DataPart`` payloads as protobuf ``Struct`` values, which
+    store every number as a double, so ``{"count": 3}`` arrives as
+    ``{"count": 3.0}``. JSON makes no int/float distinction, so restoring
+    ints loses nothing and lets handlers write ``range(data["count"])``.
+    """
+    if isinstance(value, float) and value.is_integer() and abs(value) < 2**53:
+        return int(value)
+    if isinstance(value, dict):
+        return {k: restore_integers(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [restore_integers(v) for v in value]
+    return value
+
+
 def extract_structured_data(part: Part) -> dict[str, Any] | None:
-    """Extract structured data from a Part, returning None if not a DataPart."""
+    """Extract structured data from a Part, returning None if not a DataPart.
+
+    Whole-number values come back as ``int`` (see :func:`restore_integers`).
+    """
     if isinstance(part.root, DataPart):
-        return part.root.data
+        return restore_integers(part.root.data)
     return None
 
 
@@ -113,8 +133,11 @@ def get_text_parts(parts: list[Part]) -> list[str]:
 
 
 def get_data_parts(parts: list[Part]) -> list[dict[str, Any]]:
-    """Return the data payloads of every ``DataPart`` in ``parts``."""
-    return [p.root.data for p in parts if isinstance(p.root, DataPart)]
+    """Return the data payloads of every ``DataPart`` in ``parts``.
+
+    Whole-number values come back as ``int`` (see :func:`restore_integers`).
+    """
+    return [restore_integers(p.root.data) for p in parts if isinstance(p.root, DataPart)]
 
 
 def get_file_parts(parts: list[Part]) -> list[FilePart]:

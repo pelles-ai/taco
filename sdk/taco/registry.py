@@ -116,6 +116,7 @@ class AgentRegistry:
         task_type: str | None = None,
         csi_division: str | None = None,
         project_type: str | None = None,
+        integration: str | None = None,
     ) -> list[AgentCard]:
         """Find agents matching the given filters (all optional, AND logic)."""
         results: list[AgentCard] = []
@@ -126,6 +127,8 @@ class AgentRegistry:
             if csi_division is not None and (xc is None or csi_division not in xc.csi_divisions):
                 continue
             if project_type is not None and (xc is None or project_type not in xc.project_types):
+                continue
+            if integration is not None and (xc is None or integration not in xc.integrations):
                 continue
             if task_type is not None:
                 has_task = any(

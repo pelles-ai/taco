@@ -14,11 +14,19 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import uuid
 
 from . import __version__
 from .client import A2A_PROTOCOL_VERSION
 
 _PROTOCOL_HEADERS = {"A2A-Version": A2A_PROTOCOL_VERSION}
+
+
+def _auth_headers(args: argparse.Namespace, version: str = A2A_PROTOCOL_VERSION) -> dict:
+    headers = {"A2A-Version": version}
+    if getattr(args, "token", None):
+        headers["Authorization"] = f"Bearer {args.token}"
+    return headers
 
 
 def _get_http_client():
@@ -81,6 +89,16 @@ def _cmd_inspect(args: argparse.Namespace) -> None:
         if ptypes:
             print(f"  Project Types: {', '.join(ptypes)}")
 
+    schemes = card.get("securitySchemes") or {}
+    if schemes:
+        print("\nSecurity:")
+        for name, scheme in schemes.items():
+            kind = scheme.get("type", "?") if isinstance(scheme, dict) else "?"
+            print(f"  Scheme {name}: {kind}")
+        for requirement in card.get("security") or []:
+            for name, scopes in requirement.items():
+                print(f"  Requires {name}: {', '.join(scopes) or '(no scopes)'}")
+
     skills = card.get("skills", [])
     if skills:
         print(f"\nSkills ({len(skills)}):")
@@ -104,19 +122,21 @@ def _cmd_send(args: argparse.Namespace) -> None:
         with open(args.json_file) as f:
             input_data = json.load(f)
     elif not sys.stdin.isatty():
-        input_data = json.load(sys.stdin)
+        # Scripts and CI often run with an empty, non-terminal stdin.
+        raw = sys.stdin.read()
+        input_data = json.loads(raw) if raw.strip() else {}
     else:
         input_data = {}
 
     payload = {
         "jsonrpc": "2.0",
-        "id": "cli-1",
+        "id": str(uuid.uuid4()),
         "method": "message/send",
         "params": {
             "message": {
                 "role": "user",
                 "parts": [{"kind": "data", "data": input_data}],
-                "messageId": "cli-msg-1",
+                "messageId": str(uuid.uuid4()),
             },
             "metadata": {"taskType": args.task_type},
         },
@@ -125,10 +145,16 @@ def _cmd_send(args: argparse.Namespace) -> None:
         f"{url}/",
         json=payload,
         timeout=args.timeout,
-        headers=_PROTOCOL_HEADERS,
+        headers=_auth_headers(args),
     )
     resp.raise_for_status()
-    print(json.dumps(resp.json(), indent=2))
+    body = resp.json()
+    print(json.dumps(body, indent=2))
+    # Exit non-zero when the agent reports an error or a failed task, so
+    # scripts can rely on the exit code.
+    state = (body.get("result") or {}).get("status", {}).get("state")
+    if body.get("error") or state in ("failed", "rejected", "canceled"):
+        sys.exit(1)
 
 
 def _cmd_health(args: argparse.Namespace) -> None:
@@ -168,7 +194,7 @@ def _cmd_list_tasks(args: argparse.Namespace) -> None:
         f"{url}/",
         json=payload,
         timeout=args.timeout,
-        headers={"A2A-Version": "1.0"},
+        headers=_auth_headers(args, "1.0"),
     )
     resp.raise_for_status()
     body = resp.json()
@@ -206,6 +232,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"taco {__version__}")
     parser.add_argument(
         "--timeout", type=float, default=30.0, help="HTTP timeout in seconds (default: 30)"
+    )
+    parser.add_argument(
+        "--token",
+        default=None,
+        help="Bearer token for agents that require auth (sent by send and list-tasks)",
     )
 
     sub = parser.add_subparsers(dest="command")

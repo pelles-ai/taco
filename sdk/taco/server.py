@@ -50,6 +50,7 @@ from ._compat import (
     make_artifact,
     make_text_part,
 )
+from .agent_card import ConstructionAgentCard
 from .auth import BearerAuthMiddleware, TokenVerifier, _set_current_auth, auth_from_call_context
 from .errors import TacoTaskError
 from .types import (
@@ -375,7 +376,7 @@ class A2AServer:
 
     def __init__(
         self,
-        agent_card: AgentCard,
+        agent_card: AgentCard | ConstructionAgentCard,
         *,
         task_store: TaskStore | None = None,
         push_config_store: PushNotificationConfigStore | None = None,
@@ -394,7 +395,12 @@ class A2AServer:
         HTTP 401 and, with ``require_task_scope``, a token lacking
         ``taco:task:<taskType>`` gets HTTP 403. Declare the scheme in the
         card's ``security_schemes`` / ``security`` so callers know to send it.
+
+        ``agent_card`` may be a :class:`ConstructionAgentCard`; it is
+        converted with ``to_a2a()``.
         """
+        if isinstance(agent_card, ConstructionAgentCard):
+            agent_card = agent_card.to_a2a()
         self.agent_card = agent_card
         if not agent_card.url:
             logger.info(

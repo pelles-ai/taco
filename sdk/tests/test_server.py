@@ -556,3 +556,47 @@ class TestJsonFileTaskStoreIntegration:
         persisted = conversions.to_compat_task(persisted_pb)
         assert persisted.id == task_id
         assert persisted.status.state.value == "completed"
+
+
+class TestUsability:
+    async def test_accepts_construction_agent_card_directly(self):
+        from taco import ConstructionAgentCard, ConstructionSkill
+
+        card = ConstructionAgentCard(
+            name="Direct",
+            url="http://test",
+            trade="electrical",
+            csi_divisions=["26"],
+            skills=[ConstructionSkill(id="e", task_type="estimate", output_schema="estimate-v1")],
+        )
+        server = A2AServer(card)
+        assert server.agent_card.x_construction is not None
+        assert server.agent_card.skills[0].x_construction.task_type == "estimate"
+
+    async def test_handlers_receive_integers(self, sample_agent_card: AgentCard):
+        """A2A v1 carries data as protobuf Struct (all doubles); ints are restored."""
+        server = A2AServer(sample_agent_card)
+        received: list[dict] = []
+
+        async def handler(task: Task, input_data: dict) -> Artifact:
+            received.append(input_data)
+            return make_artifact(parts=[make_data_part({"n": input_data["count"] * 2})])
+
+        server.register_handler("test-task", handler)
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            data = {"count": 3, "ratio": 0.5, "items": [{"qty": 10}], "big": 1.0e20}
+            resp = await client.post("/", json=_send_msg("test-task", data))
+        assert resp.json()["result"]["status"]["state"] == "completed"
+        got = received[0]
+        assert got["count"] == 3 and isinstance(got["count"], int)
+        assert got["ratio"] == 0.5
+        assert isinstance(got["items"][0]["qty"], int)
+        assert isinstance(got["big"], float)  # beyond 2**53 stays a float
+
+        from taco import extract_structured_data
+        from taco.types import Task as TaskModel
+
+        task = TaskModel.model_validate(resp.json()["result"])
+        out = extract_structured_data(task.artifacts[0].parts[0])
+        assert out == {"n": 6} and isinstance(out["n"], int)
