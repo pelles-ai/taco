@@ -63,7 +63,7 @@ Exceptions in the handler become `state: failed` and the caller loses the struct
 
 Internal stack traces leak deployment detail, library versions, and sometimes credentials embedded in URLs. Translate exceptions into the project's error vocabulary before sending them out.
 
-Note that the reference SDK currently includes the exception message in the `failed` status it sends back (`Task handler failed for type '...': <message>`), so keep the messages of exceptions your handlers raise free of secrets, URLs with credentials, and other internal detail.
+The SDK does the safe thing by default. When a handler raises, the caller only sees `Task handler failed for type '<taskType>' (error id <id>)`, and the traceback goes to your log under that error id, so quote the id when a partner reports a failure. To send the caller a message on purpose, raise `taco.TacoTaskError("...")`; its text becomes the task's status message, so keep it free of secrets and internal detail.
 
 ## Observability
 
@@ -72,7 +72,7 @@ Note that the reference SDK currently includes the exception message in the `fai
 A multi-agent chain produces logs in many places. The two TACO-issued correlation handles are:
 
 - `task.id` — uniquely identifies this single request
-- `task.context_id` — groups related tasks into a conversation (A2A SDK manages this)
+- `task.context_id` — groups related tasks into a conversation (pass `context_id=` to `send_message` to continue one; leave it out and the server starts a new one)
 
 Tag every log line with both, plus the agent's name from the card. Tracing across three agents becomes a one-grep operation.
 
@@ -84,7 +84,7 @@ There's no built-in helper for this in `taco-agent` yet. Until there is, instrum
 
 ### The Monitor UI is for development, not production
 
-`A2AServer(enable_monitor=True)` ships a live tracing dashboard at `/monitor`. It's invaluable while building. Turn it off in production deployments unless you've gated it behind your real auth — by default it exposes every task that flows through the agent.
+`A2AServer(enable_monitor=True)` ships a live tracing dashboard at `/monitor`. It's invaluable while building. It also shows every request and response payload to anyone who can reach the port. Before the port is reachable by anyone but you, set `monitor_auth_token=...` (the UI is then opened as `/monitor/#token=<token>`), and turn the monitor off in production deployments unless it sits behind your real auth.
 
 ## Schema evolution
 
@@ -117,6 +117,24 @@ Re-validating the same artifact at every internal layer is expensive and gives a
 
 ## Security in production
 
+### Require a token on every task request
+
+An agent other companies can reach should not accept anonymous tasks. Give `A2AServer` a `token_verifier` and declare the scheme on the card:
+
+```python
+from taco import A2AServer, AuthContext
+
+async def verify(token: str) -> AuthContext | None:
+    claims = await my_idp.validate(token)  # your JWT or introspection check
+    if claims is None:
+        return None
+    return AuthContext(subject=claims["sub"], scopes=frozenset(claims["scope"].split()), claims=claims)
+
+server = A2AServer(card, token_verifier=verify)  # card declares security_schemes and security
+```
+
+The server then answers 401 without a valid token and 403 when the token lacks `taco:task:<taskType>`, and each caller only sees its own tasks. See [Security: implementing it with the SDK](./security#implementing-it-with-the-sdk).
+
 ### Don't pass tokens downstream — exchange them
 
 A2A's authentication model assumes each hop holds its own narrowed authority. If the GC orchestrator passes its `taco:trade:mechanical taco:project:PRJ-0042:write` token to the supplier agent verbatim, the supplier now has more authority than it should — and if the supplier is later compromised, the blast radius is the entire project's mechanical scope.
@@ -128,15 +146,17 @@ The discipline: every hop performs a [RFC 8693 Token Exchange](https://datatrack
 A token holding `taco:project:PRJ-0042:write` should be rejected if it arrives with a task whose payload references `PRJ-0099`. The token says one thing; the payload says another; the handler should refuse rather than guess.
 
 ```python
+from taco import TacoTaskError, current_auth
+
 async def handle_estimate(task: Task, payload: dict) -> Artifact:
-    # Placeholder: your auth layer's scope check. The SDK doesn't validate
-    # tokens or put them in task.metadata; read the project scope from the
-    # token your own middleware verified for this request.
-    token_project = my_auth.project_scope_for_current_request()
+    auth = current_auth()  # the AuthContext your token_verifier returned
     payload_project = payload.get("projectId")
-    if token_project and token_project != payload_project:
-        raise PermissionError(f"Token scoped to {token_project}, payload says {payload_project}")
+    if auth is None or not auth.has_scope(f"taco:project:{payload_project}:write"):
+        raise TacoTaskError(f"Token is not scoped to project {payload_project}")
+    ...
 ```
+
+`TacoTaskError` fails the task with that message. It is a `failed` task, not an HTTP 403, because the request was already accepted; if you need the status code, check the payload in a gateway in front of the agent.
 
 ### Rotate sidecar credentials, not just user tokens
 
@@ -162,7 +182,7 @@ The in-process `AgentRegistry` lives next to the orchestrator that uses it. Don'
 
 ### Health endpoints are cheap; serve one
 
-`GET /health` should be a fast, no-auth, no-side-effects endpoint that returns 200 if the process is alive. Container orchestrators and load balancers expect this. `A2AServer` has exposed it automatically since v0.1.
+`GET /health` should be a fast, no-auth, no-side-effects endpoint that returns 200 if the process is alive. Container orchestrators and load balancers expect this. `A2AServer` has exposed it automatically since v0.1, and it stays public when you set a `token_verifier`.
 
 ## Testing
 
@@ -171,9 +191,13 @@ The in-process `AgentRegistry` lives next to the orchestrator that uses it. Don'
 The handler is a function (`async def handle_estimate(task, payload) -> Artifact`). Test it like one:
 
 ```python
+from taco import Task, TaskState, TaskStatus, extract_structured_data
+
+
 async def test_estimate_handler():
     bom = {"projectId": "PRJ", "trade": "mechanical", "lineItems": [...]}
-    artifact = await handle_estimate(Task(id="t1", ...), bom)
+    task = Task(id="t1", context_id="c1", status=TaskStatus(state=TaskState.working))
+    artifact = await handle_estimate(task, bom)
     estimate = extract_structured_data(artifact.parts[0])
     assert estimate["summary"]["grandTotal"] > 0
 ```
@@ -198,7 +222,7 @@ For every schema you produce or consume, add a test that:
 2. Serializes it with `.model_dump(by_alias=True, exclude_none=True)`
 3. Validates the result against the canonical JSON Schema at `/spec/schemas/{name}.json` (via `ajv` or `jsonschema`)
 
-This catches drift between the Pydantic model and the schema source of truth (see [ADR-0002](./decisions/json-schema-source-of-truth)).
+This catches drift between your payloads, the Pydantic model and the schema source of truth (see [ADR-0002](./decisions/json-schema-source-of-truth)); the SDK runs the same kind of parity test on its own models. `taco.get_schema_model(name)` returns the model for a schema name, so one parametrized test can cover every `inputSchema` and `outputSchema` your skills declare.
 
 ## When you'll want to break these rules
 
