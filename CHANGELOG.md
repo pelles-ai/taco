@@ -44,6 +44,14 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 - **`taco send` exits 1** when the task fails, is rejected or canceled, or the agent returns an RPC error.
 - **Logger names** — the server and registry log to `taco.server` and `taco.registry` instead of the a2a-sdk's `a2a` logger.
 
+### Examples (sandbox demo)
+- **Docker build fixed** — it failed because `sdk/` was copied without `.git`; a new `.dockerignore` also stops `examples/.env` (with the API key) from being baked into images.
+- **Orchestrator locked down** — it fetched any URL a caller supplied and returned the body (SSRF) with CORS open to every site. It now only contacts agents listed in `AGENT_URLS`, binds to 127.0.0.1, sends no CORS headers, requires JSON POSTs and returns JSON errors for unreachable agents. Pipeline steps report each task's real state instead of "completed".
+- **Dashboard XSS fixed** — agent-card fields are no longer rendered as HTML; artifacts' data is shown.
+- **Agent-to-agent pricing works** — the estimator asked the supplier for task type `quote`, which it doesn't handle, so supplier data was never used. Peer data is passed as delimited user content rather than instructions.
+- **LLM calls** — default model `claude-opus-5` (override with `ANTHROPIC_MODEL`), structured outputs instead of the assistant prefill that current models reject, outputs validated against `EstimateV1` / `QuoteV1` / `RFIV1`, and short, safe error messages for callers.
+- **Docs and launcher** — README and docstring curls include `messageId`; `run_demo.py` stops every service when one exits.
+
 ### CI
 - Releases only when `sdk/**` changes, after the full test suite passes on that commit; website-only merges no longer publish a version. The site deploys only after the tests pass.
 - Third-party actions are pinned to commit SHAs with per-job permissions.
