@@ -217,3 +217,20 @@ class TestAuthWithJsonFileTaskStore:
             await bob.get_task(task.id)
         assert (await bob.list_tasks())[0] == []
         assert [t.id for t in (await alice.list_tasks())[0]] == [task.id]
+
+
+class TestTacoAgentAuth:
+    async def test_taco_agent_forwards_token_verifier(self):
+        from taco import TacoAgent
+
+        agent = TacoAgent(_card(), token_verifier=verify)
+        agent.register_handler("estimate", handler)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=agent.app), base_url="http://test"
+        ) as http:
+            denied = await http.post("/", json=_send_payload())
+            allowed = await http.post(
+                "/", json=_send_payload(), headers={"Authorization": "Bearer alice-token"}
+            )
+        assert denied.status_code == 401
+        assert allowed.json()["result"]["status"]["state"] == "completed"

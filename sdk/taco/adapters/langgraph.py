@@ -33,7 +33,7 @@ def _check_langgraph_installed() -> None:
     except ImportError:
         raise ImportError(
             "langgraph is required for LangGraphAdapter. "
-            "Install it with: pip install taco-agent[langgraph]"
+            "Install it with: pip install 'taco-agent[langgraph]'"
         ) from None
 
 

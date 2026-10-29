@@ -12,7 +12,7 @@ try:
     import httpx
 except ImportError:
     raise ImportError(
-        "Client dependencies not installed. Install with: pip install taco-agent[client]"
+        "Client dependencies not installed. Install with: pip install 'taco-agent[client]'"
     ) from None
 
 from ._compat import make_data_part, make_message

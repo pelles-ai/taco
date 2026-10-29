@@ -157,7 +157,7 @@ class ConstructionAgentCard:
     def serve(self, *, host: str = "0.0.0.0", port: int = 8080) -> None:
         """Start an A2A-compliant server for this agent.
 
-        Requires the ``server`` extra: ``pip install taco-agent[server]``
+        Requires the ``server`` extra: ``pip install 'taco-agent[server]'``
         """
         try:
             import uvicorn
@@ -165,7 +165,7 @@ class ConstructionAgentCard:
             from .server import A2AServer
         except ImportError:
             raise ImportError(
-                "Server dependencies not installed. Install with: pip install taco-agent[server]"
+                "Server dependencies not installed. Install with: pip install 'taco-agent[server]'"
             ) from None
 
         card = self.to_a2a()

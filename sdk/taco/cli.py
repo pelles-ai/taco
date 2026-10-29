@@ -33,7 +33,7 @@ def _get_http_client():
     try:
         import httpx
     except ImportError:
-        print("httpx is required for the TACO CLI. Install with: pip install taco-agent[client]")
+        print("httpx is required for the TACO CLI. Install with: pip install 'taco-agent[client]'")
         sys.exit(1)
     return httpx
 

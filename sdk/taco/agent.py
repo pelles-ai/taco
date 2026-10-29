@@ -30,6 +30,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from .agent_card import ConstructionAgentCard
+from .auth import TokenVerifier
 from .server import A2AServer, StreamingTaskHandler, TaskHandler
 from .types import AgentCard, Task, TaskStore
 
@@ -74,6 +75,12 @@ class TacoAgent:
             (open the UI as ``/monitor/#token=<token>``). Set it whenever
             the agent's port is reachable by anyone but you: the monitor
             shows every request and response payload.
+        token_verifier: Require a bearer token on inbound task requests
+            (see :mod:`taco.auth`); forwarded to :class:`A2AServer`.
+            Outbound peer calls take their own credentials through
+            ``headers=`` — never forward the caller's token.
+        require_task_scope: With ``token_verifier``, require the
+            ``taco:task:<taskType>`` scope (default ``True``).
     """
 
     def __init__(
@@ -88,6 +95,8 @@ class TacoAgent:
         cors_origins: list[str] | None = None,
         enable_monitor: bool = False,
         monitor_auth_token: str | None = None,
+        token_verifier: TokenVerifier | None = None,
+        require_task_scope: bool = True,
     ) -> None:
         self._card = agent_card
         self._server = A2AServer(
@@ -96,6 +105,8 @@ class TacoAgent:
             cors_origins=cors_origins,
             enable_monitor=enable_monitor,
             monitor_auth_token=monitor_auth_token,
+            token_verifier=token_verifier,
+            require_task_scope=require_task_scope,
         )
 
         # Peer communication (lazy imports to avoid requiring [client] extra)

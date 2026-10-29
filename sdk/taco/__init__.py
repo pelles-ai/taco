@@ -273,6 +273,6 @@ def __getattr__(name: str):
         module = importlib.import_module(module_path, package=__name__)
     except ImportError:
         raise ImportError(
-            f"Dependencies not installed. Install with: pip install {install_hint}"
+            f"Dependencies not installed. Install with: pip install '{install_hint}'"
         ) from None
     return getattr(module, name)

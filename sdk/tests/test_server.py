@@ -600,3 +600,23 @@ class TestUsability:
         task = TaskModel.model_validate(resp.json()["result"])
         out = extract_structured_data(task.artifacts[0].parts[0])
         assert out == {"n": 6} and isinstance(out["n"], int)
+
+
+class TestStreamingHandlerViaSend:
+    async def test_send_returns_one_artifact_for_a_streaming_handler(
+        self, sample_agent_card: AgentCard
+    ):
+        """message/send to a streaming-only handler returns just the result artifact."""
+        server = A2AServer(sample_agent_card)
+
+        async def stream_handler(task: Task, input_data: dict) -> AsyncIterator[Part]:
+            yield make_text_part("a")
+            yield make_text_part("b")
+
+        server.register_streaming_handler("stream-task", stream_handler)
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            result = (await client.post("/", json=_send_msg("stream-task", {}))).json()["result"]
+        assert result["status"]["state"] == "completed"
+        assert [a["name"] for a in result["artifacts"]] == ["stream-task-stream-result"]
+        assert [p["text"] for p in result["artifacts"][0]["parts"]] == ["a", "b"]

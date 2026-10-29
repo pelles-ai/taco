@@ -276,7 +276,8 @@ class _TacoAgentExecutor(AgentExecutor):
         # collecting a streaming handler's parts into one artifact.
         has_streaming = task_type in self._streaming_handlers
         has_regular = task_type in self._handlers
-        use_streaming = has_streaming and (_is_streaming_request(context) or not has_regular)
+        is_stream_request = _is_streaming_request(context)
+        use_streaming = has_streaming and (is_stream_request or not has_regular)
 
         if has_regular and not use_streaming:
             try:
@@ -307,6 +308,10 @@ class _TacoAgentExecutor(AgentExecutor):
                 async for part in handler(task, input_data):
                     is_first_chunk = not collected_parts
                     collected_parts.append(part)
+                    if not is_stream_request:
+                        # message/send only returns the finished task; chunk
+                        # artifacts would duplicate the final result.
+                        continue
                     await _enqueue(
                         event_queue,
                         TaskArtifactUpdateEvent(
