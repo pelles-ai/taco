@@ -100,30 +100,57 @@ def _instrument_server(server: A2AServer, bus: EventBus) -> None:
 
 
 def _add_server_middleware(server: A2AServer, bus: EventBus) -> None:
-    """Add HTTP middleware that traces incoming JSON-RPC requests."""
-    from starlette.middleware.base import BaseHTTPMiddleware
-    from starlette.requests import Request
-    from starlette.responses import Response as StarletteResponse
+    """Add ASGI middleware that traces incoming JSON-RPC requests.
 
+    Written as plain ASGI rather than ``BaseHTTPMiddleware``: the response is
+    passed through message by message, so ``message/stream`` SSE responses
+    reach the caller as they are produced. Only non-streaming bodies are
+    copied for the trace.
+    """
     agent_name = server.agent_card.name
 
-    class _MonitorMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request: Request, call_next: Any) -> Any:
+    class _MonitorMiddleware:
+        def __init__(self, app: Any) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
             # Only trace JSON-RPC POST to /
-            if request.method != "POST" or request.url.path != "/":
-                return await call_next(request)
+            if scope["type"] != "http" or scope["method"] != "POST" or scope["path"] != "/":
+                await self.app(scope, receive, send)
+                return
 
-            body = await request.body()
+            # Read the whole request body, then replay it to the app.
+            received: list[Any] = []
+            body_parts: list[bytes] = []
+            while True:
+                message = await receive()
+                received.append(message)
+                if message["type"] != "http.request":
+                    break
+                body_parts.append(message.get("body", b""))
+                if not message.get("more_body", False):
+                    break
+
+            async def replay_receive() -> Any:
+                if received:
+                    return received.pop(0)
+                return await receive()
+
             try:
-                payload = json.loads(body)
-            except (json.JSONDecodeError, ValueError):
-                return await call_next(request)
+                payload = json.loads(b"".join(body_parts))
+            except ValueError:
+                payload = None
+            if not isinstance(payload, dict):
+                await self.app(scope, replay_receive, send)
+                return
 
-            method = payload.get("method", "unknown")
+            method = str(payload.get("method", "unknown"))
             params = payload.get("params", {})
             task_type = None
             if isinstance(params, dict):
-                task_type = (params.get("metadata") or {}).get("taskType")
+                metadata = params.get("metadata")
+                if isinstance(metadata, dict):
+                    task_type = metadata.get("taskType")
 
             label = task_type or method
             bus.emit(
@@ -140,18 +167,43 @@ def _add_server_middleware(server: A2AServer, bus: EventBus) -> None:
             )
 
             start = time.monotonic()
-            response = await call_next(request)
-            duration_ms = (time.monotonic() - start) * 1000
+            is_stream = False
+            body_chunks: list[bytes] = []
+            stream_events = 0
+            last_stream_data: bytes | None = None
+            line_buffer = b""
 
-            # Read response body (consumed by iteration)
-            resp_body = b""
-            async for chunk in response.body_iterator:
-                resp_body += chunk if isinstance(chunk, bytes) else chunk.encode()
+            async def traced_send(message: Any) -> None:
+                nonlocal is_stream, stream_events, last_stream_data, line_buffer
+                if message["type"] == "http.response.start":
+                    for key, value in message.get("headers", []):
+                        if key.lower() == b"content-type":
+                            is_stream = value.lower().startswith(b"text/event-stream")
+                elif message["type"] == "http.response.body":
+                    chunk = message.get("body", b"")
+                    if is_stream:
+                        # Count SSE events without holding the stream back.
+                        lines = (line_buffer + chunk).split(b"\n")
+                        line_buffer = lines.pop()
+                        for line in lines:
+                            if line.startswith(b"data:"):
+                                stream_events += 1
+                                last_stream_data = line[len(b"data:") :].strip()
+                    else:
+                        body_chunks.append(chunk)
+                await send(message)
 
-            resp_data: dict[str, Any] | None = None
-            error: str | None = None
             try:
-                resp_data = json.loads(resp_body)
+                await self.app(scope, replay_receive, traced_send)
+            finally:
+                duration_ms = (time.monotonic() - start) * 1000
+                raw = last_stream_data if is_stream else b"".join(body_chunks)
+                resp_data: Any = None
+                error: str | None = None
+                try:
+                    resp_data = json.loads(raw) if raw else None
+                except ValueError:
+                    resp_data = None
                 if isinstance(resp_data, dict) and resp_data.get("error"):
                     err_obj = resp_data["error"]
                     error = (
@@ -159,30 +211,24 @@ def _add_server_middleware(server: A2AServer, bus: EventBus) -> None:
                         if isinstance(err_obj, dict)
                         else str(err_obj)
                     )
-            except (json.JSONDecodeError, ValueError):
-                pass
-
-            bus.emit(
-                make_event(
-                    kind="incoming_response",
-                    method=method,
-                    direction="in",
-                    summary=f"Sent {label} response",
-                    payload=resp_data,
-                    duration_ms=round(duration_ms, 1),
-                    error=error,
-                    task_type=task_type,
-                    agent_name=agent_name,
+                summary = (
+                    f"Streamed {label} response ({stream_events} events)"
+                    if is_stream
+                    else f"Sent {label} response"
                 )
-            )
-
-            # Reconstruct the response since we consumed body_iterator
-            return StarletteResponse(
-                content=resp_body,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-                media_type=response.media_type,
-            )
+                bus.emit(
+                    make_event(
+                        kind="incoming_response",
+                        method=method,
+                        direction="in",
+                        summary=summary,
+                        payload=resp_data,
+                        duration_ms=round(duration_ms, 1),
+                        error=error,
+                        task_type=task_type,
+                        agent_name=agent_name,
+                    )
+                )
 
     server.app.add_middleware(_MonitorMiddleware)
 

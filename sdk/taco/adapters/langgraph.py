@@ -209,7 +209,9 @@ class LangGraphAdapter:
         task_type:
             The TACO task type to register for.
         streaming:
-            If ``True``, register both regular and streaming handlers.
+            If ``True``, register both regular and streaming handlers:
+            ``message/stream`` requests use the streaming one and
+            ``message/send`` requests the regular one.
             If ``False`` (default), register only the regular handler.
         """
         server.register_handler(task_type, self.as_handler())

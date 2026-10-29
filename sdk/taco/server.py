@@ -50,6 +50,7 @@ from ._compat import (
     make_text_part,
 )
 from .types import (
+    AgentCapabilities,
     AgentCard,
     AgentSkill,
     Artifact,
@@ -67,6 +68,17 @@ logger = logging.getLogger("a2a")
 
 TaskHandler = Callable[[Task, dict], Coroutine[Any, Any, Artifact]]
 StreamingTaskHandler = Callable[[Task, dict], AsyncIterator[Part]]
+
+# JSON-RPC method names (v0.3 compat and v1) that open an SSE stream. The
+# a2a-sdk dispatcher records the method on ``ServerCallContext.state``.
+_STREAMING_METHODS = frozenset({"message/stream", "SendStreamingMessage"})
+
+
+def _is_streaming_request(context: Any) -> bool:
+    """Return True when the request that started this execution is a stream."""
+    call_context = getattr(context, "call_context", None)
+    state = getattr(call_context, "state", None) or {}
+    return state.get("method") in _STREAMING_METHODS
 
 
 # ---------------------------------------------------------------------------
@@ -205,11 +217,14 @@ class _TacoAgentExecutor(AgentExecutor):
                 metadata={"taskType": task_type},
             )
 
-        # Check if it's a streaming-only handler called via send
-        is_streaming = task_type in self._streaming_handlers
-        is_regular = task_type in self._handlers
+        # A ``message/stream`` request uses the streaming handler when there is
+        # one; ``message/send`` prefers the regular handler and falls back to
+        # collecting a streaming handler's parts into one artifact.
+        has_streaming = task_type in self._streaming_handlers
+        has_regular = task_type in self._handlers
+        use_streaming = has_streaming and (_is_streaming_request(context) or not has_regular)
 
-        if is_regular:
+        if has_regular and not use_streaming:
             try:
                 artifact = await self._handlers[task_type](task, input_data)
                 await _enqueue(
@@ -230,7 +245,7 @@ class _TacoAgentExecutor(AgentExecutor):
                     context_id,
                     f"Task handler failed for type '{task_type}': {exc}",
                 )
-        elif is_streaming:
+        elif use_streaming:
             try:
                 collected_parts: list[Part] = []
                 handler = self._streaming_handlers[task_type]
@@ -443,10 +458,19 @@ class A2AServer:
         """Register an async streaming handler for a TACO task type.
 
         Handler signature: async def handler(task: Task, input_data: dict) -> AsyncIterator[Part]
+
+        Marks the agent card as streaming-capable. ``message/stream`` requests
+        for ``task_type`` use this handler even when a regular handler is also
+        registered; ``message/send`` requests prefer the regular handler.
         """
         self._executor._streaming_handlers[task_type] = handler
-        if self.agent_card.capabilities:
+        if self.agent_card.capabilities is None:
+            self.agent_card.capabilities = AgentCapabilities(streaming=True)
+        else:
             self.agent_card.capabilities.streaming = True
+        # The a2a-sdk request handler checks the protobuf card's capabilities
+        # before accepting ``message/stream``, so it must be rebuilt too.
+        self._sync_a2a_card()
 
     # ------------------------------------------------------------------
     # Health endpoint
