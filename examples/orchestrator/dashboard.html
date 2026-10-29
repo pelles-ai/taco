@@ -283,7 +283,7 @@
       <div class="empty-state">Click "Discover Agents" to find agents on the network</div>
     </div>
     <div class="add-agent-row">
-      <input type="text" id="new-agent-url" placeholder="http://localhost:8004">
+      <input type="text" id="new-agent-url" placeholder="http://localhost:8004 (must be listed in the orchestrator's AGENT_URLS)">
       <button class="secondary" onclick="addAgent()">Register Agent</button>
     </div>
   </section>
@@ -322,7 +322,6 @@
 <script>
 const API = '';
 let previousSkills = {};
-let resultCount = 0;
 let discoveredAgentsCache = {};
 
 // ── Flow Diagram State ──
@@ -340,15 +339,65 @@ const FLOW_COLORS = {
 // Agent Discovery + Cards
 // ══════════════════════════════════════════════════════════════
 
+// ── Safe DOM helpers ──
+// Agent cards, task results and log entries come from other servers, so they
+// are only ever inserted as text (textContent) or via setAttribute, and click
+// handlers are attached with addEventListener -- never built as HTML strings.
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined && text !== null) node.textContent = String(text);
+  return node;
+}
+
+function asArray(value) { return Array.isArray(value) ? value : []; }
+
+function toggleDisplay(node) {
+  node.style.display = getComputedStyle(node).display === 'none' ? 'block' : 'none';
+}
+
+// Pretty-printed JSON with syntax colours. syntaxHighlight() escapes &, < and >
+// before adding its own <span>s, so the result is safe to assign to innerHTML.
+function jsonPre(value, cssText) {
+  const pre = document.createElement('pre');
+  if (cssText) pre.style.cssText = cssText;
+  pre.innerHTML = syntaxHighlight(JSON.stringify(value ?? null, null, 2));
+  return pre;
+}
+
+function hostOf(url) {
+  try { return new URL(url).host; } catch { return String(url); }
+}
+
+// First DataPart payload in a list of A2A artifacts (wire format: {"kind": "data", "data": ...}).
+function firstDataPart(artifacts) {
+  for (const artifact of asArray(artifacts)) {
+    for (const part of asArray(artifact?.parts)) {
+      if (part && part.kind === 'data' && part.data !== undefined) return part.data;
+    }
+  }
+  return undefined;
+}
+
+async function readJson(resp) {
+  try { return await resp.json(); } catch { return {}; }
+}
+
+function errorMessage(resp, data) {
+  return data.error || data.detail || `HTTP ${resp.status}`;
+}
+
 async function discoverAgents() {
   const btn = event?.target;
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Discovering...'; }
   try {
     const resp = await fetch(`${API}/api/discover`);
-    const data = await resp.json();
-    discoveredAgentsCache = data.agents;
-    renderAgents(data.agents);
-    flowRebuild(data.agents);
+    const data = await readJson(resp);
+    if (!resp.ok) throw new Error(errorMessage(resp, data));
+    discoveredAgentsCache = data.agents || {};
+    renderAgents(discoveredAgentsCache);
+    flowRebuild(discoveredAgentsCache);
     await refreshLog();
   } catch (e) {
     alert('Failed to discover agents: ' + e.message);
@@ -359,56 +408,58 @@ async function discoverAgents() {
 
 function renderAgents(agents) {
   const container = document.getElementById('agents-container');
+  container.replaceChildren();
   if (!Object.keys(agents).length) {
-    container.innerHTML = '<div class="empty-state">No agents found. Are the agent servers running?</div>';
+    container.appendChild(el('div', 'empty-state', 'No agents found. Are the agent servers running?'));
     return;
   }
-  container.innerHTML = '';
   for (const [url, card] of Object.entries(agents)) {
     container.appendChild(createAgentCard(url, card));
   }
 }
 
 function createAgentCard(url, card) {
-  const div = document.createElement('div');
-  div.className = 'agent-card';
+  const div = el('div', 'agent-card');
 
   const xc = card['x-construction'] || {};
-  const trade = xc.trade || 'unknown';
-  const csiDivisions = xc.csiDivisions || [];
-  const integrations = xc.integrations || [];
-  const skills = card.skills || [];
+  const skills = asArray(card.skills);
 
   const prevSkillIds = previousSkills[url] || new Set();
   const currentSkillIds = new Set(skills.map(s => s.id));
   previousSkills[url] = currentSkillIds;
 
-  let badgesHtml = `<span class="badge trade">${trade}</span>`;
-  for (const csi of csiDivisions) badgesHtml += `<span class="badge csi">Div ${csi}</span>`;
-  for (const intg of integrations) badgesHtml += `<span class="badge integration">${intg}</span>`;
+  div.appendChild(el('h3', null, card.name || url));
+  div.appendChild(el('div', 'desc', card.description || ''));
+  div.appendChild(el('div', 'url', url));
 
-  let skillsHtml = '';
+  const badges = el('div', 'badges');
+  badges.appendChild(el('span', 'badge trade', xc.trade || 'unknown'));
+  for (const csi of asArray(xc.csiDivisions)) badges.appendChild(el('span', 'badge csi', `Div ${csi}`));
+  for (const intg of asArray(xc.integrations)) badges.appendChild(el('span', 'badge integration', intg));
+  div.appendChild(badges);
+
   for (const skill of skills) {
     const xcs = skill['x-construction'] || {};
     const isNew = !prevSkillIds.has(skill.id) && prevSkillIds.size > 0;
-    const newBadge = isNew ? ' <span class="badge new">NEW</span>' : '';
-    skillsHtml += `
-      <div class="skill-row">
-        <div>
-          <strong>${skill.name}</strong>${newBadge}<br>
-          <span class="task-type">${xcs.taskType || '—'}</span>
-          <span class="schema">${xcs.inputSchema || '?'} → ${xcs.outputSchema || '?'}</span>
-        </div>
-        <button onclick="sendTask('${url}', '${xcs.taskType || ''}', this)">Send Task</button>
-      </div>`;
-  }
+    const taskType = typeof xcs.taskType === 'string' ? xcs.taskType : '';
 
-  div.innerHTML = `
-    <h3>${card.name}</h3>
-    <div class="desc">${card.description || ''}</div>
-    <div class="url">${url}</div>
-    <div class="badges">${badgesHtml}</div>
-    ${skillsHtml}`;
+    const row = el('div', 'skill-row');
+    const info = el('div');
+    info.appendChild(el('strong', null, skill.name || skill.id || 'Unnamed skill'));
+    if (isNew) {
+      info.appendChild(document.createTextNode(' '));
+      info.appendChild(el('span', 'badge new', 'NEW'));
+    }
+    info.appendChild(document.createElement('br'));
+    info.appendChild(el('span', 'task-type', taskType || '—'));
+    info.appendChild(document.createTextNode(' '));
+    info.appendChild(el('span', 'schema', `${xcs.inputSchema || '?'} → ${xcs.outputSchema || '?'}`));
+
+    const button = el('button', null, 'Send Task');
+    button.addEventListener('click', () => sendTask(url, taskType, button));
+    row.append(info, button);
+    div.appendChild(row);
+  }
   return div;
 }
 
@@ -440,8 +491,8 @@ async function sendTask(agentUrl, taskType, btnEl) {
       body: JSON.stringify({ agentUrl, taskType, inputData }),
     });
     flowSetNodeState(agentUrl, 'processing');
-    const data = await resp.json();
-    renderResult(agentUrl, taskType, data);
+    const data = await readJson(resp);
+    renderResult(agentUrl, taskType, resp.ok ? data : { error: errorMessage(resp, data) });
     await refreshLog();
   } catch (e) {
     flowSetNodeState(agentUrl, 'failed');
@@ -451,37 +502,43 @@ async function sendTask(agentUrl, taskType, btnEl) {
   }
 }
 
+// Status badge colours exist for these task states (see .status-badge CSS).
+const BADGE_STATES = new Set(['completed', 'failed', 'working']);
+const FAILED_STATES = new Set(['failed', 'rejected', 'canceled']);
+
 function renderResult(agentUrl, taskType, data) {
   const container = document.getElementById('results-container');
-  if (container.querySelector('.empty-state')) container.innerHTML = '';
+  if (container.querySelector('.empty-state')) container.replaceChildren();
 
   const result = data.result || data;
-  const state = result?.status?.state || 'unknown';
-  const artifacts = result?.artifacts || [];
+  let state = typeof result?.status?.state === 'string' ? result.status.state : 'unknown';
+  if (data.error) state = 'failed';
+  const artifacts = asArray(result?.artifacts);
   const schema = artifacts[0]?.metadata?.schema || taskType;
-  const output = artifacts[0]?.parts?.[0]?.structuredData || result;
+  const output = firstDataPart(artifacts) ?? (data.error ? { error: data.error } : result);
 
   // Flow: completion animation
-  const flowState = (state === 'completed' || state === 'failed') ? state : 'processing';
+  const flowState = state === 'completed' ? 'completed' : (FAILED_STATES.has(state) ? 'failed' : 'processing');
   flowSetNodeState(agentUrl, flowState);
   if (flowState === 'completed' || flowState === 'failed') {
     flowFlashEdges(agentUrl, FLOW_COLORS[flowState]);
   }
 
-  const id = `result-${resultCount++}`;
-  const card = document.createElement('div');
-  card.className = 'result-card';
-  card.innerHTML = `
-    <div class="result-header" onclick="document.getElementById('${id}').style.display = document.getElementById('${id}').style.display === 'none' ? 'block' : 'none'">
-      <div>
-        <span class="agent-name">${agentUrl.split('//')[1]}</span>
-        <span class="schema-badge">${schema}</span>
-      </div>
-      <span class="status-badge ${state}">${state}</span>
-    </div>
-    <div class="result-body" id="${id}">
-      <pre>${syntaxHighlight(JSON.stringify(output, null, 2))}</pre>
-    </div>`;
+  const card = el('div', 'result-card');
+  const header = el('div', 'result-header');
+  const title = el('div');
+  title.appendChild(el('span', 'agent-name', hostOf(agentUrl)));
+  title.appendChild(document.createTextNode(' '));
+  title.appendChild(el('span', 'schema-badge', schema));
+  const badge = el('span', 'status-badge', state);
+  if (BADGE_STATES.has(state)) badge.classList.add(state);
+  header.append(title, badge);
+
+  const body = el('div', 'result-body');
+  body.appendChild(jsonPre(output));
+  header.addEventListener('click', () => toggleDisplay(body));
+
+  card.append(header, body);
   container.prepend(card);
 }
 
@@ -499,22 +556,24 @@ async function refreshLog() {
 
 function renderLog(entries) {
   const container = document.getElementById('log-container');
-  if (!entries.length) return;
-  container.innerHTML = '';
+  if (!asArray(entries).length) return;
+  container.replaceChildren();
   for (const entry of entries.slice().reverse()) {
-    const div = document.createElement('div');
-    div.className = 'log-entry';
-    const detailId = `log-${Math.random().toString(36).slice(2)}`;
-    div.innerHTML = `
-      <span class="ts">${entry.timestamp.slice(11, 19)}</span>
-      <span class="dir ${entry.direction}">${entry.direction === 'outbound' ? '→' : '◆'}</span>
-      <span class="method">${entry.method}</span>
-      ${entry.url}
-      <div class="log-detail" id="${detailId}"><pre>${syntaxHighlight(JSON.stringify({request: entry.payload, response: entry.response}, null, 2))}</pre></div>`;
-    div.onclick = () => {
-      const d = document.getElementById(detailId);
-      d.style.display = d.style.display === 'none' ? 'block' : 'none';
-    };
+    const div = el('div', 'log-entry');
+    div.appendChild(el('span', 'ts', String(entry.timestamp || '').slice(11, 19)));
+    div.appendChild(document.createTextNode(' '));
+    const dir = el('span', 'dir', entry.direction === 'outbound' ? '→' : '◆');
+    if (entry.direction === 'outbound' || entry.direction === 'discovery') dir.classList.add(entry.direction);
+    div.appendChild(dir);
+    div.appendChild(document.createTextNode(' '));
+    const status = Number.isInteger(entry.status) && entry.status >= 400 ? ` (HTTP ${entry.status})` : '';
+    div.appendChild(el('span', 'method', `${entry.method || ''}${status}`));
+    div.appendChild(document.createTextNode(` ${entry.url || ''}`));
+
+    const detail = el('div', 'log-detail');
+    detail.appendChild(jsonPre({ request: entry.payload, response: entry.response }));
+    div.appendChild(detail);
+    div.addEventListener('click', () => toggleDisplay(detail));
     container.appendChild(div);
   }
 }
@@ -556,8 +615,9 @@ async function runPipeline(btnEl) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ inputData }),
     });
-    const data = await resp.json();
-    renderPipelineResults(data.pipeline || []);
+    const data = await readJson(resp);
+    if (!resp.ok) throw new Error(errorMessage(resp, data));
+    renderPipelineResults(asArray(data.pipeline));
     await refreshLog();
   } catch (e) {
     alert('Pipeline failed: ' + e.message);
@@ -571,31 +631,31 @@ async function runPipeline(btnEl) {
 
 function renderPipelineResults(steps) {
   const container = document.getElementById('results-container');
-  if (container.querySelector('.empty-state')) container.innerHTML = '';
+  if (container.querySelector('.empty-state')) container.replaceChildren();
 
   // Add a pipeline summary card at top
-  const summaryCard = document.createElement('div');
-  summaryCard.className = 'result-card';
   const completed = steps.filter(s => s.status === 'completed').length;
   const total = steps.length;
-  const summaryId = `pipeline-${resultCount++}`;
-  summaryCard.innerHTML = `
-    <div class="result-header" onclick="document.getElementById('${summaryId}').style.display = document.getElementById('${summaryId}').style.display === 'none' ? 'block' : 'none'" style="border-left: 3px solid var(--accent);">
-      <div>
-        <span class="agent-name">Pipeline Run</span>
-        <span class="schema-badge">${completed}/${total} steps</span>
-      </div>
-      <span class="status-badge ${completed === total ? 'completed' : 'failed'}">${completed === total ? 'completed' : 'partial'}</span>
-    </div>
-    <div class="result-body" id="${summaryId}"></div>`;
+  const allCompleted = total > 0 && completed === total;
+
+  const summaryCard = el('div', 'result-card');
+  const header = el('div', 'result-header');
+  header.style.borderLeft = '3px solid var(--accent)';
+  const title = el('div');
+  title.appendChild(el('span', 'agent-name', 'Pipeline Run'));
+  title.appendChild(document.createTextNode(' '));
+  title.appendChild(el('span', 'schema-badge', `${completed}/${total} steps`));
+  header.append(title, el('span', `status-badge ${allCompleted ? 'completed' : 'failed'}`, allCompleted ? 'completed' : 'partial'));
+  const body = el('div', 'result-body');
+  header.addEventListener('click', () => toggleDisplay(body));
+  summaryCard.append(header, body);
   container.prepend(summaryCard);
 
-  const body = document.getElementById(summaryId);
   for (const step of steps) {
     // Animate flow for each step
-    const agentUrl = Object.keys(discoveredAgentsCache).find(url => {
+    const agentUrl = discoveredAgentsCache[step.agentUrl] ? step.agentUrl : Object.keys(discoveredAgentsCache).find(url => {
       const card = discoveredAgentsCache[url];
-      return (card.skills || []).some(s => (s['x-construction'] || {}).taskType === step.step);
+      return asArray(card.skills).some(s => (s['x-construction'] || {}).taskType === step.step);
     });
     if (agentUrl) {
       flowSetNodeState(agentUrl, step.status === 'completed' ? 'completed' : (step.status === 'failed' ? 'failed' : 'idle'));
@@ -604,19 +664,28 @@ function renderPipelineResults(steps) {
       }
     }
 
-    const stepDiv = document.createElement('div');
+    const stepDiv = el('div');
     stepDiv.style.cssText = 'margin-bottom: 12px; padding: 12px; background: var(--surface); border-radius: var(--radius);';
     const statusColor = step.status === 'completed' ? 'var(--success)' : (step.status === 'failed' ? 'var(--error)' : 'var(--text-muted)');
-    const output = step.result?.result?.artifacts?.[0]?.parts?.[0]?.structuredData || step.result || step.error || step.reason || 'N/A';
-    const stepId = `step-${resultCount++}`;
-    stepDiv.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer;" onclick="document.getElementById('${stepId}').style.display = document.getElementById('${stepId}').style.display === 'none' ? 'block' : 'none'">
-        <strong style="text-transform: capitalize;">${step.step}</strong>
-        <span style="color: ${statusColor}; font-size: 12px; font-weight: 600;">${step.status}</span>
-      </div>
-      <div id="${stepId}" style="display: none;">
-        <pre style="font-family: 'SF Mono', monospace; font-size: 11px; line-height: 1.4; white-space: pre-wrap; word-break: break-word;">${syntaxHighlight(JSON.stringify(output, null, 2))}</pre>
-      </div>`;
+    const output = firstDataPart(step.result?.result?.artifacts)
+      ?? (step.error ? { error: step.error } : undefined)
+      ?? step.result ?? step.reason ?? 'N/A';
+
+    const stepHeader = el('div');
+    stepHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer;';
+    const stepName = el('strong', null, step.step);
+    stepName.style.textTransform = 'capitalize';
+    const stepStatus = el('span', null, step.status);
+    stepStatus.style.cssText = 'font-size: 12px; font-weight: 600;';
+    stepStatus.style.color = statusColor;
+    stepHeader.append(stepName, stepStatus);
+
+    const detail = el('div');
+    detail.style.display = 'none';
+    detail.appendChild(jsonPre(output, "font-family: 'SF Mono', monospace; font-size: 11px; line-height: 1.4; white-space: pre-wrap; word-break: break-word;"));
+    stepHeader.addEventListener('click', () => toggleDisplay(detail));
+
+    stepDiv.append(stepHeader, detail);
     body.appendChild(stepDiv);
   }
 }
@@ -629,11 +698,15 @@ async function addAgent() {
   const input = document.getElementById('new-agent-url');
   const url = input.value.trim();
   if (!url) return;
-  await fetch(`${API}/api/agents`, {
+  const resp = await fetch(`${API}/api/agents`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ url }),
   });
+  if (!resp.ok) {
+    alert('Could not register agent: ' + errorMessage(resp, await readJson(resp)));
+    return;
+  }
   input.value = '';
   await discoverAgents();
 }
@@ -651,7 +724,7 @@ async function addVESkill() {
     return;
   }
   try {
-    await fetch(`${API}/api/admin/add-skill`, {
+    const resp = await fetch(`${API}/api/admin/add-skill`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
@@ -668,6 +741,7 @@ async function addVESkill() {
         },
       }),
     });
+    if (!resp.ok) throw new Error(errorMessage(resp, await readJson(resp)));
     alert('VE skill added to Estimating Agent. Click "Discover Agents" to see it.');
   } catch (e) {
     alert('Failed: ' + e.message);
@@ -751,7 +825,7 @@ function flowRebuild(agents) {
 
   agentEntries.forEach(([url, card], i) => {
     const ax = (w / (count + 1)) * (i + 1);
-    const shortName = card.name.replace(/ Agent$/i, '');
+    const shortName = String(card.name || url).replace(/ Agent$/i, '');
     const trade = (card['x-construction'] || {}).trade || '';
     flowSvg.appendChild(flowCreateNode(url, ax, agentY, shortName, `:${safePort(url)}`, _cv('--border'), trade));
     flowSetNodeState(url, 'discovered');
