@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import datetime as _dt
 import re
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Annotated, Literal
 
 from a2a._base import A2ABaseModel
@@ -483,3 +485,34 @@ class ChangeOrderV1(SchemaModel):
 
 
 ChangeOrderSchema = ChangeOrderV1
+
+
+# ---------------------------------------------------------------------------
+# Schema registry
+# ---------------------------------------------------------------------------
+
+SCHEMA_MODELS: Mapping[str, type[SchemaModel]] = MappingProxyType(
+    {
+        "bom-v1": BOMV1,
+        "change-order-v1": ChangeOrderV1,
+        "estimate-v1": EstimateV1,
+        "quote-v1": QuoteV1,
+        "rfi-v1": RFIV1,
+        "schedule-v1": ScheduleV1,
+    }
+)
+"""Read-only map from canonical schema name (SPEC-003 §3.1) to its model."""
+
+
+def get_schema_model(schema_id: str) -> type[SchemaModel]:
+    """Return the model for a canonical schema name such as ``"bom-v1"``.
+
+    ``schema_id`` is the bare name used in ``inputSchema`` / ``outputSchema``
+    (SPEC-003 §3.2). Raises :class:`KeyError` naming the known ids when it is
+    not a canonical TACO schema.
+    """
+    try:
+        return SCHEMA_MODELS[schema_id]
+    except KeyError:
+        known = ", ".join(sorted(SCHEMA_MODELS))
+        raise KeyError(f"Unknown TACO schema id {schema_id!r}; known ids: {known}") from None

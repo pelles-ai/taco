@@ -10,6 +10,7 @@ from pydantic import TypeAdapter, ValidationError
 from taco.schemas import (
     BOMV1,
     RFIV1,
+    SCHEMA_MODELS,
     BOMAlternate,
     BOMFlaggedItem,
     BOMLineItem,
@@ -41,6 +42,7 @@ from taco.schemas import (
     ScheduleMilestone,
     ScheduleSchema,
     ScheduleV1,
+    get_schema_model,
 )
 
 
@@ -1171,3 +1173,36 @@ class TestRFIAssigneeRole:
     def test_unknown_role_fails(self):
         with pytest.raises(ValidationError):
             RFIAssignee(role="plumber")
+
+
+class TestSchemaRegistry:
+    def test_maps_every_canonical_schema(self):
+        assert dict(SCHEMA_MODELS) == {
+            "bom-v1": BOMV1,
+            "change-order-v1": ChangeOrderV1,
+            "estimate-v1": EstimateV1,
+            "quote-v1": QuoteV1,
+            "rfi-v1": RFIV1,
+            "schedule-v1": ScheduleV1,
+        }
+
+    @pytest.mark.parametrize("schema_id", sorted(SCHEMA_MODELS))
+    def test_get_schema_model(self, schema_id: str):
+        assert get_schema_model(schema_id) is SCHEMA_MODELS[schema_id]
+
+    @pytest.mark.parametrize("schema_id", ["bom-v2", "BOM-v1", "bom", "plan-sheets", ""])
+    def test_unknown_schema_id_raises_key_error(self, schema_id: str):
+        with pytest.raises(KeyError, match="Unknown TACO schema id") as excinfo:
+            get_schema_model(schema_id)
+        assert "bom-v1" in str(excinfo.value)
+
+    def test_registry_is_read_only(self):
+        with pytest.raises(TypeError):
+            SCHEMA_MODELS["bom-v1"] = RFIV1  # type: ignore[index]
+
+    def test_exported_from_package(self):
+        import taco
+
+        assert taco.SCHEMA_MODELS is SCHEMA_MODELS
+        assert taco.get_schema_model is get_schema_model
+        assert {"SCHEMA_MODELS", "get_schema_model"} <= set(taco.__all__)

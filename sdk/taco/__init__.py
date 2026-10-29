@@ -35,6 +35,7 @@ from .errors import TacoTaskError
 from .schemas import (
     BOMV1,
     RFIV1,
+    SCHEMA_MODELS,
     BOMAlternate,
     BOMFlaggedItem,
     BOMLineItem,
@@ -64,6 +65,7 @@ from .schemas import (
     ScheduleMilestone,
     ScheduleSchema,
     ScheduleV1,
+    get_schema_model,
 )
 from .types import (
     X_CONSTRUCTION_EXTENSION_URI,
@@ -201,6 +203,8 @@ __all__ = [
     "ScheduleMilestone",
     "ScheduleSchema",
     "ScheduleV1",
+    "SCHEMA_MODELS",
+    "get_schema_model",
     # Task store (lazy)
     "JsonFileTaskStore",
     # Server (lazy — requires taco[server])
