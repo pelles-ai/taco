@@ -17,7 +17,7 @@ Run a TACO-compatible A2A server. Register typed handlers per task type, fail ta
 ## `A2AServer`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/server.py#L369)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/server.py#L374)
 
 Reusable FastAPI application implementing the A2A protocol.
 

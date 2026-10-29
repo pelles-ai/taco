@@ -50,7 +50,7 @@ def serve(self, *, host: 'str' = '0.0.0.0', port: 'int' = 8080) -> 'None'
 
 Start an A2A-compliant server for this agent.
 
-Requires the ``server`` extra: ``pip install taco-agent[server]``
+Requires the ``server`` extra: ``pip install 'taco-agent[server]'``
 
 ### `to_a2a()`
 

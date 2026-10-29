@@ -298,7 +298,7 @@ With a verifier in place, the server:
 - keeps the Agent Card and `/health` public, as discovery needs them, and leaves the monitor to its own token;
 - records each caller's `subject` as the owner of the tasks it creates, so `tasks/get`, `tasks/cancel` and `ListTasks` only show callers their own tasks (in memory, in `JsonFileTaskStore` and in the a2a-sdk's `DatabaseTaskStore`).
 
-`TacoAgent` does not take a `token_verifier`. An agent that must require tokens and also call peers uses `A2AServer` for inbound requests and `TacoClient` for its outbound calls.
+`TacoAgent` takes the same `token_verifier` and `require_task_scope` arguments for its inbound requests. Its outbound peer calls carry their own credentials (`send_to_peer(..., headers=...)`); never forward the caller's token to a peer.
 
 ### Check project scopes in the handler
 

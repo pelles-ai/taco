@@ -394,10 +394,12 @@ agent = TacoAgent(
     cors_origins=None,                       # CORS allowed origins
     enable_monitor=True,                     # Enable /monitor UI
     monitor_auth_token=None,                 # Token the monitor requires
+    token_verifier=None,                     # Require bearer tokens on inbound tasks
+    require_task_scope=True,                 # With token_verifier: require taco:task:<taskType>
 )
 ```
 
-`TacoAgent` does not take a `token_verifier`; agents that must require caller tokens use `A2AServer` with a `TacoClient` for their outbound calls.
+`token_verifier` protects inbound requests exactly as on `A2AServer`. Outbound peer calls carry their own credentials (`send_to_peer(..., headers=...)`); never forward the caller's token.
 
 ### Properties
 

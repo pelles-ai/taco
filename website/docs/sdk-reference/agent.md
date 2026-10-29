@@ -17,7 +17,7 @@ this MDX by hand.
 ## `TacoAgent`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/agent.py#L43)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/agent.py#L44)
 
 A TACO agent that can both receive and send A2A requests.
 
@@ -52,11 +52,17 @@ Args:
         (open the UI as ``/monitor/#token=<token>``). Set it whenever
         the agent's port is reachable by anyone but you: the monitor
         shows every request and response payload.
+    token_verifier: Require a bearer token on inbound task requests
+        (see :mod:`taco.auth`); forwarded to :class:`A2AServer`.
+        Outbound peer calls take their own credentials through
+        ``headers=`` — never forward the caller's token.
+    require_task_scope: With ``token_verifier``, require the
+        ``taco:task:<taskType>`` scope (default ``True``).
 
 #### Constructor
 
 ```python
-TacoAgent(agent_card: 'ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, peers: 'list[str] | str | None' = None, peer_retry_attempts: 'int' = 5, peer_retry_delay: 'float' = 2.0, peer_startup_wait: 'float' = 2.0, cors_origins: 'list[str] | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None) -> 'None'
+TacoAgent(agent_card: 'ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, peers: 'list[str] | str | None' = None, peer_retry_attempts: 'int' = 5, peer_retry_delay: 'float' = 2.0, peer_startup_wait: 'float' = 2.0, cors_origins: 'list[str] | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None, token_verifier: 'TokenVerifier | None' = None, require_task_scope: 'bool' = True) -> 'None'
 ```
 
 #### Methods
