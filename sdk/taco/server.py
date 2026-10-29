@@ -50,6 +50,7 @@ from ._compat import (
     make_artifact,
     make_text_part,
 )
+from .auth import BearerAuthMiddleware, TokenVerifier, _set_current_auth, auth_from_call_context
 from .errors import TacoTaskError
 from .types import (
     AgentCapabilities,
@@ -230,6 +231,9 @@ class _TacoAgentExecutor(AgentExecutor):
 
     async def _run(self, context, event_queue: EventQueue, task_id: str) -> None:
         """Dispatch to the registered TACO handler for this task type."""
+        # Make the caller's identity available to handlers via
+        # taco.current_auth(). This runs in its own task, so it never leaks.
+        _set_current_auth(auth_from_call_context(getattr(context, "call_context", None)))
         metadata = context.metadata
         message = _pb_message_to_compat(context.message)
         context_id = context.context_id or str(uuid.uuid4())
@@ -380,7 +384,17 @@ class A2AServer:
         admin_auth_token: str | None = None,
         enable_monitor: bool = False,
         monitor_auth_token: str | None = None,
+        token_verifier: TokenVerifier | None = None,
+        require_task_scope: bool = True,
     ) -> None:
+        """Create the server.
+
+        ``token_verifier`` turns on bearer-token auth for the JSON-RPC
+        endpoint (see :mod:`taco.auth`): requests without a valid token get
+        HTTP 401 and, with ``require_task_scope``, a token lacking
+        ``taco:task:<taskType>`` gets HTTP 403. Declare the scheme in the
+        card's ``security_schemes`` / ``security`` so callers know to send it.
+        """
         self.agent_card = agent_card
         if not agent_card.url:
             logger.info(
@@ -422,14 +436,6 @@ class A2AServer:
             )
         )
 
-        if cors_origins is not None:
-            self.app.add_middleware(
-                CORSMiddleware,
-                allow_origins=cors_origins,
-                allow_methods=["*"],
-                allow_headers=["*"],
-            )
-
         # TACO serves its own card (with the x-construction extension) at
         # both the new v0.3+ path and the legacy path.
         self.app.get("/.well-known/agent-card.json")(self._serve_agent_card)
@@ -445,6 +451,9 @@ class A2AServer:
             self.app.delete("/admin/skills/{skill_id}")(self._remove_skill)
             self.app.get("/admin/skills")(self._list_skills)
 
+        # Middleware added later wraps earlier middleware: CORS outermost (so
+        # 401/403 responses still carry CORS headers), then auth, then the
+        # monitor's tracer, so rejected requests never reach handlers.
         if enable_monitor:
             from .monitor import enable_monitor as _enable_monitor
 
@@ -452,6 +461,22 @@ class A2AServer:
                 server=self,
                 agent_name=agent_card.name,
                 auth_token=monitor_auth_token,
+            )
+
+        if token_verifier is not None:
+            self.app.add_middleware(
+                BearerAuthMiddleware,
+                server=self,
+                verifier=token_verifier,
+                require_task_scope=require_task_scope,
+            )
+
+        if cors_origins is not None:
+            self.app.add_middleware(
+                CORSMiddleware,
+                allow_origins=cors_origins,
+                allow_methods=["*"],
+                allow_headers=["*"],
             )
 
     @staticmethod

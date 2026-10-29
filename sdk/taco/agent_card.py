@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .types import (
     AgentCapabilities,
     AgentCard,
     AgentConstructionExt,
     AgentSkill,
+    Certification,
+    SecurityExt,
     SkillConstructionExt,
     Trade,
     apply_construction_extension_declaration,
@@ -84,22 +88,41 @@ class ConstructionAgentCard:
         name: str,
         description: str = "",
         url: str = "",
+        version: str = "1.0.0",
         trade: Trade,
         csi_divisions: list[str],
         project_types: list[str] | None = None,
         data_formats: dict[str, list[str]] | None = None,
         integrations: list[str] | None = None,
+        certifications: list[Certification] | None = None,
         skills: list[ConstructionSkill] | None = None,
+        security_schemes: dict[str, dict[str, Any]] | None = None,
+        security: list[dict[str, list[str]]] | None = None,
+        construction_security: SecurityExt | None = None,
     ) -> None:
+        """Describe a construction agent.
+
+        ``security_schemes`` and ``security`` are the standard A2A fields
+        that tell callers how to authenticate (``spec/security.md``), e.g.
+        ``{"bearer": {"type": "http", "scheme": "bearer"}}`` and
+        ``[{"bearer": ["taco:task:estimate"]}]``. ``construction_security``
+        is the TACO ``x-construction.security`` block (trust tier, scopes
+        offered, project scoping).
+        """
         self.name = name
         self.description = description or f"TACO agent: {name}"
         self.url = url
+        self.version = version
         self.trade = trade
         self.csi_divisions = csi_divisions
         self.project_types = project_types or []
         self.data_formats = data_formats or {}
         self.integrations = integrations or []
+        self.certifications = certifications or []
         self.skills = skills or []
+        self.security_schemes = security_schemes
+        self.security = security
+        self.construction_security = construction_security
 
     def to_a2a(self) -> AgentCard:
         """Convert to a standard A2A AgentCard with x-construction extension.
@@ -112,16 +135,21 @@ class ConstructionAgentCard:
             name=self.name,
             description=self.description,
             url=self.url,
+            version=self.version,
             default_input_modes=["application/json"],
             default_output_modes=["application/json"],
             capabilities=AgentCapabilities(streaming=False),
             skills=[s.to_a2a() for s in self.skills],
+            security_schemes=self.security_schemes,
+            security=self.security,
             x_construction=AgentConstructionExt(
                 trade=self.trade,
                 csi_divisions=self.csi_divisions,
                 project_types=self.project_types,
                 data_formats=self.data_formats,
                 integrations=self.integrations,
+                certifications=self.certifications,
+                security=self.construction_security,
             ),
         )
         return apply_construction_extension_declaration(card)

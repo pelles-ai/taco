@@ -29,6 +29,9 @@ from ._compat import (
 
 # Convenience factories
 from .agent_card import ConstructionAgentCard, ConstructionSkill
+
+# Auth (no server dependencies at import time)
+from .auth import AuthContext, TokenVerifier, current_auth, task_scope
 from .errors import TacoTaskError
 
 # TACO data schemas
@@ -222,6 +225,11 @@ __all__ = [
     "ConstructionSkill",
     # Errors
     "TacoTaskError",
+    # Auth
+    "AuthContext",
+    "TokenVerifier",
+    "current_auth",
+    "task_scope",
     # Client (lazy — requires taco[client])
     "TacoClient",
     "TacoClientError",
