@@ -8,8 +8,12 @@ website/docs/sdk-reference/{slug}.md.
 
 Run from the website/ directory after installing the SDK:
 
-    cd ../sdk && pip install -e .[all]
+    cd ../sdk && pip install -e ".[all]"
     cd ../website && python scripts/gen-sdk-reference.py
+
+Signatures are rendered by the running interpreter, and a few (Enum
+constructors, for example) differ between Python versions. Use Python 3.10,
+the SDK's minimum, so a regeneration only shows real API changes.
 
 The generated files carry a "this file is generated" banner. Edit this
 script (or the source docstrings/signatures) and re-run; do not edit
@@ -22,6 +26,7 @@ import inspect
 import re
 import sys
 import textwrap
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -39,9 +44,11 @@ class SymbolSpec:
     # "class": render a full class page (constructor + methods)
     # "function": render a function entry
     # "constant": render a constant entry (value + type)
-    # "alias": render a short "see ..." entry
+    # "alias": render a type alias (its value, plus `note`)
     kind: str = "class"
     alias_target: str | None = None
+    # Shown under a type alias, which has no docstring of its own.
+    note: str | None = None
 
 
 @dataclass
@@ -78,6 +85,7 @@ GROUPS: list[GroupSpec] = [
             SymbolSpec("AgentExtension", "class"),
             SymbolSpec("AgentConstructionExt", "class"),
             SymbolSpec("SkillConstructionExt", "class"),
+            SymbolSpec("SecurityExt", "class"),
             SymbolSpec("get_construction_ext", "function"),
             SymbolSpec("get_skill_construction_ext", "function"),
             SymbolSpec("apply_construction_extension_declaration", "function"),
@@ -94,16 +102,48 @@ GROUPS: list[GroupSpec] = [
         label="Server",
         description=(
             "Run a TACO-compatible A2A server. Register typed handlers per "
-            "task type, optionally serve the live Monitor UI, and persist tasks."
+            "task type, fail tasks with caller-facing messages, optionally "
+            "serve the live Monitor UI, and persist tasks."
         ),
         sidebar_position=2,
         symbols=[
             SymbolSpec("A2AServer", "class"),
+            SymbolSpec("TacoTaskError", "class"),
+            SymbolSpec("enable_monitor", "function"),
         ],
         see_also=[
             SeeAlsoLink("Build a Custom Agent", "/docs/getting-started/build-agent"),
             SeeAlsoLink("SDK Guide", "/docs/sdk"),
             SeeAlsoLink("Cookbook: RFI round-trip", "/docs/cookbook/rfi-round-trip"),
+        ],
+    ),
+    GroupSpec(
+        slug="auth",
+        label="Auth",
+        description=(
+            "Bearer-token authentication for `A2AServer`: a verifier you "
+            "supply, the caller's identity inside handlers, and the "
+            "`taco:task:<taskType>` scope helper."
+        ),
+        sidebar_position=3,
+        symbols=[
+            SymbolSpec("AuthContext", "class"),
+            SymbolSpec(
+                "TokenVerifier",
+                "alias",
+                note=(
+                    "`async (token) -> AuthContext | None`. Pass one to "
+                    "`A2AServer(token_verifier=...)`; return `None` to reject "
+                    "the token (HTTP 401)."
+                ),
+            ),
+            SymbolSpec("current_auth", "function"),
+            SymbolSpec("task_scope", "function"),
+        ],
+        see_also=[
+            SeeAlsoLink("Security: implementing it with the SDK", "/docs/security#implementing-it-with-the-sdk"),
+            SeeAlsoLink("SPEC-004 Security", "/docs/spec/SPEC-004-security"),
+            SeeAlsoLink("SDK Guide", "/docs/sdk"),
         ],
     ),
     GroupSpec(
@@ -114,11 +154,12 @@ GROUPS: list[GroupSpec] = [
             "streaming, push notification config management, and the standard "
             "`A2A-Version` headers."
         ),
-        sidebar_position=3,
+        sidebar_position=4,
         symbols=[
             SymbolSpec("TacoClient", "class"),
             SymbolSpec("TacoClientError", "class"),
             SymbolSpec("RpcError", "class"),
+            SymbolSpec("MessageReplyError", "class"),
         ],
         see_also=[
             SeeAlsoLink("Multi-Agent Coordination", "/docs/getting-started/multi-agent"),
@@ -133,7 +174,7 @@ GROUPS: list[GroupSpec] = [
             "`TacoAgent` bundles `A2AServer` with a pool of `TacoClient`s, for "
             "agents that both receive and call other agents."
         ),
-        sidebar_position=4,
+        sidebar_position=5,
         symbols=[
             SymbolSpec("TacoAgent", "class"),
         ],
@@ -148,9 +189,10 @@ GROUPS: list[GroupSpec] = [
         label="Registry",
         description=(
             "In-memory discovery layer with optional JSON persistence. Find "
-            "agents by trade, task type, CSI division, or project type."
+            "agents by trade, task type, CSI division, project type, or "
+            "integration."
         ),
-        sidebar_position=5,
+        sidebar_position=6,
         symbols=[
             SymbolSpec("AgentRegistry", "class"),
         ],
@@ -167,7 +209,7 @@ GROUPS: list[GroupSpec] = [
             "The core A2A protocol types: tasks, their lifecycle states, "
             "messages, parts, and the event types streamed during a task."
         ),
-        sidebar_position=6,
+        sidebar_position=7,
         symbols=[
             SymbolSpec("Task", "class"),
             SymbolSpec("TaskStatus", "class"),
@@ -193,7 +235,7 @@ GROUPS: list[GroupSpec] = [
             "Convenience constructors and extractors for messages, parts, and "
             "artifacts. Use these instead of constructing A2A types directly."
         ),
-        sidebar_position=7,
+        sidebar_position=8,
         symbols=[
             SymbolSpec("make_message", "function"),
             SymbolSpec("make_text_part", "function"),
@@ -201,6 +243,7 @@ GROUPS: list[GroupSpec] = [
             SymbolSpec("make_artifact", "function"),
             SymbolSpec("extract_text", "function"),
             SymbolSpec("extract_structured_data", "function"),
+            SymbolSpec("restore_integers", "function"),
             SymbolSpec("get_text_parts", "function"),
             SymbolSpec("get_data_parts", "function"),
             SymbolSpec("get_file_parts", "function"),
@@ -223,9 +266,10 @@ GROUPS: list[GroupSpec] = [
             "`TaskStore` interface and the bundled `JsonFileTaskStore` for "
             "single-process agents that need on-disk task persistence."
         ),
-        sidebar_position=8,
+        sidebar_position=9,
         symbols=[
             SymbolSpec("TaskStore", "class"),
+            SymbolSpec("JsonFileTaskStore", "class"),
         ],
         see_also=[
             SeeAlsoLink("Build a Custom Agent", "/docs/getting-started/build-agent"),
@@ -240,7 +284,7 @@ GROUPS: list[GroupSpec] = [
             "Multi-subscriber push notification configs per task. Used by "
             "`TacoClient.create_push_config()` and friends."
         ),
-        sidebar_position=9,
+        sidebar_position=10,
         symbols=[
             SymbolSpec("PushNotificationConfig", "class"),
             SymbolSpec("PushNotificationAuthenticationInfo", "class"),
@@ -253,13 +297,32 @@ GROUPS: list[GroupSpec] = [
         ],
     ),
     GroupSpec(
+        slug="schemas",
+        label="Schema lookup",
+        description=(
+            "Find the Pydantic model for a canonical schema name such as "
+            "`bom-v1`. The models themselves have interactive pages under "
+            "Data Schemas."
+        ),
+        sidebar_position=11,
+        symbols=[
+            SymbolSpec("get_schema_model", "function"),
+            SymbolSpec("SCHEMA_MODELS", "constant"),
+        ],
+        see_also=[
+            SeeAlsoLink("Data Schemas", "/docs/schemas/"),
+            SeeAlsoLink("SDK Guide: data schema models", "/docs/sdk#data-schema-models"),
+            SeeAlsoLink("ADR-0002: JSON Schema as source of truth", "/docs/decisions/json-schema-source-of-truth"),
+        ],
+    ),
+    GroupSpec(
         slug="enums",
         label="Enums",
         description=(
             "Construction-domain enumerations used across the schemas, agent "
             "cards, and task types."
         ),
-        sidebar_position=10,
+        sidebar_position=12,
         symbols=[
             SymbolSpec("Trade", "class"),
             SymbolSpec("ProjectType", "class"),
@@ -296,11 +359,17 @@ SCHEMA_SYMBOL_TO_DOC = {
 # ----------------------------------------------------------------------
 
 
+_ADDRESS_RE = re.compile(r" at 0x[0-9a-fA-F]+>")
+
+
 def _safe_signature(obj: Any) -> str:
     try:
-        return str(inspect.signature(obj))
+        sig = str(inspect.signature(obj))
     except (TypeError, ValueError):
         return "()"
+    # Default values such as functions repr with a memory address that
+    # changes on every run: "<function f at 0x7f...>" -> "<function f>".
+    return _ADDRESS_RE.sub(">", sig)
 
 
 def _format_signature(name: str, sig_str: str, *, max_inline: int = 90) -> str:
@@ -408,6 +477,12 @@ def _render_constant(sym_name: str, value: Any) -> str:
         v = f'"{value}"'
     elif isinstance(value, (int, float, bool)):
         v = repr(value)
+    elif isinstance(value, Mapping):
+        type_name = "Mapping"
+        rows = "".join(
+            f'    "{k}": {getattr(item, "__name__", repr(item))},\n' for k, item in value.items()
+        )
+        v = "{\n" + rows + "}"
     else:
         v = f"<{type_name}>"
     return (
@@ -450,22 +525,24 @@ def _render_method(name: str, fn: Callable) -> str:
     )
 
 
-def _render_typing_alias(sym_name: str, obj: Any) -> str:
+def _render_typing_alias(sym_name: str, obj: Any, note: str | None = None) -> str:
     """For typing.Literal[...] / Union / TypeAlias values that aren't real classes."""
-    repr_str = repr(obj).replace("typing.", "")
+    repr_str = repr(obj).replace("typing.", "").replace("collections.abc.", "")
+    note_block = f"{note}\n\n" if note else ""
     return (
         f"## `{sym_name}`\n\n"
         f"*Type alias.*\n\n"
+        f"{note_block}"
         f"```python\n"
         f"{sym_name} = {repr_str}\n"
         f"```\n"
     )
 
 
-def _render_class(sym_name: str, cls: Any) -> str:
+def _render_class(sym_name: str, cls: Any, note: str | None = None) -> str:
     """Full per-class section. Falls back to alias rendering for typing constructs."""
     if not inspect.isclass(cls):
-        return _render_typing_alias(sym_name, cls)
+        return _render_typing_alias(sym_name, cls, note)
 
     doc = _render_docstring(inspect.getdoc(cls))
     gh = _github_link(cls)
@@ -473,6 +550,10 @@ def _render_class(sym_name: str, cls: Any) -> str:
 
     try:
         ctor_sig = _safe_signature(cls)
+        if ctor_sig == "()" and issubclass(cls, BaseException):
+            # Exceptions without their own __init__ have no introspectable
+            # signature; they take the message positionally.
+            ctor_sig = "(*args)"
         ctor_pretty = _format_signature(sym_name, ctor_sig)
         ctor_block = (
             f"#### Constructor\n\n"
@@ -545,8 +626,10 @@ def _render_group(spec: GroupSpec, taco_mod: Any) -> str:
             parts.append(_render_function_entry(sym.name, obj, level=2))
         elif sym.kind == "constant":
             parts.append(_render_constant(sym.name, obj))
+        elif sym.kind == "alias":
+            parts.append(_render_typing_alias(sym.name, obj, sym.note))
         else:  # "class"
-            parts.append(_render_class(sym.name, obj))
+            parts.append(_render_class(sym.name, obj, sym.note))
         parts.append("\n")
 
     if spec.see_also:
@@ -598,9 +681,11 @@ def _render_index(groups: list[GroupSpec]) -> str:
         f"{schema_rows}\n\n"
         f"## Regenerating\n\n"
         f"```bash\n"
-        f"cd sdk && pip install -e .[all]\n"
+        f"cd sdk && pip install -e \".[all]\"\n"
         f"cd ../website && python scripts/gen-sdk-reference.py\n"
-        f"```\n"
+        f"```\n\n"
+        f"Use Python 3.10, the SDK's minimum version: a few signatures (Enum "
+        f"constructors, for example) render differently on newer versions.\n"
     )
 
 
@@ -615,7 +700,7 @@ def main() -> int:
     except ImportError as exc:
         print(
             "ERROR: `taco` is not importable. Install the SDK first:\n"
-            "  cd sdk && pip install -e .[all]\n"
+            "  cd sdk && pip install -e \".[all]\"\n"
             f"({exc})",
             file=sys.stderr,
         )
