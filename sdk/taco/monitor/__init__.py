@@ -63,12 +63,17 @@ def enable_monitor(
     registry: AgentRegistry | None = None,
     agent_name: str | None = None,
     max_events: int = 2000,
+    auth_token: str | None = None,
 ) -> None:
     """Enable the Agent Monitor for the given server/client/registry.
 
     Instruments the provided objects so their A2A traffic appears in the
     monitor UI, and mounts the monitor routes onto the server's app at
     ``/monitor``.
+
+    The monitor shows every request and response payload. Set
+    ``auth_token`` before exposing the agent's port beyond your machine;
+    the UI is then opened as ``/monitor/#token=<token>``.
     """
     bus = get_event_bus(max_events)
 
@@ -84,7 +89,11 @@ def enable_monitor(
         _instrument_registry(registry, bus)
 
     if server is not None:
-        monitor = MonitorServer(bus, agent_name=agent_name or "TACO Agent")
+        monitor = MonitorServer(
+            bus,
+            agent_name=agent_name or "TACO Agent",
+            auth_token=auth_token,
+        )
         monitor.mount_on(server.app)
 
 
@@ -233,8 +242,35 @@ def _add_server_middleware(server: A2AServer, bus: EventBus) -> None:
     server.app.add_middleware(_MonitorMiddleware)
 
 
+class _OutcomeQueue:
+    """Event-queue proxy that records how the task ended.
+
+    The executor reports handler errors as a ``failed`` status event rather
+    than raising, so the monitor reads the outcome off the queue.
+    """
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+        self.state: int | None = None
+        self.message: str | None = None
+
+    async def enqueue_event(self, event: Any) -> None:
+        from a2a.types.a2a_pb2 import TaskStatusUpdateEvent
+
+        if isinstance(event, TaskStatusUpdateEvent):
+            self.state = event.status.state
+            texts = [p.text for p in event.status.message.parts if p.text]
+            self.message = " ".join(texts) or None
+        await self._inner.enqueue_event(event)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
 def _wrap_executor(server: A2AServer, bus: EventBus) -> None:
     """Wrap the executor's execute method to trace handler execution."""
+    from a2a.types.a2a_pb2 import TaskState
+
     executor = server._executor
     original_execute = executor.execute
     agent_name = server.agent_card.name
@@ -257,15 +293,32 @@ def _wrap_executor(server: A2AServer, bus: EventBus) -> None:
         )
 
         start = time.monotonic()
+        outcome: Any = _OutcomeQueue(event_queue)  # duck-types EventQueue
         try:
-            await original_execute(context, event_queue)
+            await original_execute(context, outcome)
             duration_ms = (time.monotonic() - start) * 1000
+            if outcome.state == TaskState.TASK_STATE_FAILED:
+                bus.emit(
+                    make_event(
+                        kind="handler_error",
+                        method=task_type,
+                        direction="internal",
+                        summary=f"Failed processing {task_type}",
+                        duration_ms=round(duration_ms, 1),
+                        error=outcome.message,
+                        task_id=task_id,
+                        task_type=task_type,
+                        agent_name=agent_name,
+                    )
+                )
+                return
+            verb = "Canceled" if outcome.state == TaskState.TASK_STATE_CANCELED else "Completed"
             bus.emit(
                 make_event(
                     kind="handler_end",
                     method=task_type,
                     direction="internal",
-                    summary=f"Completed {task_type}",
+                    summary=f"{verb} {task_type}",
                     duration_ms=round(duration_ms, 1),
                     task_id=task_id,
                     task_type=task_type,

@@ -29,6 +29,7 @@ from ._compat import (
 
 # Convenience factories
 from .agent_card import ConstructionAgentCard, ConstructionSkill
+from .errors import TacoTaskError
 
 # TACO data schemas
 from .schemas import (
@@ -215,6 +216,8 @@ __all__ = [
     # Convenience factories
     "ConstructionAgentCard",
     "ConstructionSkill",
+    # Errors
+    "TacoTaskError",
     # Client (lazy — requires taco[client])
     "TacoClient",
     "TacoClientError",

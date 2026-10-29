@@ -49,6 +49,7 @@ from ._compat import (
     make_artifact,
     make_text_part,
 )
+from .errors import TacoTaskError
 from .types import (
     AgentCapabilities,
     AgentCard,
@@ -72,6 +73,21 @@ StreamingTaskHandler = Callable[[Task, dict], AsyncIterator[Part]]
 # JSON-RPC method names (v0.3 compat and v1) that open an SSE stream. The
 # a2a-sdk dispatcher records the method on ``ServerCallContext.state``.
 _STREAMING_METHODS = frozenset({"message/stream", "SendStreamingMessage"})
+
+
+def _failure_text(task_type: str, exc: Exception) -> str:
+    """The status message a caller sees when a handler raises ``exc``.
+
+    Only :class:`TacoTaskError` messages are passed through. Anything else is
+    logged with an error id and reported generically, so exception text
+    (connection strings, paths, upstream API errors) never leaves the server.
+    """
+    if isinstance(exc, TacoTaskError):
+        logger.info("Task handler for %s failed: %s", task_type, exc)
+        return str(exc)
+    error_id = uuid.uuid4().hex[:12]
+    logger.error("Task handler for %s failed (error id %s)", task_type, error_id, exc_info=exc)
+    return f"Task handler failed for type '{task_type}' (error id {error_id})"
 
 
 def _is_streaming_request(context: Any) -> bool:
@@ -238,12 +254,8 @@ class _TacoAgentExecutor(AgentExecutor):
                 )
                 await self._emit_completed(event_queue, task_id, context_id)
             except Exception as exc:
-                logger.exception("Task handler failed for %s", task_type)
                 await self._emit_failure(
-                    event_queue,
-                    task_id,
-                    context_id,
-                    f"Task handler failed for type '{task_type}': {exc}",
+                    event_queue, task_id, context_id, _failure_text(task_type, exc)
                 )
         elif use_streaming:
             try:
@@ -286,12 +298,8 @@ class _TacoAgentExecutor(AgentExecutor):
                     )
                 await self._emit_completed(event_queue, task_id, context_id)
             except Exception as exc:
-                logger.exception("Streaming handler error for %s", task_type)
                 await self._emit_failure(
-                    event_queue,
-                    task_id,
-                    context_id,
-                    f"Streaming handler failed for type '{task_type}': {exc}",
+                    event_queue, task_id, context_id, _failure_text(task_type, exc)
                 )
         else:
             await self._emit_failure(
@@ -334,6 +342,7 @@ class A2AServer:
         enable_admin: bool = False,
         admin_auth_token: str | None = None,
         enable_monitor: bool = False,
+        monitor_auth_token: str | None = None,
     ) -> None:
         self.agent_card = agent_card
         self._executor = _TacoAgentExecutor()
@@ -396,7 +405,11 @@ class A2AServer:
         if enable_monitor:
             from .monitor import enable_monitor as _enable_monitor
 
-            _enable_monitor(server=self, agent_name=agent_card.name)
+            _enable_monitor(
+                server=self,
+                agent_name=agent_card.name,
+                auth_token=monitor_auth_token,
+            )
 
     @staticmethod
     def _to_protobuf_card(card: AgentCard):

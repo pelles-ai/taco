@@ -64,6 +64,10 @@ class TacoAgent:
             disables CORS middleware entirely.
         enable_monitor: Whether to enable the Agent Monitor UI at
             ``/monitor`` on this agent's port.
+        monitor_auth_token: Token the monitor's API and WebSocket require
+            (open the UI as ``/monitor/#token=<token>``). Set it whenever
+            the agent's port is reachable by anyone but you: the monitor
+            shows every request and response payload.
     """
 
     def __init__(
@@ -76,6 +80,7 @@ class TacoAgent:
         peer_retry_delay: float = 2.0,
         cors_origins: list[str] | None = None,
         enable_monitor: bool = False,
+        monitor_auth_token: str | None = None,
     ) -> None:
         self._card = agent_card
         self._server = A2AServer(
@@ -83,6 +88,7 @@ class TacoAgent:
             task_store=task_store,
             cors_origins=cors_origins,
             enable_monitor=enable_monitor,
+            monitor_auth_token=monitor_auth_token,
         )
 
         # Peer communication (lazy imports to avoid requiring [client] extra)
