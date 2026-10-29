@@ -5,7 +5,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import CopyButton from '@site/src/components/CopyButton';
 import Playground from '@site/src/components/Playground';
 
-const INSTALL = 'pip install "taco-agent[all]" uvicorn';
+const INSTALL = 'pip install "taco-agent[all]"';
 
 export default function PlaygroundPage() {
   const {siteConfig} = useDocusaurusContext();

@@ -126,13 +126,6 @@ const config = {
     {
       tagName: 'meta',
       attributes: {
-        name: 'description',
-        content: SITE_DESCRIPTION,
-      },
-    },
-    {
-      tagName: 'meta',
-      attributes: {
         name: 'keywords',
         content:
           'construction, AI, agent, A2A, protocol, agent-to-agent, open standard, construction technology, BIM, takeoff, estimating, RFI, CSI division',
@@ -207,7 +200,13 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       image: 'img/taco-social-card.png',
-      metadata: [{name: 'og:description', content: SITE_DESCRIPTION}],
+      // Site-wide fallbacks. They go through the same <Head> as each page's own
+      // description, which replaces them, so every page has exactly one of each.
+      // (A description in headTags above would be a second, unreplaceable tag.)
+      metadata: [
+        {name: 'description', content: SITE_DESCRIPTION},
+        {property: 'og:description', content: SITE_DESCRIPTION},
+      ],
       announcementBar: {
         id: 'active_development_0_3',
         content: `TACO ${PROTOCOL_VERSION} is an open standard in active development. <a href="https://github.com/pelles-ai/taco">Star the repo</a> and help write the schemas.`,

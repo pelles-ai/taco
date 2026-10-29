@@ -5,7 +5,7 @@ import Link from '@docusaurus/Link';
 import {usePluginData} from '@docusaurus/useGlobalData';
 import CopyButton from '@site/src/components/CopyButton';
 import sampleCard from '@site/src/data/sample-agent-card.json';
-import {baseUrlOf, checkCard, checkHealth, fetchCard} from '@site/src/lib/conformance';
+import {baseUrlOf, checkCard, checkHealth, fetchCard, isCardObject} from '@site/src/lib/conformance';
 
 const STATUS_LABEL = {pass: 'Pass', fail: 'Fail', warn: 'Warning', skip: 'Skipped'};
 
@@ -132,8 +132,15 @@ export default function ConformancePage() {
       setError(`That is not valid JSON: ${err.message}`);
       return;
     }
-    if (!card || typeof card !== 'object' || Array.isArray(card)) {
+    if (!isCardObject(card)) {
       setError('Paste a single Agent Card JSON object.');
+      return;
+    }
+    let results;
+    try {
+      results = checkCard(card, spec);
+    } catch (err) {
+      setError(`The check could not finish: ${(err && err.message) || err}`);
       return;
     }
     setReport({
@@ -149,12 +156,14 @@ export default function ConformancePage() {
           status: 'skip',
           detail: 'Pasted card, so there is no URL to fetch. Check a URL to test this.',
         },
-        ...checkCard(card, spec),
+        ...results,
       ],
     });
   }, [pasted, spec]);
 
   const runUrl = useCallback(async () => {
+    // Enter in the URL field calls this too, so apply the button's rules here.
+    if (busy || !url.trim()) return;
     setError(null);
     let base;
     try {
@@ -175,10 +184,12 @@ export default function ConformancePage() {
           ? [result, ...checkCard(card, spec), health]
           : [result, health],
       });
+    } catch (err) {
+      setError(`The check could not finish: ${(err && err.message) || err}`);
     } finally {
       setBusy(false);
     }
-  }, [url, token, spec]);
+  }, [busy, url, token, spec]);
 
   const curl = url ? `curl -fsSL ${url.replace(/\/+$/, '')}/.well-known/agent-card.json` : '';
 
@@ -263,7 +274,10 @@ export default function ConformancePage() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') runUrl();
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    runUrl();
+                  }
                 }}
               />
               <label htmlFor="cf-token" className="sx-label">
@@ -291,7 +305,7 @@ export default function ConformancePage() {
                 </div>
               ) : null}
               <div className="cf__actions">
-                <button type="button" className="btn btn--primary btn--sm" onClick={runUrl} disabled={busy || !url}>
+                <button type="button" className="btn btn--primary btn--sm" onClick={runUrl} disabled={busy || !url.trim()}>
                   {busy ? 'Checking' : 'Check this agent'}
                 </button>
               </div>
