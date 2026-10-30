@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import json
 import logging
 import time
 import uuid
@@ -49,6 +50,7 @@ from ._compat import (
     extract_structured_data,
     make_artifact,
     make_text_part,
+    restore_integers,
 )
 from .agent_card import ConstructionAgentCard
 from .auth import BearerAuthMiddleware, TokenVerifier, _set_current_auth, auth_from_call_context
@@ -91,6 +93,90 @@ def _failure_text(task_type: str, exc: Exception) -> str:
     error_id = uuid.uuid4().hex[:12]
     logger.error("Task handler for %s failed (error id %s)", task_type, error_id, exc_info=exc)
     return f"Task handler failed for type '{task_type}' (error id {error_id})"
+
+
+class _WireIntegerMiddleware:
+    """Send whole numbers in JSON-RPC responses as JSON integers.
+
+    A2A v1 carries ``DataPart`` payloads as protobuf ``Struct`` values, whose
+    numbers are doubles, so the a2a-sdk serialises ``{"count": 120}`` as
+    ``{"count": 120.0}``. JSON has a single number type, but many clients
+    (and anything reading the payload as a typed record) treat ``120.0`` as a
+    float. This rewrites JSON responses and SSE ``data:`` lines on the
+    JSON-RPC endpoint with :func:`taco.restore_integers`.
+    """
+
+    def __init__(self, app: Any, rpc_path: str = "/") -> None:
+        self.app = app
+        self.rpc_path = rpc_path
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http" or scope["method"] != "POST" or scope["path"] != self.rpc_path:
+            await self.app(scope, receive, send)
+            return
+
+        mode = "passthrough"
+        held_start: dict[str, Any] | None = None
+        body_parts: list[bytes] = []
+        line_buffer = b""
+
+        async def rewriting_send(message: Any) -> None:
+            nonlocal mode, held_start, line_buffer
+            if message["type"] == "http.response.start":
+                content_type = b""
+                for key, value in message.get("headers", []):
+                    if key.lower() == b"content-type":
+                        content_type = value.lower()
+                if content_type.startswith(b"application/json"):
+                    mode, held_start = "json", message  # sent once the body is rewritten
+                    return
+                if content_type.startswith(b"text/event-stream"):
+                    mode = "sse"
+                await send(message)
+            elif message["type"] == "http.response.body" and mode == "json":
+                body_parts.append(message.get("body", b""))
+                if message.get("more_body", False):
+                    return
+                body = _restore_json_integers(b"".join(body_parts))
+                assert held_start is not None
+                headers = [
+                    (k, v)
+                    for k, v in held_start.get("headers", [])
+                    if k.lower() != b"content-length"
+                ]
+                headers.append((b"content-length", str(len(body)).encode()))
+                await send({**held_start, "headers": headers})
+                await send({"type": "http.response.body", "body": body})
+            elif message["type"] == "http.response.body" and mode == "sse":
+                lines = (line_buffer + message.get("body", b"")).split(b"\n")
+                line_buffer = lines.pop()  # keep a partial line for the next chunk
+                out = [_restore_sse_line(line) for line in lines]
+                chunk = b"".join(line + b"\n" for line in out)
+                if not message.get("more_body", False) and line_buffer:
+                    chunk += _restore_sse_line(line_buffer)
+                    line_buffer = b""
+                await send({**message, "body": chunk})
+            else:
+                await send(message)
+
+        await self.app(scope, receive, rewriting_send)
+
+
+def _restore_json_integers(raw: bytes) -> bytes:
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return raw
+    return json.dumps(restore_integers(data), separators=(",", ":"), ensure_ascii=False).encode()
+
+
+def _restore_sse_line(line: bytes) -> bytes:
+    if not line.startswith(b"data:"):
+        return line
+    payload = line[len(b"data:") :]
+    ending = b"\r" if payload.endswith(b"\r") else b""
+    restored = _restore_json_integers(payload.strip())
+    return b"data: " + restored + ending
 
 
 def _is_streaming_request(context: Any) -> bool:
@@ -464,7 +550,10 @@ class A2AServer:
 
         # Middleware added later wraps earlier middleware: CORS outermost (so
         # 401/403 responses still carry CORS headers), then auth, then the
-        # monitor's tracer, so rejected requests never reach handlers.
+        # monitor's tracer (rejected requests never reach handlers), and
+        # innermost the integer fix-up, so the monitor shows what callers get.
+        self.app.add_middleware(_WireIntegerMiddleware)
+
         if enable_monitor:
             from .monitor import enable_monitor as _enable_monitor
 

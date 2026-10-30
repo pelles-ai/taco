@@ -15,8 +15,8 @@ except ImportError:
         "Client dependencies not installed. Install with: pip install 'taco-agent[client]'"
     ) from None
 
-from ._compat import make_data_part, make_message
-from .types import AgentCard, Message, PushNotificationConfig, Task
+from ._compat import make_data_part, make_message, restore_integers
+from .types import AgentCard, DataPart, Message, PushNotificationConfig, Task
 
 _log = logging.getLogger("taco.client")
 
@@ -58,6 +58,17 @@ class MessageReplyError(TacoClientError):
     def __init__(self, reply: Message) -> None:
         self.reply = reply
         super().__init__("Agent replied with a Message instead of a Task")
+
+
+def _restore_task_integers(task: Task) -> Task:
+    """Apply :func:`restore_integers` to every DataPart in ``task``."""
+    messages = [*(task.history or []), *([task.status.message] if task.status.message else [])]
+    parts = [p for m in messages for p in m.parts]
+    parts += [p for a in task.artifacts or [] for p in a.parts]
+    for part in parts:
+        if isinstance(part.root, DataPart):
+            part.root.data = restore_integers(part.root.data)
+    return task
 
 
 class TacoClient:
@@ -153,7 +164,8 @@ class TacoClient:
         if "error" in body and body["error"] is not None:
             err = body["error"]
             raise RpcError(err["code"], err["message"], err.get("data"))
-        return body.get("result", {})
+        # Peers on A2A v1 may send whole numbers as 120.0 (protobuf Struct).
+        return restore_integers(body.get("result", {}))
 
     # -- task operations --
 
@@ -253,13 +265,15 @@ class TacoClient:
         cursor: str | None = None,
         limit: int | None = None,
         context_id: str | None = None,
+        include_artifacts: bool = False,
         headers: dict[str, str] | None = None,
     ) -> tuple[list[Task], str | None]:
         """List tasks visible to this caller via the v1 ``ListTasks`` RPC.
 
         Returns ``(tasks, next_cursor)``. Pass ``next_cursor`` back as
         ``cursor`` on a subsequent call to fetch the next page; a
-        ``None`` cursor means there are no more results.
+        ``None`` cursor means there are no more results. ``ListTasks``
+        leaves artifacts out unless ``include_artifacts`` is ``True``.
 
         ``ListTasks`` was added in A2A v1.0, so this method overrides
         the default ``A2A-Version: 0.3`` header with ``1.0`` for the
@@ -272,6 +286,8 @@ class TacoClient:
             params["pageSize"] = limit
         if context_id is not None:
             params["contextId"] = context_id
+        if include_artifacts:
+            params["includeArtifacts"] = True
 
         merged_headers: dict[str, str] = {"A2A-Version": "1.0", **(headers or {})}
 
@@ -285,7 +301,8 @@ class TacoClient:
         tasks: list[Task] = []
         for raw in result.get("tasks", []):
             pb = ParseDict(raw, TaskPb(), ignore_unknown_fields=True)
-            tasks.append(conversions.to_compat_task(pb))
+            # The protobuf round trip turns whole numbers back into floats.
+            tasks.append(_restore_task_integers(conversions.to_compat_task(pb)))
         next_cursor = result.get("nextPageToken") or None
         return tasks, next_cursor
 
@@ -408,7 +425,7 @@ class TacoClient:
                 elif line.startswith("data:"):
                     data_str = line[len("data:") :].strip()
                     try:
-                        data = json.loads(data_str)
+                        data = restore_integers(json.loads(data_str))
                     except (json.JSONDecodeError, ValueError) as parse_err:
                         _log.warning(
                             "Failed to parse SSE data as JSON (event=%s): %s",
