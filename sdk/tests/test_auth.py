@@ -234,3 +234,136 @@ class TestTacoAgentAuth:
             )
         assert denied.status_code == 401
         assert allowed.json()["result"]["status"]["state"] == "completed"
+
+
+class TestScopeRules:
+    @pytest.mark.parametrize(
+        ("granted", "needed", "allowed"),
+        [
+            ("taco:project:PRJ-1", "taco:project:PRJ-1:write", True),  # omitted = write
+            ("taco:project:PRJ-1:write", "taco:project:PRJ-1", True),
+            ("taco:project:PRJ-1:admin", "taco:project:PRJ-1:write", True),
+            ("taco:project:PRJ-1:write", "taco:project:PRJ-1:read", True),
+            ("taco:project:PRJ-1:read", "taco:project:PRJ-1:write", False),
+            ("taco:project:PRJ-1:write", "taco:project:PRJ-2:write", False),
+            ("taco:task:estimate:write", "taco:task:estimate", True),
+            ("taco:task:estimate:read", "taco:task:estimate", False),
+            ("openid", "openid", True),
+            ("openid", "profile", False),
+        ],
+    )
+    def test_allows(self, granted, needed, allowed):
+        assert AuthContext(subject="s", scopes=frozenset({granted})).allows(needed) is allowed
+
+    def test_project_scope_helper(self):
+        from taco import project_scope
+
+        assert project_scope("PRJ-0042") == "taco:project:PRJ-0042:write"
+        assert project_scope("PRJ-0042", "read") == "taco:project:PRJ-0042:read"
+        with pytest.raises(ValueError):
+            project_scope("PRJ-0042", "delete")
+
+
+PROJECT_TOKENS = {
+    "prj1-write": {"taco:task:estimate", "taco:project:PRJ-1:write"},
+    "prj1-bare": {"taco:task:estimate", "taco:project:PRJ-1"},
+    "prj1-admin": {"taco:task:estimate", "taco:project:PRJ-1:admin"},
+    "prj1-read": {"taco:task:estimate", "taco:project:PRJ-1:read"},
+    "no-project": {"taco:task:estimate"},
+}
+
+
+async def verify_project(token: str) -> AuthContext | None:
+    scopes = PROJECT_TOKENS.get(token)
+    return AuthContext(subject=token, scopes=frozenset(scopes)) if scopes else None
+
+
+class TestProjectScope:
+    def _server(self, project_scoped: bool = True, **kwargs) -> A2AServer:
+        card = _card(construction_security=SecurityExt(project_scoped=project_scoped))
+        server = A2AServer(card, token_verifier=verify_project, **kwargs)
+        server.register_handler("estimate", handler)
+        return server
+
+    async def _send(self, server: A2AServer, token: str, data: dict, *, task_id=None):
+        payload = _send_payload()
+        payload["params"]["message"]["parts"][0]["data"] = data
+        if task_id:
+            payload["params"]["message"]["taskId"] = task_id
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=server.app), base_url="http://test"
+        ) as http:
+            return await http.post("/", json=payload, headers={"Authorization": f"Bearer {token}"})
+
+    @pytest.mark.parametrize("token", ["prj1-write", "prj1-bare", "prj1-admin"])
+    async def test_token_covering_the_project_is_allowed(self, token):
+        resp = await self._send(self._server(), token, {"projectId": "PRJ-1"})
+        assert resp.status_code == 200
+        assert resp.json()["result"]["status"]["state"] == "completed"
+
+    async def test_other_project_is_403(self):
+        resp = await self._send(self._server(), "prj1-write", {"projectId": "PRJ-2"})
+        assert resp.status_code == 403
+        assert "taco:project:PRJ-2:write" in resp.json()["error"]["message"]
+        assert seen_auth == []
+
+    @pytest.mark.parametrize("token", ["prj1-read", "no-project"])
+    async def test_token_without_write_on_the_project_is_403(self, token):
+        resp = await self._send(self._server(), token, {"projectId": "PRJ-1"})
+        assert resp.status_code == 403
+
+    async def test_missing_project_id_is_403(self):
+        resp = await self._send(self._server(), "prj1-write", {"lineItems": []})
+        assert resp.status_code == 403
+        assert "needs a projectId" in resp.json()["error"]["message"]
+
+    async def test_follow_up_on_an_existing_task_needs_no_project_id(self):
+        server = self._server()
+        created = await self._send(server, "prj1-write", {"projectId": "PRJ-1"})
+        task_id = created.json()["result"]["id"]
+        follow_up = await self._send(server, "prj1-write", {"note": "thanks"}, task_id=task_id)
+        assert follow_up.status_code != 403
+
+    async def test_agent_that_is_not_project_scoped_skips_the_check(self):
+        server = self._server(project_scoped=False)
+        resp = await self._send(server, "no-project", {"projectId": "PRJ-9"})
+        assert resp.status_code == 200
+
+    async def test_explicit_setting_overrides_the_card(self):
+        off = self._server(project_scoped=True, require_project_scope=False)
+        assert (await self._send(off, "no-project", {"projectId": "PRJ-9"})).status_code == 200
+        on = self._server(project_scoped=False, require_project_scope=True)
+        assert (await self._send(on, "no-project", {"projectId": "PRJ-9"})).status_code == 403
+
+    async def test_v1_wire_shape_is_checked_too(self):
+        server = self._server()
+        payload = {
+            "jsonrpc": "2.0",
+            "id": "v1",
+            "method": "SendMessage",
+            "params": {
+                "message": {
+                    "messageId": "m-v1",
+                    "role": "ROLE_USER",
+                    "parts": [{"data": {"projectId": "PRJ-2"}}],
+                },
+                "metadata": {"taskType": "estimate"},
+            },
+        }
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=server.app), base_url="http://test"
+        ) as http:
+            resp = await http.post(
+                "/",
+                json=payload,
+                headers={"Authorization": "Bearer prj1-write", "A2A-Version": "1.0"},
+            )
+        assert resp.status_code == 403
+
+    async def test_taco_agent_passes_the_setting_through(self):
+        from taco import TacoAgent
+
+        agent = TacoAgent(_card(), token_verifier=verify_project, require_project_scope=True)
+        agent.register_handler("estimate", handler)
+        resp = await self._send(agent.server, "no-project", {"projectId": "PRJ-1"})
+        assert resp.status_code == 403

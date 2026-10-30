@@ -21,7 +21,14 @@ Only the JSON-RPC endpoint is protected; the agent card, ``/health`` and
 the monitor (which has its own token) stay as they are. Each caller's
 ``subject`` becomes the task owner, so the a2a-sdk task stores only show
 callers their own tasks. Inside a handler, :func:`current_auth` returns the
-caller's :class:`AuthContext`, for checks such as project-scoped tokens.
+caller's :class:`AuthContext`.
+
+A project-scoped agent (``x-construction.security.projectScoped: true``, or
+``require_project_scope=True``) also answers HTTP 403 unless the token
+covers the ``projectId`` in the request data (``taco:project:<id>:write``).
+
+Scopes follow ``taco:{dimension}:{value}[:{action}]``: an omitted action
+means ``write``, and ``admin`` covers ``write``, which covers ``read``.
 """
 
 from __future__ import annotations
@@ -40,6 +47,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger("taco.auth")
 
 TASK_SCOPE_PREFIX = "taco:task:"
+PROJECT_SCOPE_PREFIX = "taco:project:"
+
+# Scope actions, weakest first. A granted action covers every weaker one.
+_ACTIONS = ("read", "write", "admin")
 
 # JSON-RPC methods (v0.3 compat and v1) that start a task.
 _TASK_METHODS = frozenset({"message/send", "message/stream", "SendMessage", "SendStreamingMessage"})
@@ -61,7 +72,30 @@ class AuthContext:
     claims: dict[str, Any] = field(default_factory=dict)
 
     def has_scope(self, scope: str) -> bool:
+        """Whether ``scope`` was granted exactly as written."""
         return scope in self.scopes
+
+    def allows(self, scope: str) -> bool:
+        """Whether the granted scopes cover ``scope`` under the TACO scope rules.
+
+        ``taco:project:PRJ-1`` (action omitted, so ``write``) is covered by
+        ``taco:project:PRJ-1``, ``taco:project:PRJ-1:write`` or
+        ``taco:project:PRJ-1:admin``, but not by ``taco:project:PRJ-1:read``.
+        Scopes without a TACO action must match exactly.
+        """
+        base, action = _split_action(scope)
+        needed = _ACTIONS.index(action)
+        return any(
+            granted_base == base and _ACTIONS.index(granted_action) >= needed
+            for granted_base, granted_action in map(_split_action, self.scopes)
+        )
+
+
+def _split_action(scope: str) -> tuple[str, str]:
+    base, _, action = scope.rpartition(":")
+    if base and action in _ACTIONS:
+        return base, action
+    return scope, "write"
 
 
 TokenVerifier = Callable[[str], Awaitable["AuthContext | None"]]
@@ -83,6 +117,16 @@ def current_auth() -> AuthContext | None:
 def task_scope(task_type: str) -> str:
     """The scope a token needs to request ``task_type`` (``taco:task:<type>``)."""
     return f"{TASK_SCOPE_PREFIX}{task_type}"
+
+
+def project_scope(project_id: str, action: str = "write") -> str:
+    """A project scope, e.g. ``taco:project:PRJ-0042:write``.
+
+    Submitting a task for a project needs ``write`` (the default).
+    """
+    if action not in _ACTIONS:
+        raise ValueError(f"action must be one of {_ACTIONS}, got {action!r}")
+    return f"{PROJECT_SCOPE_PREFIX}{project_id}:{action}"
 
 
 @functools.cache
@@ -130,12 +174,14 @@ class BearerAuthMiddleware:
         server: A2AServer,
         verifier: TokenVerifier,
         require_task_scope: bool = True,
+        require_project_scope: bool | None = None,
         rpc_path: str = "/",
     ) -> None:
         self.app = app
         self.server = server
         self.verifier = verifier
         self.require_task_scope = require_task_scope
+        self.require_project_scope = require_project_scope
         self.rpc_path = rpc_path
 
     async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
@@ -183,10 +229,10 @@ class BearerAuthMiddleware:
             await _reject(send, 401, rpc_id, "Unauthorized: invalid token")
             return
 
-        if self.require_task_scope and isinstance(payload, dict):
-            required = self._required_scope(payload)
-            if required is not None and not auth.has_scope(required):
-                await _reject(send, 403, rpc_id, f"Forbidden: token lacks scope {required}")
+        if isinstance(payload, dict) and payload.get("method") in _TASK_METHODS:
+            denial = self._denial(payload, auth)
+            if denial is not None:
+                await _reject(send, 403, rpc_id, f"Forbidden: {denial}")
                 return
 
         # The a2a-sdk turns these into the task owner and call-context state;
@@ -195,18 +241,51 @@ class BearerAuthMiddleware:
         scope = {**scope, "auth": credentials, "user": user}
         await self.app(scope, replay_receive, send)
 
-    def _required_scope(self, payload: dict[str, Any]) -> str | None:
-        if payload.get("method") not in _TASK_METHODS:
-            return None
+    def _denial(self, payload: dict[str, Any], auth: AuthContext) -> str | None:
+        """Why a task request is forbidden for ``auth``, or ``None`` if allowed."""
         params = payload.get("params")
-        metadata = params.get("metadata") if isinstance(params, dict) else None
-        try:
-            task_type = self.server._executor._resolve_task_type(
-                metadata if isinstance(metadata, dict) else None
-            )
-        except ValueError:
-            return None  # the executor fails the task: no task type to authorize
-        return task_scope(task_type)
+        params = params if isinstance(params, dict) else {}
+
+        if self.require_task_scope:
+            metadata = params.get("metadata")
+            try:
+                task_type = self.server._executor._resolve_task_type(
+                    metadata if isinstance(metadata, dict) else None
+                )
+            except ValueError:
+                task_type = None  # the executor fails the task: nothing to authorize
+            if task_type is not None and not auth.allows(task_scope(task_type)):
+                return f"token lacks scope {task_scope(task_type)}"
+
+        if self._project_scoped():
+            message = params.get("message")
+            message = message if isinstance(message, dict) else {}
+            project_id = _project_id(message)
+            if project_id is None:
+                # A follow-up message on an existing task (already authorized
+                # and owner-scoped) may carry no data.
+                if message.get("taskId"):
+                    return None
+                return "this agent is project-scoped; the request data needs a projectId"
+            if not auth.allows(project_scope(project_id)):
+                return f"token lacks scope {project_scope(project_id)}"
+        return None
+
+    def _project_scoped(self) -> bool:
+        if self.require_project_scope is not None:
+            return self.require_project_scope
+        xc = self.server.agent_card.x_construction
+        return bool(xc is not None and xc.security is not None and xc.security.project_scoped)
+
+
+def _project_id(message: dict[str, Any]) -> str | None:
+    """``projectId`` from the message's first data part (v0.3 or v1 wire shape)."""
+    for part in message.get("parts") or []:
+        data = part.get("data") if isinstance(part, dict) else None
+        if isinstance(data, dict):
+            project_id = data.get("projectId")
+            return project_id if isinstance(project_id, str) and project_id else None
+    return None
 
 
 def _bearer_token(scope: Any) -> str | None:

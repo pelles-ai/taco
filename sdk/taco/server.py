@@ -478,13 +478,17 @@ class A2AServer:
         monitor_auth_token: str | None = None,
         token_verifier: TokenVerifier | None = None,
         require_task_scope: bool = True,
+        require_project_scope: bool | None = None,
     ) -> None:
         """Create the server.
 
         ``token_verifier`` turns on bearer-token auth for the JSON-RPC
         endpoint (see :mod:`taco.auth`): requests without a valid token get
         HTTP 401 and, with ``require_task_scope``, a token lacking
-        ``taco:task:<taskType>`` gets HTTP 403. Declare the scheme in the
+        ``taco:task:<taskType>`` gets HTTP 403. With ``require_project_scope``
+        (default: the card's ``x-construction.security.projectScoped``), a
+        token must also cover the request data's ``projectId``
+        (``taco:project:<id>:write``), or the request gets HTTP 403. Declare the scheme in the
         card's ``security_schemes`` / ``security`` so callers know to send it.
 
         ``agent_card`` may be a :class:`ConstructionAgentCard`; it is
@@ -569,6 +573,7 @@ class A2AServer:
                 server=self,
                 verifier=token_verifier,
                 require_task_scope=require_task_scope,
+                require_project_scope=require_project_scope,
             )
 
         if cors_origins is not None:

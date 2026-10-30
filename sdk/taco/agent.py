@@ -81,6 +81,9 @@ class TacoAgent:
             ``headers=`` — never forward the caller's token.
         require_task_scope: With ``token_verifier``, require the
             ``taco:task:<taskType>`` scope (default ``True``).
+        require_project_scope: With ``token_verifier``, require the token
+            to cover the request data's ``projectId``. Defaults to the
+            card's ``x-construction.security.projectScoped``.
     """
 
     def __init__(
@@ -97,6 +100,7 @@ class TacoAgent:
         monitor_auth_token: str | None = None,
         token_verifier: TokenVerifier | None = None,
         require_task_scope: bool = True,
+        require_project_scope: bool | None = None,
     ) -> None:
         self._card = agent_card
         self._server = A2AServer(
@@ -107,6 +111,7 @@ class TacoAgent:
             monitor_auth_token=monitor_auth_token,
             token_verifier=token_verifier,
             require_task_scope=require_task_scope,
+            require_project_scope=require_project_scope,
         )
 
         # Peer communication (lazy imports to avoid requiring [client] extra)
