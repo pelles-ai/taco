@@ -123,7 +123,7 @@ GROUPS: list[GroupSpec] = [
         description=(
             "Bearer-token authentication for `A2AServer`: a verifier you "
             "supply, the caller's identity inside handlers, and the "
-            "`taco:task:<taskType>` scope helper."
+            "`taco:task:<taskType>` and `taco:project:<id>` scope helpers."
         ),
         sidebar_position=3,
         symbols=[
@@ -139,6 +139,7 @@ GROUPS: list[GroupSpec] = [
             ),
             SymbolSpec("current_auth", "function"),
             SymbolSpec("task_scope", "function"),
+            SymbolSpec("project_scope", "function"),
         ],
         see_also=[
             SeeAlsoLink("Security: implementing it with the SDK", "/docs/security#implementing-it-with-the-sdk"),

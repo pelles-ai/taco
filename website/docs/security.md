@@ -298,11 +298,23 @@ With a verifier in place, the server:
 - keeps the Agent Card and `/health` public, as discovery needs them, and leaves the monitor to its own token;
 - records each caller's `subject` as the owner of the tasks it creates, so `tasks/get`, `tasks/cancel` and `ListTasks` only show callers their own tasks (in memory, in `JsonFileTaskStore` and in the a2a-sdk's `DatabaseTaskStore`).
 
-`TacoAgent` takes the same `token_verifier` and `require_task_scope` arguments for its inbound requests. Its outbound peer calls carry their own credentials (`send_to_peer(..., headers=...)`); never forward the caller's token to a peer.
+`TacoAgent` takes the same `token_verifier`, `require_task_scope` and `require_project_scope` arguments for its inbound requests. Its outbound peer calls carry their own credentials (`send_to_peer(..., headers=...)`); never forward the caller's token to a peer.
 
-### Check project scopes in the handler
+### Project-scoped agents
 
-The verifier only sees the token; the project is in the payload. Inside a handler, `taco.current_auth()` returns the caller's `AuthContext`, so you can compare the two:
+When the card declares `x-construction.security.projectScoped: true` (as above), `A2AServer` also checks the project before the handler runs. It reads `projectId` from the request's first data part and answers HTTP 403 unless the token covers `taco:project:<projectId>:write`:
+
+| Token scopes | Request `projectId` | Result |
+|---|---|---|
+| `taco:task:estimate taco:project:PRJ-0042:write` | `PRJ-0042` | accepted |
+| `taco:task:estimate taco:project:PRJ-0042` (action omitted = `write`) | `PRJ-0042` | accepted |
+| `taco:task:estimate taco:project:PRJ-0042:read` | `PRJ-0042` | 403: `read` does not allow task submission |
+| `taco:task:estimate taco:project:PRJ-0042:write` | `PRJ-0099` | 403 |
+| any | none | 403, except a follow-up message on an existing task |
+
+`require_project_scope=True` or `False` on `A2AServer` / `TacoAgent` overrides the card. Scope checks follow the taxonomy above: an omitted action means `write`, and `admin` covers `write`, which covers `read`. `AuthContext.allows(scope)` applies the same rule, and `taco.project_scope("PRJ-0042")` builds the scope string.
+
+For checks the SDK doesn't make (trade or CSI boundaries, read-only consultants), `taco.current_auth()` returns the caller's `AuthContext` inside a handler. Raise `taco.TacoTaskError` to fail the task with a message the caller sees:
 
 ```python
 from taco import TacoTaskError, current_auth
@@ -310,13 +322,10 @@ from taco import TacoTaskError, current_auth
 
 async def handle_estimate(task, payload):
     auth = current_auth()  # None when the server has no token_verifier
-    project = payload.get("projectId")
-    if auth is None or not auth.has_scope(f"taco:project:{project}:write"):
-        raise TacoTaskError(f"This token is not scoped to project {project}")
+    if auth is None or not auth.allows(f"taco:csi:{payload['csiDivision']}"):
+        raise TacoTaskError("This token does not cover the requested CSI division")
     ...
 ```
-
-The request has already been accepted by then, so the caller gets a `failed` task carrying that message, not an HTTP 403. If your deployment needs a 403 for a project mismatch, check the payload in a gateway or middleware in front of the agent.
 
 ### Use your own token for downstream calls
 
@@ -350,7 +359,7 @@ If the exchange needs the token your agent received as its `subject_token`, have
 | 3. Scopes in `scopesOffered` | `construction_security=SecurityExt(scopes_offered=[...])` |
 | 4. Validate tokens; 401 / 403 | `A2AServer(card, token_verifier=verify)`; task scope enforced by default |
 | 5. No token passthrough | Your own token in `TacoClient(headers=...)` or `send_to_peer(headers=...)` |
-| 6. Project scope matches `projectId` | `taco.current_auth()` in the handler |
+| 6. Project scope matches `projectId` | Automatic for project-scoped agents (HTTP 403); `require_project_scope=` overrides the card |
 
 ## Adding New Scopes
 

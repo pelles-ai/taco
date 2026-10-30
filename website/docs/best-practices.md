@@ -143,20 +143,21 @@ The discipline: every hop performs a [RFC 8693 Token Exchange](https://datatrack
 
 ### Bind project-scoped tokens to the project ID in the payload
 
-A token holding `taco:project:PRJ-0042:write` should be rejected if it arrives with a task whose payload references `PRJ-0099`. The token says one thing; the payload says another; the handler should refuse rather than guess.
+A token holding `taco:project:PRJ-0042:write` should be rejected if it arrives with a task whose payload references `PRJ-0099`. The token says one thing; the payload says another; the agent should refuse rather than guess.
+
+Declare the agent project-scoped and the SDK does this for you, before the handler runs:
 
 ```python
-from taco import TacoTaskError, current_auth
+from taco import A2AServer, ConstructionAgentCard, SecurityExt
 
-async def handle_estimate(task: Task, payload: dict) -> Artifact:
-    auth = current_auth()  # the AuthContext your token_verifier returned
-    payload_project = payload.get("projectId")
-    if auth is None or not auth.has_scope(f"taco:project:{payload_project}:write"):
-        raise TacoTaskError(f"Token is not scoped to project {payload_project}")
-    ...
+card = ConstructionAgentCard(
+    ...,
+    construction_security=SecurityExt(project_scoped=True),
+)
+server = A2AServer(card, token_verifier=verify)
 ```
 
-`TacoTaskError` fails the task with that message. It is a `failed` task, not an HTTP 403, because the request was already accepted; if you need the status code, check the payload in a gateway in front of the agent.
+A request whose token doesn't cover `taco:project:<projectId>:write` for the `projectId` in its data gets HTTP 403. See [Security: project-scoped agents](./security#project-scoped-agents).
 
 ### Rotate sidecar credentials, not just user tokens
 

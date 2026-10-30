@@ -69,6 +69,7 @@ server = A2AServer(
     monitor_auth_token=None,        # Token the monitor requires (set it before exposing the port)
     token_verifier=None,            # async (token) -> AuthContext | None; turns on bearer auth
     require_task_scope=True,        # With token_verifier: require taco:task:<taskType>
+    require_project_scope=None,     # Require taco:project:<projectId>:write (default: card's projectScoped)
 )
 ```
 
@@ -343,7 +344,7 @@ async for event in client.stream_message("estimate", bom_data):
     print(result["kind"])  # "task", "artifact-update", "status-update"
 ```
 
-Each yielded dict has `event` (str) and `data` (the parsed JSON-RPC response). These are raw dicts, so numbers in streamed data parts are floats; pass them through `taco.restore_integers` if you need ints back.
+Each yielded dict has `event` (str) and `data` (the parsed JSON-RPC response), with whole numbers restored to `int`.
 
 #### `get_task(task_id, *, headers=None) → Task`
 
@@ -363,12 +364,12 @@ task = await client.cancel_task("task-abc-123")
 print(task.status.state)  # TaskState.canceled
 ```
 
-#### `list_tasks(*, cursor=None, limit=None, context_id=None, headers=None) → (list[Task], str | None)`
+#### `list_tasks(*, cursor=None, limit=None, context_id=None, include_artifacts=False, headers=None) → (list[Task], str | None)`
 
-List the tasks this caller can see, newest first, with the A2A v1 `ListTasks` method. Pass the returned cursor back to get the next page; `None` means there are no more:
+List the tasks this caller can see, newest first, with the A2A v1 `ListTasks` method. Pass the returned cursor back to get the next page; `None` means there are no more. `ListTasks` leaves artifacts out unless you pass `include_artifacts=True`:
 
 ```python
-tasks, cursor = await client.list_tasks(limit=20, context_id="ctx-123")
+tasks, cursor = await client.list_tasks(limit=20, context_id="ctx-123", include_artifacts=True)
 ```
 
 The client also manages push notification configs (`create_push_config`, `list_push_configs`, `get_push_config`, `delete_push_config`); see the [SDK Reference](/docs/sdk-reference/client).
@@ -659,7 +660,7 @@ text = extract_text(part)           # Returns str or None if not a TextPart
 data = extract_structured_data(part)  # Returns dict or None if not a DataPart
 ```
 
-A2A v1 carries data parts as protobuf `Struct` values, which store every number as a float. `extract_structured_data` and `get_data_parts` (and so handler `input_data`) turn whole numbers back into `int`: `{"count": 3}` reads back as `3`, not `3.0`. Reading `part.root.data` directly still shows floats; `taco.restore_integers(value)` converts any dict or list the same way.
+A2A v1 carries data parts as protobuf `Struct` values, which store every number as a float. The SDK undoes that everywhere it can: TACO servers send whole numbers as JSON integers, handler `input_data`, `extract_structured_data` and `get_data_parts` return `int`s, and `TacoClient` restores integers in what it receives. `{"count": 3}` reads back as `3`, not `3.0`. For data from elsewhere (a non-TACO A2A v1 agent, a protobuf object you converted yourself), `taco.restore_integers(value)` converts any dict or list the same way.
 
 ### Inspecting Messages
 

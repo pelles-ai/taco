@@ -58,11 +58,14 @@ Args:
         ``headers=`` — never forward the caller's token.
     require_task_scope: With ``token_verifier``, require the
         ``taco:task:<taskType>`` scope (default ``True``).
+    require_project_scope: With ``token_verifier``, require the token
+        to cover the request data's ``projectId``. Defaults to the
+        card's ``x-construction.security.projectScoped``.
 
 #### Constructor
 
 ```python
-TacoAgent(agent_card: 'ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, peers: 'list[str] | str | None' = None, peer_retry_attempts: 'int' = 5, peer_retry_delay: 'float' = 2.0, peer_startup_wait: 'float' = 2.0, cors_origins: 'list[str] | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None, token_verifier: 'TokenVerifier | None' = None, require_task_scope: 'bool' = True) -> 'None'
+TacoAgent(agent_card: 'ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, peers: 'list[str] | str | None' = None, peer_retry_attempts: 'int' = 5, peer_retry_delay: 'float' = 2.0, peer_startup_wait: 'float' = 2.0, cors_origins: 'list[str] | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None, token_verifier: 'TokenVerifier | None' = None, require_task_scope: 'bool' = True, require_project_scope: 'bool | None' = None) -> 'None'
 ```
 
 #### Methods

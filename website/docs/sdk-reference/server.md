@@ -17,7 +17,7 @@ Run a TACO-compatible A2A server. Register typed handlers per task type, fail ta
 ## `A2AServer`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/server.py#L374)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/server.py#L460)
 
 Reusable FastAPI application implementing the A2A protocol.
 
@@ -28,7 +28,7 @@ format unchanged.
 #### Constructor
 
 ```python
-A2AServer(agent_card: 'AgentCard | ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, push_config_store: 'PushNotificationConfigStore | None' = None, cors_origins: 'list[str] | None' = None, enable_admin: 'bool' = False, admin_auth_token: 'str | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None, token_verifier: 'TokenVerifier | None' = None, require_task_scope: 'bool' = True) -> 'None'
+A2AServer(agent_card: 'AgentCard | ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, push_config_store: 'PushNotificationConfigStore | None' = None, cors_origins: 'list[str] | None' = None, enable_admin: 'bool' = False, admin_auth_token: 'str | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None, token_verifier: 'TokenVerifier | None' = None, require_task_scope: 'bool' = True, require_project_scope: 'bool | None' = None) -> 'None'
 ```
 
 #### Methods

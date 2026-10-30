@@ -83,7 +83,7 @@ Handlers never touch the `EventQueue` directly; the SDK enqueues an event for ea
 1. The status code. A 401 means the token was missing or `verify` returned `None` (or raised; the exception is logged on `taco.auth`). A 403 means the token is valid but lacks `taco:task:<taskType>` for the requested task; the JSON-RPC error message names the missing scope.
 2. `verify` validates against the same auth server that issued the token, and puts the token's scopes into `AuthContext.scopes`.
 3. The agent card's `security` array references a `securitySchemes` key that exists (`ConstructionAgentCard(security_schemes=..., security=...)`; `taco inspect <url>` shows both; [SPEC-005](/docs/spec/SPEC-005-conformance) lists this as a conformance check, and the [conformance check](/conformance) runs it)
-4. If using project scopes, the token's `taco:project:PRJ-0042` matches `payload["projectId"]`. Check it in the handler with `taco.current_auth()` and reject mismatches explicitly rather than treating them as "missing scope". See [Security: implementing it with the SDK](./security#implementing-it-with-the-sdk).
+4. If the agent is project-scoped, the token's `taco:project:PRJ-0042` (or `:write` / `:admin`) matches `payload["projectId"]`; a `:read` project scope does not allow task submission. The 403 message names the missing scope. See [Security: project-scoped agents](./security#project-scoped-agents).
 
 ---
 
@@ -160,7 +160,7 @@ Note that `cors_origins` applies to the whole app, not just the well-known path:
 
 **Why it happens.** A2A v1 carries `DataPart` payloads as protobuf `Struct` values, and a `Struct` stores every number as a double. JSON makes no int/float distinction, so nothing is lost, but Python sees `3.0`.
 
-**How to fix.** Read data through the SDK: handler `input_data`, `extract_structured_data()` and `get_data_parts()` turn whole numbers back into `int` (in `taco-agent` 0.3.20 and earlier they did not, so upgrade). Code that reads `part.root.data` directly, or the raw event dicts from `stream_message()`, still sees floats; pass those through `taco.restore_integers()`. Schema validators are not affected: JSON Schema treats `120.0` as an integer.
+**How to fix.** Upgrade: after `taco-agent` 0.3.20, TACO servers send whole numbers as JSON integers in their responses and stream events, handler `input_data` gets `int`s, and `TacoClient` restores integers in what it receives (including `list_tasks`, whose protobuf round trip brings the floats back). From a non-TACO A2A v1 agent, or a protobuf object you converted yourself, you may still see floats; pass those through `taco.restore_integers()`. Schema validators are not affected: JSON Schema treats `120.0` as an integer.
 
 ---
 

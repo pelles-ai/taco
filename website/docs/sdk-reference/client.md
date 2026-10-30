@@ -17,7 +17,7 @@ Call another TACO agent over A2A. Async HTTP, JSON-RPC and streaming, push notif
 ## `TacoClient`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L63)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L74)
 
 Async client for sending tasks to a TACO-compatible agent.
 
@@ -108,14 +108,15 @@ Return every push config currently registered for ``task_id``.
 ### `list_tasks()`
 
 ```python
-async def list_tasks(self, *, cursor: 'str | None' = None, limit: 'int | None' = None, context_id: 'str | None' = None, headers: 'dict[str, str] | None' = None) -> 'tuple[list[Task], str | None]'
+async def list_tasks(self, *, cursor: 'str | None' = None, limit: 'int | None' = None, context_id: 'str | None' = None, include_artifacts: 'bool' = False, headers: 'dict[str, str] | None' = None) -> 'tuple[list[Task], str | None]'
 ```
 
 List tasks visible to this caller via the v1 ``ListTasks`` RPC.
 
 Returns ``(tasks, next_cursor)``. Pass ``next_cursor`` back as
 ``cursor`` on a subsequent call to fetch the next page; a
-``None`` cursor means there are no more results.
+``None`` cursor means there are no more results. ``ListTasks``
+leaves artifacts out unless ``include_artifacts`` is ``True``.
 
 ``ListTasks`` was added in A2A v1.0, so this method overrides
 the default ``A2A-Version: 0.3`` header with ``1.0`` for the

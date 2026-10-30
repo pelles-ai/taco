@@ -83,7 +83,7 @@ The format, dimensions, actions, and default above are those defined in the cano
 
 Agents that accept OAuth tokens **SHALL** validate that the token's scopes are sufficient for the requested operation per the agent's published authorization model. Agents **SHALL NOT** accept tokens whose project scope mismatches the project ID in the payload (see §5).
 
-The reference SDK enforces one scope: with a `token_verifier`, `A2AServer` rejects a task request whose token lacks `taco:task:{taskType}` (unless `require_task_scope=False`). Trade, CSI and project scopes are the agent's responsibility; handlers read the caller's scopes with `taco.current_auth()`. `x-construction.security.scopesOffered` is informational, and the authoritative scope declaration is the Agent Card's `securitySchemes`.
+The reference SDK enforces task and project scopes: with a `token_verifier`, `A2AServer` rejects a task request whose token lacks `taco:task:{taskType}` (unless `require_task_scope=False`), and a project-scoped agent (`x-construction.security.projectScoped`, or `require_project_scope=True`) also rejects one whose token does not cover `taco:project:{projectId}:write` for the payload's `projectId` (§5), with HTTP 403. An omitted scope action counts as `write`, and `admin` covers `write`, which covers `read`. Trade and CSI scopes are the agent's responsibility; handlers read the caller's scopes with `taco.current_auth()`. `x-construction.security.scopesOffered` is informational, and the authoritative scope declaration is the Agent Card's `securitySchemes`.
 
 ## 4. Token Exchange between agents
 
