@@ -55,7 +55,7 @@ The `taco` CLI now catches `HTTPStatusError` and `ConnectError` exceptions and d
 ## Get Started
 
 ```bash
-pip install taco-agent
+pip install "taco-agent[all]"
 ```
 
 Check out the [getting started guide](/docs/getting-started/build-agent) to build your first construction agent, or explore the [data schemas](/docs/schemas/) to see what's available.

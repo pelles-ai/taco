@@ -1,7 +1,7 @@
 ---
 title: "Registry"
-description: "In-memory discovery layer with optional JSON persistence. Find agents by trade, task type, CSI division, or project type."
-sidebar_position: 5
+description: "In-memory discovery layer with optional JSON persistence. Find agents by trade, task type, CSI division, project type, or integration."
+sidebar_position: 6
 ---
 
 :::info Generated
@@ -12,7 +12,7 @@ this MDX by hand.
 
 # Registry
 
-In-memory discovery layer with optional JSON persistence. Find agents by trade, task type, CSI division, or project type.
+In-memory discovery layer with optional JSON persistence. Find agents by trade, task type, CSI division, project type, or integration.
 
 ## `AgentRegistry`
 
@@ -32,10 +32,22 @@ AgentRegistry(*, timeout: 'float' = 10.0, persistence_path: 'str | None' = None)
 
 #### Methods
 
+### `entries()`
+
+```python
+def entries(self) -> 'list[tuple[str, AgentCard]]'
+```
+
+Return ``(url, card)`` pairs, ``url`` being where each agent was found.
+
+Send requests to that URL rather than to the card's self-declared
+``url``: the card may be empty, point at ``localhost`` inside a
+container, or name any host the peer chooses.
+
 ### `find()`
 
 ```python
-def find(self, *, trade: 'str | None' = None, task_type: 'str | None' = None, csi_division: 'str | None' = None, project_type: 'str | None' = None) -> 'list[AgentCard]'
+def find(self, *, trade: 'str | None' = None, task_type: 'str | None' = None, csi_division: 'str | None' = None, project_type: 'str | None' = None, integration: 'str | None' = None) -> 'list[AgentCard]'
 ```
 
 Find agents matching the given filters (all optional, AND logic).

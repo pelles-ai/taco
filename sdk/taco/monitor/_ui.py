@@ -167,6 +167,23 @@ let searchQuery = '';
 let ws = null;
 let reconnectDelay = 1000;
 
+// Optional access token (A2AServer(monitor_auth_token=...)). Open the UI as
+// /monitor/#token=<token>; it is kept for this tab only and never put in the
+// page URL that gets logged or sent as a referrer.
+let monitorToken = sessionStorage.getItem('tacoMonitorToken') || '';
+{
+  const m = location.hash.match(/(?:^#|&)token=([^&]+)/);
+  if (m) {
+    monitorToken = decodeURIComponent(m[1]);
+    sessionStorage.setItem('tacoMonitorToken', monitorToken);
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+}
+
+function authHeaders() {
+  return monitorToken ? { Authorization: `Bearer ${monitorToken}` } : {};
+}
+
 // --- Search ---
 function onSearch() {
   searchQuery = searchInput.value.toLowerCase().trim();
@@ -195,6 +212,7 @@ function toggleFilter(chip) {
 }
 
 function kindCategory(kind) {
+  kind = String(kind);
   if (kind.startsWith('incoming')) return 'incoming';
   if (kind.startsWith('outgoing')) return 'outgoing';
   if (kind.startsWith('handler')) return 'handler';
@@ -228,6 +246,7 @@ function updateFilterCounts() {
 
 // --- Rendering ---
 function kindClass(kind) {
+  kind = String(kind);
   if (kind.includes('error') || kind === 'handler_error') return 'kind-err';
   if (kind.startsWith('incoming')) return 'kind-in';
   if (kind.startsWith('outgoing')) return 'kind-out';
@@ -281,16 +300,18 @@ function renderEvent(ev) {
   const dur = ev.duration_ms != null ? `${Math.round(ev.duration_ms)}ms` : '';
   const arrow = ev.direction === 'in' ? '&#x2B07;' : ev.direction === 'out' ? '&#x2B06;' : '&#x2699;';
 
+  // Every event field can carry caller-controlled text (the JSON-RPC
+  // method, the task type, payloads), so all of it is escaped.
   const safeId = escapeAttr(ev.id);
   const safeTs = escapeAttr(ev.ts);
-  let html = `<div class="event ${kc} ${expanded ? 'expanded' : ''}" data-id="${safeId}" onclick="toggleExpand('${safeId}')">
+  let html = `<div class="event ${kc} ${expanded ? 'expanded' : ''}" data-id="${safeId}">
     <div class="event-dot"></div>
     <div class="event-body">
       <div class="event-header">
-        <span class="event-time" data-ts="${safeTs}" title="${escapeAttr(formatTimeAbsolute(ev.ts))}">${formatTimeRelative(ev.ts)}</span>
-        <span class="event-kind">${kindLabel(ev.kind)}</span>
-        <span class="event-method">${arrow} ${ev.method || ''}</span>
-        ${dur ? `<span class="event-duration">${dur}</span>` : ''}
+        <span class="event-time" data-ts="${safeTs}" title="${escapeAttr(formatTimeAbsolute(ev.ts))}">${escapeHtml(formatTimeRelative(ev.ts))}</span>
+        <span class="event-kind">${escapeHtml(kindLabel(String(ev.kind)))}</span>
+        <span class="event-method">${arrow} ${escapeHtml(ev.method || '')}</span>
+        ${dur ? `<span class="event-duration">${escapeHtml(dur)}</span>` : ''}
       </div>
       <div class="event-summary">${escapeHtml(ev.summary || '')}</div>
       ${ev.error ? `<div class="event-error">${escapeHtml(ev.error)}</div>` : ''}
@@ -301,13 +322,12 @@ function renderEvent(ev) {
 }
 
 function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function escapeAttr(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');
+  return escapeHtml(s);
 }
 
 function renderAll() {
@@ -324,6 +344,13 @@ function toggleExpand(id) {
   expandedId = expandedId === id ? null : id;
   renderAll();
 }
+
+// One delegated listener instead of inline onclick handlers, so no event
+// data is ever parsed as JavaScript.
+timeline.addEventListener('click', (e) => {
+  const el = e.target.closest('.event[data-id]');
+  if (el) toggleExpand(el.dataset.id);
+});
 
 // --- Scroll ---
 timeline.addEventListener('scroll', () => {
@@ -372,10 +399,15 @@ function appendEvent(ev) {
 // --- Data ---
 async function loadHistory() {
   try {
-    const resp = await fetch(`${basePath}/api/events?limit=500`);
+    const resp = await fetch(`${basePath}/api/events?limit=500`, { headers: authHeaders() });
+    if (resp.status === 401) {
+      statusText.textContent = 'Token required: open /monitor/#token=<token>';
+      return false;
+    }
     const data = await resp.json();
-    events = data;
+    events = Array.isArray(data) ? data : [];
     renderAll();
+    return true;
   } catch(e) {
     console.warn('Failed to load history:', e);
   }
@@ -383,7 +415,7 @@ async function loadHistory() {
 
 async function loadInfo() {
   try {
-    const resp = await fetch(`${basePath}/api/info`);
+    const resp = await fetch(`${basePath}/api/info`, { headers: authHeaders() });
     const info = await resp.json();
     agentNameEl.textContent = info.agentName || 'Agent';
     document.title = `\u{1F32E} ${info.agentName || 'Agent'} \u2014 Monitor`;
@@ -394,7 +426,7 @@ async function loadInfo() {
 
 async function clearEvents() {
   try {
-    await fetch(`${basePath}/api/clear`, { method: 'POST' });
+    await fetch(`${basePath}/api/clear`, { method: 'POST', headers: authHeaders() });
     events = [];
     expandedId = null;
     renderAll();
@@ -404,7 +436,10 @@ async function clearEvents() {
 // --- WebSocket ---
 function connectWs() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${proto}//${location.host}${basePath}/ws`);
+  // Browsers cannot set headers on a WebSocket, so the token goes in the
+  // query string of this same-origin request.
+  const query = monitorToken ? `?token=${encodeURIComponent(monitorToken)}` : '';
+  ws = new WebSocket(`${proto}//${location.host}${basePath}/ws${query}`);
 
   ws.onopen = () => {
     statusPill.className = 'status-pill connected';
@@ -431,7 +466,7 @@ function connectWs() {
 
 // --- Init ---
 loadInfo();
-loadHistory().then(connectWs);
+loadHistory().then((ok) => { if (ok !== false) connectWs(); });
 </script>
 </body>
 </html>"""

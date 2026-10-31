@@ -1,0 +1,24 @@
+# Build context for examples/Dockerfile is the repository root.
+# Send only what that Dockerfile copies (sdk/, examples/, README.md) ...
+*
+!sdk/
+!examples/
+!README.md
+
+# ... and never secrets or local build/editor junk from inside those.
+**/.env
+**/.env.*
+**/.git
+**/__pycache__
+**/*.py[cod]
+**/.venv
+**/venv
+**/*.egg-info
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/node_modules
+**/.DS_Store
+sdk/taco/_version.py
+sdk/dist
+sdk/build

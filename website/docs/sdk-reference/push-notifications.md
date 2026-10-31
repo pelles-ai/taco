@@ -1,7 +1,7 @@
 ---
 title: "Push Notifications"
 description: "Multi-subscriber push notification configs per task. Used by `TacoClient.create_push_config()` and friends."
-sidebar_position: 9
+sidebar_position: 10
 ---
 
 :::info Generated

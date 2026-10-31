@@ -26,7 +26,7 @@ We considered four ways to run the code:
 
 Run the real package in the browser (option 4).
 
-- The page loads Pyodide from its CDN only when the visitor first presses Run. It installs `taco-agent[server,client]` from PyPI, pinned to the release the site was built from (read from the latest git tag at build time). If that release is not on PyPI yet, it installs the latest release and says so under the editor.
+- The page loads Pyodide from its CDN only when the visitor first presses Run. It installs `taco-agent[server,client]` from PyPI, pinned to the release the site was built from (read from the latest git tag at build time). If that release cannot be installed (usually because it is not on PyPI yet), it installs the latest release instead and shows the installer's error in the output and under the editor.
 - `taco-agent` requires `protobuf<6`, but Pyodide bundles a newer protobuf, and micropip does not backtrack. The page therefore pins protobuf and the Google packages that depend on it to versions that accept protobuf 5. The pins live next to the examples in `website/src/data/playground-presets.js`.
 - Python runs in a Web Worker. The page stays responsive while a run is in progress, and Stop can end a run that never returns by ending the worker.
 - The server examples use the real `A2AServer` and `TacoClient`, with an in-memory transport (`httpx.ASGITransport`) standing in for the network. A browser tab cannot listen on a port, and every other part of the request path is the code a deployed agent runs.
@@ -70,7 +70,7 @@ Run the real package in the browser (option 4).
 
 ### Positive
 
-- The code on the page is the code a visitor would run. Anything that works in the playground works after `pip install taco-agent`.
+- The code on the page is the code a visitor would run. Anything that works in the playground works after `pip install "taco-agent[all]"`.
 - The examples cannot quietly go stale: CI runs them against every SDK change.
 - No server and no running cost. The page is static files, like the rest of the site.
 - The visitor's code never leaves their browser.

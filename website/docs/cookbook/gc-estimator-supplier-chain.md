@@ -60,14 +60,25 @@ from taco import (
 
 PROJECT_ID = "PRJ-2026-OAKRIDGE-MEDICAL"
 
+
+def discovered_url(registry: AgentRegistry, **filters) -> str:
+    """URL the first matching agent was registered at.
+
+    Call that address, not the url the agent's card declares about itself:
+    a card's url can be empty, container-internal, or any host its author picks.
+    """
+    card = registry.find(**filters)[0]
+    return next(url for url, c in registry.entries() if c is card)
+
+
 async def main() -> None:
     # 1. Discover the agents we need
     registry = AgentRegistry()
     await registry.register("http://estimator.example.com:8001")
     await registry.register("http://pipeworks.example.com:8002")
 
-    estimator = registry.find(trade="mechanical", task_type="estimate")[0]
-    supplier = registry.find(trade="mechanical", task_type="material-procurement")[0]
+    estimator = discovered_url(registry, trade="mechanical", task_type="estimate")
+    supplier = discovered_url(registry, trade="mechanical", task_type="material-procurement")
 
     # 2. Locally generate the BOM (in a real workflow, this would itself
     # be a `takeoff` call to a takeoff agent — kept local here for brevity)
@@ -86,14 +97,14 @@ async def main() -> None:
     }
 
     # 3. Estimator hop
-    async with TacoClient(agent_url=estimator.url) as client:
+    async with TacoClient(agent_url=estimator) as client:
         est_task = await client.send_message("estimate", bom)
     estimate = extract_structured_data(est_task.artifacts[0].parts[0])
     print(f"Estimator says grand total: ${estimate['summary']['grandTotal']:,.2f}")
 
     # 4. Supplier hop — note the BOM (not the estimate) is sent;
     #    suppliers price the BOM directly
-    async with TacoClient(agent_url=supplier.url) as client:
+    async with TacoClient(agent_url=supplier) as client:
         quote_task = await client.send_message("material-procurement", bom)
     quote = extract_structured_data(quote_task.artifacts[0].parts[0])
 
@@ -174,9 +185,13 @@ const PROJECT_ID = 'PRJ-2026-OAKRIDGE-MEDICAL';
 
 async function main() {
   // Discover agents by their well-known URLs (no hosted registry yet —
-  // see the in-process AgentRegistry in Python for the SDK pattern)
-  const estimator = await discoverAgent('http://estimator.example.com:8001');
-  const supplier = await discoverAgent('http://pipeworks.example.com:8002');
+  // see the in-process AgentRegistry in Python for the SDK pattern).
+  // Send requests to these base URLs, not to the url each card declares.
+  const estimatorUrl = 'http://estimator.example.com:8001';
+  const supplierUrl = 'http://pipeworks.example.com:8002';
+  const estimator = await discoverAgent(estimatorUrl);
+  const supplier = await discoverAgent(supplierUrl);
+  console.log(`Estimator: ${estimator.name}; supplier: ${supplier.name}`);
 
   const bom = {
     projectId: PROJECT_ID,
@@ -190,14 +205,14 @@ async function main() {
   };
 
   // Estimator hop
-  const estTask = await sendMessage(estimator.url, 'estimate', bom);
+  const estTask = await sendMessage(estimatorUrl, 'estimate', bom);
   const estimate = estTask.artifacts[0].parts[0].data as {
     summary: {grandTotal: number};
   };
   console.log(`Estimator says grand total: $${estimate.summary.grandTotal.toLocaleString()}`);
 
   // Supplier hop — note the BOM (not the estimate) is sent
-  const quoteTask = await sendMessage(supplier.url, 'material-procurement', bom);
+  const quoteTask = await sendMessage(supplierUrl, 'material-procurement', bom);
   const quote = quoteTask.artifacts[0].parts[0].data as {
     supplierName: string;
     quoteNumber: string;
@@ -270,9 +285,9 @@ The estimator returns an [`estimate-v1`](../schemas/estimate-v1), the supplier r
 
 **Inspect the BOM mid-chain.** Add a `print(json.dumps(bom, indent=2))` between the takeoff and the estimator call. The most common bug — wrong `csiDivision` or empty `lineItems` — is visible in five seconds.
 
-**Use the Monitor UI on each agent.** `A2AServer(card, enable_monitor=True)` exposes `/monitor`. Watch a request flow through all three agents in real time. The visual is more useful than logs when debugging task lifecycle issues.
+**Use the Monitor UI on each agent.** `A2AServer(card, enable_monitor=True)` exposes `/monitor`. Watch a request flow through all three agents in real time. The visual is more useful than logs when debugging task lifecycle issues. The monitor shows every payload to anyone who can reach the port, so on shared or deployed agents set `monitor_auth_token=...` and open it as `/monitor/#token=<token>`.
 
-**Check each agent against [SPEC-005](/docs/spec/SPEC-005-conformance).** Running every agent in the chain through the [conformance check](/conformance), or `taco inspect <url>` from a terminal, catches a surprising fraction of chain bugs at the source. Discovery works by `trade`, `task_type`, `csi_division`, and `project_type`, so an estimator must advertise a skill whose `x-construction.taskType` is `"estimate"` (and the right `trade` on its card) to be found by `registry.find(trade="mechanical", task_type="estimate")`. An estimator that skips this works fine when you hardcode its URL, but future orchestrators won't find it.
+**Check each agent against [SPEC-005](/docs/spec/SPEC-005-conformance).** Running every agent in the chain through the [conformance check](/conformance), or `taco inspect <url>` from a terminal, catches a surprising fraction of chain bugs at the source. Discovery works by `trade`, `task_type`, `csi_division`, `project_type`, and `integration`, so an estimator must advertise a skill whose `x-construction.taskType` is `"estimate"` (and the right `trade` on its card) to be found by `registry.find(trade="mechanical", task_type="estimate")`. An estimator that skips this works fine when you hardcode its URL, but future orchestrators won't find it.
 
 **Tag every log line with the task ID and context ID.** Multi-agent chains produce logs in three places. The two correlation handles from A2A are `task.id` (per-request) and `task.context_id` (per-conversation). Tag every log line with both, plus the agent's name — tracing a problem across three agents becomes a single grep.
 

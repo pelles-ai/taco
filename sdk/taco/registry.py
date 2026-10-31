@@ -11,12 +11,12 @@ try:
     import httpx
 except ImportError:
     raise ImportError(
-        "Client dependencies not installed. Install with: pip install taco-agent[client]"
+        "Client dependencies not installed. Install with: pip install 'taco-agent[client]'"
     ) from None
 
 from .types import AgentCard, get_construction_ext, get_skill_construction_ext
 
-logger = logging.getLogger("a2a")
+logger = logging.getLogger("taco.registry")
 
 
 class AgentRegistry:
@@ -116,6 +116,7 @@ class AgentRegistry:
         task_type: str | None = None,
         csi_division: str | None = None,
         project_type: str | None = None,
+        integration: str | None = None,
     ) -> list[AgentCard]:
         """Find agents matching the given filters (all optional, AND logic)."""
         results: list[AgentCard] = []
@@ -126,6 +127,8 @@ class AgentRegistry:
             if csi_division is not None and (xc is None or csi_division not in xc.csi_divisions):
                 continue
             if project_type is not None and (xc is None or project_type not in xc.project_types):
+                continue
+            if integration is not None and (xc is None or integration not in xc.integrations):
                 continue
             if task_type is not None:
                 has_task = any(
@@ -141,6 +144,15 @@ class AgentRegistry:
     def list_agents(self) -> list[AgentCard]:
         """Return all registered agent cards."""
         return list(self._agents.values())
+
+    def entries(self) -> list[tuple[str, AgentCard]]:
+        """Return ``(url, card)`` pairs, ``url`` being where each agent was found.
+
+        Send requests to that URL rather than to the card's self-declared
+        ``url``: the card may be empty, point at ``localhost`` inside a
+        container, or name any host the peer chooses.
+        """
+        return list(self._agents.items())
 
     def remove(self, agent_url: str) -> bool:
         """Remove an agent by URL. Returns True if it was present."""

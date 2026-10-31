@@ -38,6 +38,15 @@ Dates come from the release tags in the repository. See the [CHANGELOG](https://
 - Streaming handlers work on `a2a-sdk` 1.1 (chunks share one artifact id; first chunk created, later chunks appended)
 - Package builds on hatchling 1.28+ (the SDK ships its own `sdk/README.md`)
 
+### Next release — Auth and correctness (on `main`, not yet tagged)
+- Bearer-token auth on `A2AServer` (`token_verifier`, `taco:task:<taskType>` scopes, per-caller task isolation, `current_auth()`), and `securitySchemes` / `security` on Agent Cards
+- Handler failures reported to callers as a generic message with an error id; `TacoTaskError` for messages callers should see
+- Monitor hardening: `monitor_auth_token`, no CORS, same-origin WebSocket
+- `message/stream` works with `register_streaming_handler` and with the monitor on; `context_id` reaches the server; `tasks/cancel` stops the handler
+- `TacoAgent` routes to the URL a peer was discovered at and discovers peers in the background
+- Schema models match `spec/schemas` (no invented defaults, RFC 3339 dates, unknown fields kept), checked by a parity test; `get_schema_model()`
+- `taco send` exit codes and `--token`
+
 ## In flight
 
 ### A2A v1 wire cutover (Phase 3 of the SDK migration)

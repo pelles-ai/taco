@@ -100,13 +100,24 @@ Added to individual skill entries in the Agent Card's `skills` array.
 
 ## Discovery Queries
 
-The TACO Agent Registry supports querying agents using these extension fields:
+Orchestrators find agents by these extension fields: `trade`, `taskType` (a skill's `x-construction.taskType`), `csiDivisions`, `projectTypes` and `integrations`. An agent matches a query when it matches every field the query names.
 
-```
-GET /agents?trade=mechanical&taskType=schedule-coordination&projectType=healthcare&integration=procore
+In the Python reference SDK, discovery is the in-process `AgentRegistry`. The orchestrator registers the agents it knows about and filters them in memory:
+
+```python
+registry = AgentRegistry()
+await registry.register("https://api.buildright.io/a2a")
+agents = registry.find(
+    trade="mechanical",
+    task_type="schedule-coordination",
+    project_type="healthcare",
+    integration="procore",
+)
 ```
 
-This returns all registered Agent Cards matching the filter criteria.
+`find()` returns every registered Agent Card matching all the given filters (`trade`, `task_type`, `csi_division`, `project_type`, `integration`). Callers should send requests to the URL they registered (`registry.entries()` returns `(url, card)` pairs), not to the `url` a card declares about itself.
+
+No HTTP registry service exists yet. A hosted TACO Agent Registry that answers these queries over HTTP is future work (see [ADR-0005](https://taco-protocol.com/docs/decisions/in-memory-registry-first) and the [roadmap](https://taco-protocol.com/docs/roadmap)).
 
 ## Security Extension: `x-construction.security`
 

@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import socket
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
+
 import pytest
 
 from taco._compat import make_artifact, make_data_part
@@ -92,3 +98,36 @@ def sample_bom() -> dict:
             "confidence": 0.9,
         },
     }
+
+
+@asynccontextmanager
+async def _serve_live(app: Any) -> AsyncIterator[str]:
+    """Run ``app`` under a real uvicorn server on a free port; yield its URL.
+
+    ``httpx.ASGITransport`` buffers whole responses, so streaming, lifespan
+    and middleware behaviour need a real server to be tested honestly.
+    """
+    import uvicorn
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, log_level="warning"))
+    serve_task = asyncio.create_task(server.serve(sockets=[sock]))
+    try:
+        while not server.started:
+            if serve_task.done():
+                serve_task.result()
+            await asyncio.sleep(0.01)
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        await serve_task
+        sock.close()
+
+
+@pytest.fixture()
+def live_server():
+    """Factory: ``async with live_server(app) as base_url: ...``."""
+    return _serve_live

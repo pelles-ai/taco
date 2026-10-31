@@ -26,10 +26,28 @@ function skillLabel(skill, i) {
   return skill && nonEmptyString(skill.id) ? skill.id : `skill #${i + 1}`;
 }
 
+/** A JSON value that can be an Agent Card: a plain object, not null or a list. */
+export function isCardObject(card) {
+  return Boolean(card) && typeof card === 'object' && !Array.isArray(card);
+}
+
+function describeJson(value) {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'an array';
+  return `a ${typeof value}`;
+}
+
 /** Run every card-level check in SPEC-005 §3 and §4.2-4.3. */
 export function checkCard(card, spec) {
+  if (!isCardObject(card)) {
+    return [
+      result('fields', '3.2', 'Required top-level fields', 'required', 'fail',
+        `The card is ${describeJson(card)}, not a JSON object, so none of its fields can be checked.`,
+        'Serve the Agent Card as a single JSON object.'),
+    ];
+  }
   const out = [];
-  const ext = card && typeof card === 'object' ? card['x-construction'] : undefined;
+  const ext = card['x-construction'];
 
   // 3.2 Required top-level fields
   const missing = ['name', 'description', 'version', 'url'].filter((f) => !nonEmptyString(card[f]));
@@ -199,7 +217,7 @@ export function checkCard(card, spec) {
     out.push(result('security', '3.9', 'Security declarations consistent', 'required', 'skip',
       'No security[] requirements declared, so there is nothing to cross-check.'));
   } else {
-    const schemes = card.securitySchemes || {};
+    const schemes = isCardObject(card.securitySchemes) ? card.securitySchemes : {};
     const dangling = [...new Set(card.security.flatMap((req) => Object.keys(req || {})))].filter(
       (name) => !(name in schemes),
     );
@@ -266,6 +284,14 @@ export async function fetchCard(base, token, fetchImpl = fetch) {
     }
     try {
       const card = await res.json();
+      if (!isCardObject(card)) {
+        return {
+          card: null,
+          result: result('reachable', '3.1', 'Agent card reachable', 'required', 'fail',
+            `${base + path} returned ${describeJson(card)}, not an Agent Card object.`,
+            'Serve the Agent Card as a single JSON object.'),
+        };
+      }
       return {
         card,
         result: result('reachable', '3.1', 'Agent card reachable', 'required', 'pass',

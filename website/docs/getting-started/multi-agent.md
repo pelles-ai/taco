@@ -28,7 +28,7 @@ The orchestrator receives a question from a user, forwards it to the data agent 
 ## Prerequisites
 
 ```bash
-pip install taco-agent[all]
+pip install "taco-agent[all]"
 ```
 
 ## Step 1: Build the data agent
@@ -85,7 +85,7 @@ server.register_handler("data-query", handle_query)
 if __name__ == "__main__":
     print("Data Agent:  http://localhost:9001")
     print("Monitor:     http://localhost:9001/monitor")
-    uvicorn.run(server.app, host="0.0.0.0", port=9001)
+    uvicorn.run(server.app, host="127.0.0.1", port=9001)
 ```
 
 ## Step 2: Build the orchestrator with `TacoAgent`
@@ -121,7 +121,7 @@ card = ConstructionAgentCard(
     ],
 )
 
-# TacoAgent discovers peers at startup
+# TacoAgent discovers its peers in the background once it starts
 agent = TacoAgent(
     card,
     peers=["http://localhost:9001"],
@@ -156,15 +156,17 @@ agent.register_handler("analyze", handle_analyze)
 if __name__ == "__main__":
     print("Orchestrator: http://localhost:9000")
     print("Monitor:      http://localhost:9000/monitor")
-    uvicorn.run(agent.app, host="0.0.0.0", port=9000)
+    uvicorn.run(agent.app, host="127.0.0.1", port=9000)
 ```
+
+`extract_structured_data` returns whole numbers as `int`, so `peer_data["count"]` is `42`, not `42.0`. (A2A v1 carries data parts as protobuf `Struct` values, which store every number as a float; the SDK's helpers turn whole numbers back into ints.)
 
 ### Key differences from `A2AServer`
 
 | | `A2AServer` | `TacoAgent` |
 |---|---|---|
 | **Role** | Receives tasks only | Receives and sends tasks |
-| **Peers** | None | Auto-discovers peers at startup |
+| **Peers** | None | Discovers peers in the background from startup |
 | **Client pool** | Manual | Built-in, with connection reuse |
 | **Calling other agents** | Use `TacoClient` directly | `agent.send_to_peer(task_type, data)` |
 
@@ -182,7 +184,11 @@ In **Terminal 2** — start the orchestrator:
 python orchestrator.py
 ```
 
-The orchestrator will automatically discover the data agent's capabilities at startup.
+The orchestrator fetches the data agent's card in the background as it starts. Startup waits at most `peer_startup_wait` seconds (default 2) for that first round, so the two agents can start in either order, and two agents that list each other as peers do not wait on each other. A peer that is not up yet is retried `peer_retry_attempts` times (default 5), `peer_retry_delay` seconds apart (default 2), and a peer still missing after that is tried once more when `send_to_peer` needs it.
+
+:::warning Both agents run a monitor
+The monitor shows every request and response to anyone who can reach the port. Both agents bind to `127.0.0.1` here. Before you expose either port, pass `monitor_auth_token=...` (to `A2AServer` or `TacoAgent`) and open the UI as `/monitor/#token=<token>`, or leave `enable_monitor` off.
+:::
 
 ## Step 4: Test the flow
 
@@ -198,6 +204,7 @@ curl -X POST http://localhost:9000/ \
     "params": {
       "message": {
         "role": "user",
+        "messageId": "msg-1",
         "parts": [{"kind": "data", "data": {"question": "How many items?"}}]
       },
       "metadata": {"taskType": "analyze"}
@@ -236,21 +243,33 @@ agents:
   - url: http://localhost:8002
 ```
 
-At startup, `TacoAgent` fetches each peer's Agent Card, registers it in its internal registry, and routes `send_to_peer()` calls to the right agent based on task type.
+From startup, `TacoAgent` fetches each peer's Agent Card in the background and registers it in its internal registry (`agent.registry`). `send_to_peer(task_type, ...)` picks the first peer with a skill whose `x-construction.taskType`, `id` or `tags` match `task_type`, and sends the request to the URL you listed for that peer, not to the `url` the peer's card declares. A card's `url` can be empty, point at `localhost` inside a container, or name any host its author chooses; the address you configured is the one you decided to trust.
 
-## Forwarding HTTP headers
+| Option | Default | Meaning |
+|--------|---------|---------|
+| `peer_startup_wait` | `2.0` | Seconds startup waits for the first discovery round. Discovery carries on in the background after that. |
+| `peer_retry_attempts` | `5` | Discovery attempts per peer in the background. |
+| `peer_retry_delay` | `2.0` | Seconds between those attempts. |
 
-When proxying requests between agents, you may need to forward authentication headers:
+If no discovered peer matches, `send_to_peer` first retries any peer that has not been discovered yet, then raises `ValueError`.
+
+## Sending HTTP headers to a peer
+
+`send_to_peer` and `stream_from_peer` take a `headers` argument, sent with that request. Use it to authenticate to a peer that requires a token:
 
 ```python
+# A token this agent obtained for the data agent, for example by OAuth
+# Token Exchange. Never the token your own caller sent you.
+peer_token = await token_source.token_for("taco:task:data-query")
+
 peer_task = await agent.send_to_peer(
     "data-query",
     {"question": question},
-    headers={"Authorization": f"Bearer {token}"},
+    headers={"Authorization": f"Bearer {peer_token}"},
 )
 ```
 
-The `headers` parameter passes custom HTTP headers to the downstream agent, which is useful for token-based authentication chains.
+Do not forward the bearer token your agent received: TACO's security model prohibits token passthrough, because it hands the peer your caller's full authority. Exchange it for a narrower token for each hop instead. See [Token delegation](/docs/security#token-delegation).
 
 ## Next steps
 

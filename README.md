@@ -52,7 +52,7 @@ Different companies. Different AI models. One shared language.
 ### Quick Start (no LLM key needed)
 
 ```bash
-pip install taco-agent[all]
+pip install "taco-agent[all]"
 python examples/quick_start.py
 # Open http://localhost:8080/monitor for live tracing
 ```
@@ -118,7 +118,7 @@ taco/
 ## Quick Start
 
 ```bash
-pip install taco-agent[all]
+pip install "taco-agent[all]"   # quoted so zsh leaves the brackets alone; includes uvicorn
 ```
 
 ```python
@@ -139,15 +139,18 @@ card = ConstructionAgentCard(
     ],
 )
 
-# Serve with live monitor UI at /monitor
-server = A2AServer(card.to_a2a(), enable_monitor=True)
+# Serve with live monitor UI at /monitor. The monitor shows every payload:
+# pass monitor_auth_token="..." before anyone else can reach the port.
+server = A2AServer(card, enable_monitor=True)
 # Optional: persist tasks across restarts
-# server = A2AServer(card.to_a2a(), enable_monitor=True, task_store=JsonFileTaskStore("tasks.json"))
+# server = A2AServer(card, enable_monitor=True, task_store=JsonFileTaskStore("tasks.json"))
+# Optional: require a bearer token with taco:task:<taskType> scopes
+# server = A2AServer(card, token_verifier=verify)
 server.register_handler("estimate", my_handler)
 
 import uvicorn
-uvicorn.run(server.app, port=8080)
-# Agent card:  http://localhost:8080/.well-known/agent.json
+uvicorn.run(server.app, port=8080)  # 127.0.0.1 by default
+# Agent card:  http://localhost:8080/.well-known/agent-card.json
 # Monitor UI:  http://localhost:8080/monitor
 ```
 
@@ -170,6 +173,9 @@ registry = AgentRegistry()
 await registry.register("http://localhost:8001")
 await registry.register("http://localhost:8002")
 agents = registry.find(trade="plumbing", task_type="material-procurement")
+
+# Call agents at the URL you registered, not the url their card declares
+urls = [url for url, card in registry.entries() if card in agents]
 ```
 
 > **Note:** The Python SDK uses snake_case parameter names (e.g., `csi_divisions`, `task_type`) that map to the camelCase JSON fields defined in the spec (`csiDivisions`, `taskType`).

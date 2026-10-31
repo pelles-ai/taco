@@ -2,7 +2,7 @@
 
 Task types are the verbs of the TACO ecosystem. Each task type defines a category of work that an agent can advertise and execute.
 
-> **Schema status:** Fully defined schemas include `bom-v1`, `rfi-v1`, `estimate-v1`, and `quote-v1`. Placeholder schemas (structure not yet defined) include `schedule-v1` and `change-order-v1`. All other output schemas listed below are planned but do not yet have schema files. Contributions welcome.
+> **Schema status:** Fully defined schemas: `bom-v1`, `rfi-v1`, `estimate-v1`, `quote-v1`, `schedule-v1`, and `change-order-v1` (see [`schemas/`](schemas/)). All other output schemas listed below are planned but do not yet have schema files. Contributions welcome.
 
 ## Preconstruction
 
