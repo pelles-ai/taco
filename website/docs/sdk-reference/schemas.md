@@ -16,7 +16,7 @@ Find the Pydantic model for a canonical schema name such as `bom-v1`. The models
 
 ## `get_schema_model()`
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/schemas.py#L507)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/schemas.py#L539)
 
 ```python
 get_schema_model(schema_id: 'str') -> 'type[SchemaModel]'

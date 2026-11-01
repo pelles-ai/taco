@@ -735,6 +735,7 @@ What the models check, and what they leave alone:
 
 - **Required means required by the schema.** Optional fields default to `None`, and `model_dump(exclude_none=True)` leaves them out; the models never fill in a value the producer did not send.
 - **Dates are RFC 3339.** Fields the schema marks `format: date` take `YYYY-MM-DD` (or a `datetime.date`). Fields marked `format: date-time` need a timezone offset: `"2026-05-24T15:00:00Z"` passes, `"2026-05-24T15:00:00"` is rejected, and a naive `datetime` is rejected too. Use `datetime.now(timezone.utc)`.
+- **Numbers are numbers.** Fields the schema types `number` or `integer` reject strings such as `"850"` and booleans, as a JSON Schema validator does. Integer fields accept whole floats such as `5.0`, which JSON Schema also counts as integers. (`taco-agent` 0.5.0 and earlier read `"850"` as `850.0` and `true` as `1`.)
 - **Enums and bounds come from the schema.** For example `RFIAssignee.role` is one of the schema's roles and `confidence` must be between 0 and 1. Values the schema allows are accepted, including negative amounts (credits) and an empty `lineItems` list where the schema permits one.
 - **Unknown fields survive.** Properties the model does not declare, such as `metadata.vendorExtensions`, are kept on a `model_validate` / `model_dump` round trip.
 

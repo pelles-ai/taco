@@ -74,8 +74,15 @@ const config = {
     pyodideIndexUrl: process.env.PYODIDE_INDEX_URL || null,
   },
 
+  // The flags `v4: true` meant up to Docusaurus 3.9. From 3.10, `v4: true`
+  // also turns on the Rspack/SWC build (needs @docusaurus/faster),
+  // per-site browser storage keys and stricter MDX parsing; adopt those
+  // one at a time.
   future: {
-    v4: true,
+    v4: {
+      removeLegacyPostBuildHeadAttribute: true,
+      useCssCascadeLayers: true,
+    },
   },
 
   url: 'https://taco-protocol.com',
