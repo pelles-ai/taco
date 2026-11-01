@@ -26,6 +26,7 @@ import asyncio
 import hmac
 import json
 import logging
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator, Callable, Coroutine
@@ -161,6 +162,19 @@ class _WireIntegerMiddleware:
                 await send(message)
 
         await self.app(scope, receive, rewriting_send)
+
+
+class _HandledMissingUrlFilter(logging.Filter):
+    """Drop a2a-sdk's card warning when the card's only gap is its ``url``.
+
+    A2AServer serves a card without ``url`` with the address each request
+    reached, so that gap is handled. Any other missing field still warns.
+    """
+
+    _ONLY_URL = re.compile(r"missing or empty: supported_interfaces\[0\]\.url\. ")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not self._ONLY_URL.search(record.getMessage())
 
 
 def _restore_json_integers(raw: bytes) -> bytes:
@@ -535,13 +549,19 @@ class A2AServer:
             if push_config_store is not None
             else None
         )
-        self._request_handler = LegacyRequestHandler(
-            agent_executor=self._executor,
-            task_store=self._task_store,
-            agent_card=self._a2a_card_pb,
-            push_config_store=push_config_store,
-            push_sender=push_sender,
-        )
+        card_logger = logging.getLogger("a2a.utils.proto_utils")
+        url_filter = _HandledMissingUrlFilter()
+        card_logger.addFilter(url_filter)
+        try:
+            self._request_handler = LegacyRequestHandler(
+                agent_executor=self._executor,
+                task_store=self._task_store,
+                agent_card=self._a2a_card_pb,
+                push_config_store=push_config_store,
+                push_sender=push_sender,
+            )
+        finally:
+            card_logger.removeFilter(url_filter)
 
         # Build the FastAPI app and mount the v1 JSON-RPC routes (with v0.3
         # compat enabled so legacy method names like ``message/send`` still

@@ -642,3 +642,34 @@ class TestStreamingHandlerViaSend:
         assert result["status"]["state"] == "completed"
         assert [a["name"] for a in result["artifacts"]] == ["stream-task-stream-result"]
         assert [p["text"] for p in result["artifacts"][0]["parts"]] == ["a", "b"]
+
+
+class TestCardWarnings:
+    """a2a-sdk warns about cards missing spec-required fields at startup."""
+
+    def _warnings(self, caplog, card) -> list[str]:
+        caplog.clear()
+        with caplog.at_level("WARNING", logger="a2a.utils.proto_utils"):
+            A2AServer(card)
+        return [r.getMessage() for r in caplog.records if "not spec-compliant" in r.getMessage()]
+
+    def test_missing_url_alone_is_not_reported(self, caplog):
+        from taco import ConstructionAgentCard, ConstructionSkill
+
+        card = ConstructionAgentCard(
+            name="No URL",
+            trade="electrical",
+            csi_divisions=["26"],
+            skills=[ConstructionSkill(id="e", task_type="estimate", output_schema="estimate-v1")],
+        )
+        assert self._warnings(caplog, card) == []
+
+    def test_other_gaps_are_still_reported(self, caplog):
+        from taco import ConstructionAgentCard
+
+        no_skills = ConstructionAgentCard(
+            name="No skills", url="http://x", trade="electrical", csi_divisions=["26"]
+        )
+        both = ConstructionAgentCard(name="Neither", trade="electrical", csi_divisions=["26"])
+        assert any("skills" in w for w in self._warnings(caplog, no_skills))
+        assert any("skills" in w for w in self._warnings(caplog, both))
