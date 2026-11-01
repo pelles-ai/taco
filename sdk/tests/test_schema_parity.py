@@ -580,6 +580,14 @@ INVALID_MUTATIONS = [
     ),
     pytest.param("change-order-v1", [("set", "lineItems", [])], id="change-order-no-line-items"),
     pytest.param("change-order-v1", [("set", "title", "")], id="change-order-empty-title"),
+    pytest.param(
+        "schedule-v1", [("set", "activities.0.durationDays", 2.5)], id="schedule-fractional-days"
+    ),
+    pytest.param(
+        "change-order-v1",
+        [("set", "lineItems.0.scheduleImpactDays", 0.5)],
+        id="change-order-fractional-days",
+    ),
 ]
 
 
@@ -589,3 +597,83 @@ def test_spec_invalid_mutation_is_rejected_by_both(schema_id: str, ops: list[Op]
     assert _spec_errors(schema_id, payload), "the JSON Schema validator accepted the payload"
     with pytest.raises(ValidationError):
         SCHEMA_MODELS[schema_id].model_validate(payload)
+
+
+# ---------------------------------------------------------------------------
+# Numbers: no strings, no booleans
+# ---------------------------------------------------------------------------
+
+
+def _numeric_paths(node: Any, path: tuple[str, ...] = ()) -> typing.Iterator[str]:
+    """Dotted paths of every number in a payload."""
+    if isinstance(node, bool):
+        return
+    if isinstance(node, (int, float)):
+        yield ".".join(path)
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            yield from _numeric_paths(value, (*path, key))
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            yield from _numeric_paths(value, (*path, str(index)))
+
+
+def _get(payload: Any, path: str) -> Any:
+    for part in path.split("."):
+        payload = payload[int(part)] if isinstance(payload, list) else payload[part]
+    return payload
+
+
+NUMERIC_FIELDS = [
+    pytest.param(schema_id, path, id=f"{schema_id}-{path}")
+    for schema_id in SCHEMA_IDS
+    for path in _numeric_paths(_load_example(schema_id))
+]
+
+
+def _has_numbers(node: Any) -> bool:
+    if isinstance(node, dict):
+        types = node.get("type")
+        types = types if isinstance(types, list) else [types]
+        return bool({"number", "integer"} & set(types)) or any(map(_has_numbers, node.values()))
+    if isinstance(node, list):
+        return any(map(_has_numbers, node))
+    return False
+
+
+def test_examples_cover_every_schema_with_numbers():
+    with_numbers = {schema_id for schema_id in SCHEMA_IDS if _has_numbers(_load_spec(schema_id))}
+    assert with_numbers
+    assert {param.values[0] for param in NUMERIC_FIELDS} == with_numbers
+
+
+@pytest.mark.parametrize(("schema_id", "path"), NUMERIC_FIELDS)
+def test_number_sent_as_text_or_boolean_is_rejected_by_both(schema_id: str, path: str):
+    """Pydantic's lax mode used to read "850" as 850.0 and true as 1."""
+    example = _load_example(schema_id)
+    for bad in (str(_get(example, path)), True):
+        payload = _apply(example, [("set", path, bad)])
+        assert _spec_errors(schema_id, payload), f"the JSON Schema validator accepted {bad!r}"
+        with pytest.raises(ValidationError):
+            SCHEMA_MODELS[schema_id].model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("schema_id", "path"),
+    [
+        ("schedule-v1", "activities.0.durationDays"),
+        ("quote-v1", "lineItems.0.leadTimeDays"),
+    ],
+)
+def test_whole_float_is_a_valid_integer(schema_id: str, path: str):
+    """JSON Schema counts 5.0 as an integer, and A2A's protobuf Struct sends
+    every number as a float, so whole floats must keep working."""
+    example = _load_example(schema_id)
+    value = _get(example, path)
+    assert isinstance(value, int)
+    payload = _apply(example, [("set", path, float(value))])
+    assert not _spec_errors(schema_id, payload)
+    model = SCHEMA_MODELS[schema_id].model_validate(payload)
+    dumped = _get(model.model_dump(mode="json", by_alias=True, exclude_none=True), path)
+    assert dumped == value
+    assert type(dumped) is int

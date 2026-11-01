@@ -8,6 +8,14 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 
 ## [Unreleased]
 
+### Changed
+- **Breaking: schema models reject numbers sent as text** — `number` and `integer` fields in the `taco.schemas` models (`EstimateV1`, `QuoteV1`, `ScheduleV1` and the rest) accepted `"850"` and `true` and stored them as `850.0` and `1`. The JSON Schemas reject both, so a payload the models accepted could still fail validation at the receiving agent. Both are now rejected. Integer fields still accept whole floats such as `5.0`, as JSON Schema does (A2A's protobuf layer sends every number as a float). Producers that send numbers as strings must send them unquoted.
+
+### CI
+- Dependabot proposes weekly, grouped updates for the workflow actions (pinned to commit SHAs), the SDK's dependency ranges and the website, after a week's cooldown. Security fixes for the website arrive as one pull request.
+
+## [0.5.0] — 2026-11-01
+
 ### Security
 - **Admin endpoints require a token** — `A2AServer(enable_admin=True)` without `admin_auth_token` used to log a warning and serve unauthenticated endpoints that rewrite the public agent card. It now raises `ValueError`. (Binding to localhost is no substitute: behind a reverse proxy on the same host every request looks local.) The sandbox demo passes a `TACO_ADMIN_TOKEN`, which `make demo-env` writes to `examples/.env`.
 - **Webhooks to private addresses refused** — any caller that can register a webhook picks the URL the agent POSTs to. URLs that resolve to loopback, private, link-local or cloud-metadata addresses are now refused; `A2AServer(allow_private_push_urls=True)` allows them for local development.
