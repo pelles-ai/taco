@@ -170,10 +170,32 @@ A2A v1 added two OAuth features that the v0.3 wire format's `OAuthFlows` object 
 - **`pkceRequired`** on the AuthorizationCode flow ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636))
 - **DeviceCode flow** ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628))
 
-TACO exports Pydantic models for both so agent cards can declare them today even while the SDK still emits v0.3-shaped wire payloads:
+An agent declares them in its `securitySchemes` block with the v1 field names, next to the v0.3 fields:
 
-- `taco.AuthorizationCodeOAuthFlowV1` — adds the optional `pkceRequired` field.
-- `taco.DeviceCodeOAuthFlow` — full RFC 8628 flow shape.
-- `taco.MutualTLSSecurityScheme` — re-exported from the A2A SDK for convenience.
+```json
+{
+  "securitySchemes": {
+    "tacoOAuth": {
+      "type": "oauth2",
+      "flows": {
+        "authorizationCode": {
+          "authorizationUrl": "https://auth.buildright.io/oauth/authorize",
+          "tokenUrl": "https://auth.buildright.io/oauth/token",
+          "scopes": {"taco:task:estimate": "Submit estimate tasks"},
+          "pkceRequired": true
+        },
+        "deviceCode": {
+          "deviceAuthorizationUrl": "https://auth.buildright.io/oauth/device",
+          "tokenUrl": "https://auth.buildright.io/oauth/token",
+          "scopes": {"taco:task:estimate": "Submit estimate tasks"}
+        }
+      }
+    },
+    "mtls": {"type": "mutualTLS"}
+  }
+}
+```
 
-These models will become direct pass-throughs to `a2a.types` after the v1 wire-format cutover. Clients reading a card serialized with a `deviceCode` flow today MUST treat it as a forward-compatible extension and ignore it if their A2A SDK does not understand the field.
+Clients reading a card with a `deviceCode` flow or `pkceRequired` today MUST treat them as forward-compatible extensions and ignore them if their A2A SDK does not understand the fields.
+
+In the Python SDK, `taco.AuthorizationCodeOAuthFlowV1` and `taco.DeviceCodeOAuthFlow` build these two flows, and `taco.MutualTLSSecurityScheme`, `taco.OAuth2SecurityScheme` and the other A2A scheme models are re-exported. All of them can be passed to `ConstructionAgentCard(security_schemes=...)`, also inside a `flows` dict. Put the v1 flows in a plain `flows` dict as above: the v0.3 `OAuthFlows` model drops fields it does not know, `deviceCode` included. The two flow models become pass-throughs to `a2a.types` after the v1 wire-format cutover.

@@ -125,11 +125,11 @@ Cross-project requests **SHALL** be rejected with an authorization error (HTTP 4
 
 The reference SDK's bearer-token check runs before the payload is read, so it cannot compare the project. A handler can (`taco.current_auth()` gives the caller's scopes), but by then the request has been accepted, and the SDK reports the rejection as a `failed` task with the handler's `TacoTaskError` message rather than HTTP 403. Agents that need the HTTP status check the payload in a gateway or middleware in front of the agent.
 
-## 6. mTLS, PKCE, Device Code (planned)
+## 6. mTLS, PKCE, Device Code
 
-A2A v1 formalizes the `mutualTLS` scheme, adds PKCE on the OAuth Authorization Code flow ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)), and adds the Device Authorization Grant ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)). Surfacing these on `x-construction.security` is planned (`feat/mtls-pkce-device-code-security` in [`sdk/V1_MIGRATION.md`](https://github.com/pelles-ai/taco/blob/main/sdk/V1_MIGRATION.md)) but not yet defined.
+A2A v1 formalizes the `mutualTLS` scheme, adds PKCE on the OAuth Authorization Code flow ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)), and adds the Device Authorization Grant ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)).
 
-In this version, `x-construction.security` defines exactly five fields: `trustTier`, `scopesOffered`, `projectScoped`, `delegationSupported`, and `extendedCardUrl` (see [`spec/security.md`](https://github.com/pelles-ai/taco/blob/main/spec/security.md)). Agents **SHALL** advertise mTLS and OAuth flow details through the standard A2A `securitySchemes` block.
+`x-construction.security` defines eight fields: `trustTier`, `scopesOffered`, `projectScoped`, `delegationSupported`, `extendedCardUrl`, and the auth-modality flags `mtlsSupported`, `pkceRequired` and `deviceCodeSupported` (see [`spec/security.md`](https://github.com/pelles-ai/taco/blob/main/spec/security.md)). The flags let a registry filter agents by how they authenticate; they are informational. Agents **SHALL** declare the schemes and flows themselves in the standard A2A `securitySchemes` block, using the v1 field names (`pkceRequired` on `authorizationCode`, a `deviceCode` flow) where the v0.3 card format has none ([`spec/agent-card-extensions.md`](https://github.com/pelles-ai/taco/blob/main/spec/agent-card-extensions.md#declaring-v1-oauth-flows-on-the-agent-card)). Clients that do not understand the v1 fields **MUST** ignore them.
 
 ## 7. Trust tiers
 

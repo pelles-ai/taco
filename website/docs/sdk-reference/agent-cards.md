@@ -17,7 +17,7 @@ Construct, validate, and serve the Agent Card a TACO agent advertises at `/.well
 ## `ConstructionAgentCard`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/agent_card.py#L68)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/agent_card.py#L72)
 
 Factory for building an AgentCard with x-construction pre-populated.
 
@@ -37,7 +37,7 @@ Example::
 #### Constructor
 
 ```python
-ConstructionAgentCard(*, name: 'str', description: 'str' = '', url: 'str' = '', version: 'str' = '1.0.0', trade: 'Trade', csi_divisions: 'list[str]', project_types: 'list[str] | None' = None, data_formats: 'dict[str, list[str]] | None' = None, integrations: 'list[str] | None' = None, certifications: 'list[Certification] | None' = None, skills: 'list[ConstructionSkill] | None' = None, security_schemes: 'dict[str, dict[str, Any]] | None' = None, security: 'list[dict[str, list[str]]] | None' = None, construction_security: 'SecurityExt | None' = None) -> 'None'
+ConstructionAgentCard(*, name: 'str', description: 'str' = '', url: 'str' = '', version: 'str' = '1.0.0', trade: 'Trade', csi_divisions: 'list[str]', project_types: 'list[str] | None' = None, data_formats: 'dict[str, list[str]] | None' = None, integrations: 'list[str] | None' = None, certifications: 'list[Certification] | None' = None, skills: 'list[ConstructionSkill] | None' = None, security_schemes: 'Mapping[str, Mapping[str, Any] | BaseModel] | None' = None, security: 'list[dict[str, list[str]]] | None' = None, construction_security: 'SecurityExt | None' = None) -> 'None'
 ```
 
 #### Methods
@@ -68,7 +68,7 @@ via capability negotiation in addition to reading the inline field.
 ## `ConstructionSkill`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/agent_card.py#L20)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/agent_card.py#L24)
 
 Factory for building an AgentSkill with x-construction pre-populated.
 
@@ -104,7 +104,7 @@ Convert to a standard A2A AgentSkill with x-construction extension.
 ## `AgentCard`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L182)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L256)
 
 *Extends:* `A2ABaseModel`
 
@@ -129,7 +129,7 @@ AgentCard(*, name: typing.Annotated[str, MinLen(min_length=1)], description: typ
 ## `AgentSkill`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L159)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L222)
 
 *Extends:* `A2ABaseModel`
 
@@ -175,7 +175,7 @@ AgentExtension(*, description: str | None = None, params: dict[str, typing.Any] 
 ## `AgentConstructionExt`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L139)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L202)
 
 *Extends:* `A2ABaseModel`
 
@@ -191,7 +191,7 @@ AgentConstructionExt(*, trade: Literal['mechanical', 'electrical', 'plumbing', '
 ## `SkillConstructionExt`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L121)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L132)
 
 *Extends:* `A2ABaseModel`
 
@@ -207,22 +207,69 @@ SkillConstructionExt(*, taskType: str, inputSchema: str | None = None, outputSch
 ## `SecurityExt`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L129)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L140)
 
 *Extends:* `A2ABaseModel`
 
 x-construction.security sub-object for TACO security metadata.
 
+Holds construction-specific security advertisements (trust tier, TACO
+scopes, project scoping, delegation). Also surfaces three v1-aware
+capability flags (``mtls_supported``, ``pkce_required``,
+``device_code_supported``) so a registry or orchestrator can quickly
+filter agents on auth modality without parsing the full ``securitySchemes``
+block on the agent card.
+
 #### Constructor
 
 ```python
-SecurityExt(*, trustTier: int | None = None, scopesOffered: list[str] = <factory>, projectScoped: bool | None = None, delegationSupported: bool | None = None, extendedCardUrl: str | None = None) -> None
+SecurityExt(*, trustTier: int | None = None, scopesOffered: list[str] = <factory>, projectScoped: bool | None = None, delegationSupported: bool | None = None, extendedCardUrl: str | None = None, mtlsSupported: bool | None = None, pkceRequired: bool | None = None, deviceCodeSupported: bool | None = None) -> None
+```
+
+
+## `AuthorizationCodeOAuthFlowV1`
+
+
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L173)
+
+*Extends:* `A2ABaseModel`
+
+v1-shaped AuthorizationCode OAuth flow with optional ``pkceRequired``.
+
+Equivalent to ``a2a.compat.v0_3.types.AuthorizationCodeOAuthFlow`` plus
+the v1 ``pkce_required`` field (RFC 7636).
+
+#### Constructor
+
+```python
+AuthorizationCodeOAuthFlowV1(*, authorizationUrl: str, tokenUrl: str, refreshUrl: str | None = None, scopes: dict[str, str] = <factory>, pkceRequired: bool | None = None) -> None
+```
+
+
+## `DeviceCodeOAuthFlow`
+
+
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L187)
+
+*Extends:* `A2ABaseModel`
+
+OAuth 2.0 Device Authorization Grant flow (RFC 8628).
+
+A2A v1 added this flow for headless / TV-style clients. The v0_3 compat
+layer's ``OAuthFlows`` does not include it, so TACO ships a Pydantic
+mirror that survives serialization round-trips and will become a direct
+pass-through to ``a2a.types`` after the v1 wire cutover (epic #18).
+
+#### Constructor
+
+```python
+DeviceCodeOAuthFlow(*, deviceAuthorizationUrl: str, tokenUrl: str, refreshUrl: str | None = None, scopes: dict[str, str] = <factory>) -> None
 ```
 
 
 ## `get_construction_ext()`
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L233)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L314)
 
 ```python
 get_construction_ext(card: 'AgentCard') -> 'AgentConstructionExt | None'
@@ -232,7 +279,7 @@ Extract x-construction extension from a TACO AgentCard.
 
 ## `get_skill_construction_ext()`
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L238)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L319)
 
 ```python
 get_skill_construction_ext(skill: 'AgentSkill') -> 'SkillConstructionExt | None'
@@ -242,7 +289,7 @@ Extract x-construction extension from a TACO AgentSkill.
 
 ## `apply_construction_extension_declaration()`
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L261)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L342)
 
 ```python
 apply_construction_extension_declaration(card: 'AgentCard') -> 'AgentCard'
