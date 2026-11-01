@@ -55,6 +55,7 @@ from ._compat import (
 from .agent_card import ConstructionAgentCard
 from .auth import BearerAuthMiddleware, TokenVerifier, _set_current_auth, auth_from_call_context
 from .errors import TacoTaskError
+from .push import TacoPushNotificationSender
 from .types import (
     AgentCapabilities,
     AgentCard,
@@ -479,8 +480,14 @@ class A2AServer:
         token_verifier: TokenVerifier | None = None,
         require_task_scope: bool = True,
         require_project_scope: bool | None = None,
+        allow_private_push_urls: bool = False,
     ) -> None:
         """Create the server.
+
+        Push notifications are delivered to the webhooks callers register
+        (see :mod:`taco.push`). Webhook URLs that resolve to non-public
+        addresses are refused unless ``allow_private_push_urls`` is set,
+        which local development needs.
 
         ``token_verifier`` turns on bearer-token auth for the JSON-RPC
         endpoint (see :mod:`taco.auth`): requests without a valid token get
@@ -520,11 +527,20 @@ class A2AServer:
         ):
             push_config_store = InMemoryPushNotificationConfigStore()
         self._push_config_store = push_config_store
+        # The a2a-sdk only delivers push notifications when given a sender.
+        push_sender = (
+            TacoPushNotificationSender(
+                push_config_store, allow_private_urls=allow_private_push_urls
+            )
+            if push_config_store is not None
+            else None
+        )
         self._request_handler = LegacyRequestHandler(
             agent_executor=self._executor,
             task_store=self._task_store,
             agent_card=self._a2a_card_pb,
             push_config_store=push_config_store,
+            push_sender=push_sender,
         )
 
         # Build the FastAPI app and mount the v1 JSON-RPC routes (with v0.3
