@@ -9,6 +9,11 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 ## [Unreleased]
 
 ### Security
+- **Admin endpoints require a token** — `A2AServer(enable_admin=True)` without `admin_auth_token` used to log a warning and serve unauthenticated endpoints that rewrite the public agent card. It now raises `ValueError`. (Binding to localhost is no substitute: behind a reverse proxy on the same host every request looks local.) The sandbox demo passes a `TACO_ADMIN_TOKEN`, which `make demo-env` writes to `examples/.env`.
+
+## [0.4.0] — 2026-11-01
+
+### Security
 - **Agent Monitor stored XSS** — the monitor UI put the JSON-RPC `method` (copied from any caller's request) into the page unescaped. Every event field is now escaped and inline event handlers are gone.
 - **Agent Monitor readable from any website** — the monitor API sent `Access-Control-Allow-Origin: *` and had no auth, so any page a developer visited could read an agent's full traffic log from `localhost`. CORS is removed (the UI is same-origin), the WebSocket rejects cross-site origins, and a new `monitor_auth_token` (on `A2AServer`, `TacoAgent` and `enable_monitor(auth_token=)`) protects the API and WebSocket; open the UI as `/monitor/#token=<token>`.
 - **Handler errors leaked to callers** — exception text (connection strings, upstream API errors) was returned verbatim in the failed task's status. Callers now get `Task handler failed for type '<t>' (error id <id>)`; the details are logged under that id. Raise the new `taco.TacoTaskError` for messages the caller should see.

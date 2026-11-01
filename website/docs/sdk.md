@@ -64,7 +64,7 @@ server = A2AServer(
     push_config_store=None,         # Push config store (default: in-memory when the card enables push)
     cors_origins=None,              # CORS allowed origins (default: None = no CORS)
     enable_admin=False,             # Enable /admin/skills endpoints
-    admin_auth_token=None,          # Protect admin endpoints with a Bearer token
+    admin_auth_token=None,          # Bearer token the admin endpoints require (needed with enable_admin)
     enable_monitor=False,           # Enable /monitor live tracing UI
     monitor_auth_token=None,        # Token the monitor requires (set it before exposing the port)
     token_verifier=None,            # async (token) -> AuthContext | None; turns on bearer auth
@@ -197,13 +197,15 @@ Declare the scheme on the card so callers know to send a token. See [Security: i
 
 ### Admin API
 
-Enable dynamic skill registration at runtime with `enable_admin=True`:
+Enable dynamic skill registration at runtime with `enable_admin=True`. The admin endpoints change the agent card every caller sees, so they need a token; `A2AServer` raises `ValueError` without one:
 
 ```python
+import os
+
 server = A2AServer(
     card.to_a2a(),
     enable_admin=True,
-    admin_auth_token="my-secret-token",  # Optional but recommended
+    admin_auth_token=os.environ["TACO_ADMIN_TOKEN"],  # required
 )
 ```
 
@@ -213,7 +215,7 @@ server = A2AServer(
 | `DELETE` | `/admin/skills/{skill_id}` | Remove a skill by ID |
 | `GET` | `/admin/skills` | List current skills |
 
-If `admin_auth_token` is set, requests must include `Authorization: Bearer <token>`.
+Requests must include `Authorization: Bearer <token>`; anything else gets HTTP 401.
 
 ```bash
 curl -X POST http://localhost:8001/admin/skills \
