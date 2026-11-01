@@ -8,6 +8,9 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 
 ## [Unreleased]
 
+### CI
+- Dependabot proposes weekly, grouped updates for the workflow actions (pinned to commit SHAs), the SDK's dependency ranges and the website, after a week's cooldown. Security fixes for the website arrive as one pull request.
+
 ## [0.5.0] — 2026-11-01
 
 ### Security
