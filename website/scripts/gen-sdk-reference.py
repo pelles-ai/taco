@@ -283,7 +283,9 @@ GROUPS: list[GroupSpec] = [
         label="Push Notifications",
         description=(
             "Multi-subscriber push notification configs per task. Used by "
-            "`TacoClient.create_push_config()` and friends."
+            "`TacoClient.create_push_config()` and friends. `A2AServer` "
+            "delivers the notifications and refuses non-public webhook URLs "
+            "unless `allow_private_push_urls=True`."
         ),
         sidebar_position=10,
         symbols=[

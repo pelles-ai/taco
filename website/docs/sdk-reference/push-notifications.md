@@ -1,6 +1,6 @@
 ---
 title: "Push Notifications"
-description: "Multi-subscriber push notification configs per task. Used by `TacoClient.create_push_config()` and friends."
+description: "Multi-subscriber push notification configs per task. Used by `TacoClient.create_push_config()` and friends. `A2AServer` delivers the notifications and refuses non-public webhook URLs unless `allow_private_push_urls=True`."
 sidebar_position: 10
 ---
 
@@ -12,7 +12,7 @@ this MDX by hand.
 
 # Push Notifications
 
-Multi-subscriber push notification configs per task. Used by `TacoClient.create_push_config()` and friends.
+Multi-subscriber push notification configs per task. Used by `TacoClient.create_push_config()` and friends. `A2AServer` delivers the notifications and refuses non-public webhook URLs unless `allow_private_push_urls=True`.
 
 ## `PushNotificationConfig`
 

@@ -70,6 +70,7 @@ server = A2AServer(
     token_verifier=None,            # async (token) -> AuthContext | None; turns on bearer auth
     require_task_scope=True,        # With token_verifier: require taco:task:<taskType>
     require_project_scope=None,     # Require taco:project:<projectId>:write (default: card's projectScoped)
+    allow_private_push_urls=False,  # Deliver push notifications to private/loopback URLs (local dev)
 )
 ```
 
@@ -232,6 +233,12 @@ curl -X POST http://localhost:8001/admin/skills \
     }
   }'
 ```
+
+### Push notifications
+
+When the card advertises push notifications (`card.capabilities.push_notifications = True`) or you pass a `push_config_store`, callers can register webhooks for a task with `TacoClient.create_push_config(task_id, url, token=...)`, and the server POSTs every task event to each of them. The `token` comes back in the `X-A2A-Notification-Token` header so the receiver can check the call is genuine, and whole numbers arrive as JSON integers. (Before the release after 0.4.0, TACO servers accepted webhook registrations but never delivered.)
+
+Any caller that can register a webhook chooses where the agent sends requests, so URLs that resolve to loopback, private, link-local or cloud-metadata addresses are refused and logged. For local development, where the receiver runs on `localhost`, pass `allow_private_push_urls=True`.
 
 ### Task persistence
 
