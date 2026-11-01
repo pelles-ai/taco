@@ -1,9 +1,27 @@
 # TACO SDK — A2A Protocol v1.0 Migration Guide
 
-> **Status (2026-05-10):** TACO is now on `a2a-sdk>=1.0.2,<2` via the v0.3
-> compat layer (Phase 2 landed). The on-the-wire JSON dialect is still
-> v0.3 — Phase 3 will flip individual wire-level concerns to v1 one PR at
-> a time.
+> **Status (2026-11-01, taco-agent 0.6.x):** Phases 1 and 2 are done: TACO
+> runs on `a2a-sdk>=1.1.1,<2` through the v0.3 compat layer. Phase 4 has
+> shipped except JWS-signed Agent Cards. Phase 3 has not started, so the
+> on-the-wire JSON is still v0.3.
+
+## Where things stand
+
+| Step | Status |
+|---|---|
+| 1. Well-known agent card path | Shipped (#25) |
+| 2. This guide | Done |
+| 3. Pin `a2a-sdk<1` | Superseded by step 5 |
+| 4. `A2A-Version` / `A2A-Extensions` headers | `A2A-Version` shipped in 0.3.6; `A2A-Extensions` is not sent |
+| 5. `a2a-sdk` 1.0 compat-layer port | Shipped in 0.3.7; floor raised to 1.1.1 in 0.6.2 so protobuf 6 and 7 work |
+| 6–10. v1 wire format | Not started |
+| 11. `ListTasks` | Shipped in 0.3.8 |
+| 12. JWS-signed Agent Cards | Not started |
+| 13. `x-construction` extension URI | Shipped in 0.3.9 |
+| 14. `referenceTaskIds` | Shipped in 0.3.10 (`send_message`, `send_to_peer`); the sandbox demo's RFI flows don't use it yet |
+| 15. Multiple push-notification configs | Shipped in 0.3.13; notifications are delivered since 0.5.0 |
+| 16. mTLS, PKCE, device code | Shipped in 0.6.1 |
+| 17. `returnImmediately` | Shipped in 0.3.11 |
 
 ## What v1.0 changed (and why our original "1-line switch" plan no longer fits)
 
@@ -15,7 +33,7 @@ The released SDK *does* ship `a2a.compat.v0_3.types` (Pydantic, type-compatible
 with our current code), but it also restructured several other modules we
 depend on:
 
-| Module we use today | Status in `a2a-sdk` 1.0.2 |
+| Module TACO used before the port | Status in `a2a-sdk` 1.0.2 |
 |---|---|
 | `a2a.types` | Now **protobuf** (`a2a_pb2`); Pydantic equivalents live at `a2a.compat.v0_3.types` |
 | `a2a.utils.message` (`new_agent_text_message`, `get_message_text`) | **Removed.** Moved to `a2a.helpers.proto_helpers` with renamed APIs (`new_text_message`, etc.) and protobuf-shaped signatures |
@@ -27,9 +45,9 @@ depend on:
 | `a2a.server.request_handlers.DefaultRequestHandler` | Aliased to `DefaultRequestHandlerV2`; takes `agent_card: a2a_pb2.AgentCard` (protobuf) |
 | `a2a.server.request_handlers.LegacyRequestHandler` | New: keeps the v0.3 Pydantic-style executor wiring, still takes a protobuf agent card |
 
-Concretely, `taco/server.py:30` (`from a2a.server.apps import A2AFastAPIApplication`)
-and `taco/_compat.py:32-49` (re-exports of `a2a.utils.message/parts/artifact`)
-will fail to import the moment we bump the dep.
+Concretely, `taco/server.py` imported `A2AFastAPIApplication` and
+`taco/_compat.py` re-exported `a2a.utils.message/parts/artifact`; both broke
+on the bump, which is why step 5 below was one large PR.
 
 ## Wire-format changes (protocol v1.0 vs v0.3)
 
@@ -72,24 +90,27 @@ directly:
 
 ## TACO migration plan (one branch per step)
 
-This is the playbook the team is executing. Each item is a separate PR;
-phases gate on each other.
+The playbook as planned. Each item is a separate PR; phases gate on each
+other. The table under [Where things stand](#where-things-stand) tracks what
+has shipped.
 
 ### Phase 1 — Pre-bump polish (compatible with `a2a-sdk` 0.3.x)
 
 1. **`fix/well-known-agent-card-path`** *(merged in #25)* — Client/registry/CLI
    prefer `/.well-known/agent-card.json` and fall back to the legacy path.
-2. **`docs/update-v1-migration-guide`** *(this PR)* — Replace the optimistic
+2. **`docs/update-v1-migration-guide`** *(done)* — Replace the optimistic
    draft with the accurate post-1.0 migration shape.
-3. **`chore/pin-a2a-sdk-upper-bound`** — Pin `a2a-sdk>=0.3.25,<1` to block
-   accidental v1 installs before we are ready.
-4. **`feat/send-a2a-version-headers`** — Emit `A2A-Version` (and optional
-   `A2A-Extensions`) request headers from `TacoClient` and the CLI.
+3. **`chore/pin-a2a-sdk-upper-bound`** *(superseded by step 5)* — Pin
+   `a2a-sdk>=0.3.25,<1` to block accidental v1 installs before we are ready.
+4. **`feat/send-a2a-version-headers`** *(`A2A-Version` shipped in 0.3.6)* —
+   Emit `A2A-Version` (and optional `A2A-Extensions`) request headers from
+   `TacoClient` and the CLI.
 
-### Phase 2 — `a2a-sdk` 1.0 compat-layer port (TACO 0.4.0)
+### Phase 2 — `a2a-sdk` 1.0 compat-layer port (shipped in 0.3.7)
 
 5. **`feat/a2a-sdk-1.0-compat-layer`** — Single PR, larger than originally
-   scoped. Touches:
+   scoped. It took shape (a) below, with `LegacyRequestHandler` and
+   `create_jsonrpc_routes(enable_v0_3_compat=True)`. Touches:
    - `sdk/pyproject.toml`: bump `a2a-sdk` floor to `>=1.0.2`.
    - `taco/types.py`: switch `from a2a.types …` → `from a2a.compat.v0_3.types …`.
    - `taco/_compat.py`: drop the dead `a2a.utils.message/parts/artifact`
@@ -110,10 +131,10 @@ phases gate on each other.
    - Verify: `make check-all` green; on-the-wire JSON for agent card,
      `message/send`, `message/stream` byte-identical to current.
 
-### Phase 3 — Native v1.0 adoption (TACO 0.5.0)
+### Phase 3 — Native v1.0 adoption (not started)
 
-Each of these flips one wire-level concern from v0.3 to v1, gated on Phase 2
-landing.
+Each of these flips one wire-level concern from v0.3 to v1. Phase 2 has
+landed, so nothing blocks them.
 
 6. **`feat/v1-native-part-constructors`** — Flatten `Part(root=TextPart(...))`
    to `Part(text=...)` in `_compat.py`; update `extract_*` accessors.
@@ -128,10 +149,10 @@ landing.
     (`client.py`) and event emission (`server.py`) for the wrapper-keyed
     event shape; drop `final=True`.
 
-### Phase 4 — New v1.0 features (TACO 1.0.0)
+### Phase 4 — New v1.0 features
 
-These are net-new capabilities the v0.3 spec did not have. All blocked on
-Phase 2; some additionally blocked on Phase 3 (#8 in particular).
+These are net-new capabilities the v0.3 spec did not have. All shipped
+except #12, signed Agent Cards (see the table at the top).
 
 11. **`feat/list-tasks-cli-and-client`** — `ListTasks` with cursor pagination;
     `taco list-tasks` subcommand.
@@ -149,7 +170,7 @@ Phase 2; some additionally blocked on Phase 3 (#8 in particular).
 17. **`feat/return-immediately-flag`** — `returnImmediately` on `SendMessage`
     for fire-and-forget workflows.
 
-## Quick reference: current (0.3.x) → target (v1) mapping
+## Quick reference: current (v0.3 wire format) → target (v1) mapping
 
 ```python
 # Part construction (Phase 3, branch #6)
@@ -181,4 +202,4 @@ AgentCard(supported_interfaces=[AgentInterface(url="http://...")], …) # v1
 - A2A protocol v1.0 announcement: <https://github.com/a2aproject/A2A/blob/main/docs/announcing-1.0.md>
 - A2A v1 changes: <https://github.com/a2aproject/A2A/blob/main/docs/whats-new-v1.md>
 - `a2a-sdk` releases: <https://github.com/a2aproject/a2a-python/releases>
-- `a2a-sdk` 1.0.2 on PyPI: <https://pypi.org/project/a2a-sdk/1.0.2/>
+- `a2a-sdk` on PyPI: <https://pypi.org/project/a2a-sdk/>

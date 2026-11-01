@@ -38,7 +38,7 @@ Dates come from the release tags in the repository. See the [CHANGELOG](https://
 - Streaming handlers work on `a2a-sdk` 1.1 (chunks share one artifact id; first chunk created, later chunks appended)
 - Package builds on hatchling 1.28+ (the SDK ships its own `sdk/README.md`)
 
-### Next release — Auth and correctness (on `main`, not yet tagged)
+### v0.4.0–v0.6.2 — Auth, correctness and hardening (November 2026)
 - Bearer-token auth on `A2AServer` (`token_verifier`, `taco:task:<taskType>` scopes, per-caller task isolation, `current_auth()`), and `securitySchemes` / `security` on Agent Cards
 - Handler failures reported to callers as a generic message with an error id; `TacoTaskError` for messages callers should see
 - Monitor hardening: `monitor_auth_token`, no CORS, same-origin WebSocket
@@ -46,18 +46,22 @@ Dates come from the release tags in the repository. See the [CHANGELOG](https://
 - `TacoAgent` routes to the URL a peer was discovered at and discovers peers in the background
 - Schema models match `spec/schemas` (no invented defaults, RFC 3339 dates, unknown fields kept), checked by a parity test; `get_schema_model()`
 - `taco send` exit codes and `--token`
+- Push notifications delivered (webhooks to private addresses refused), admin endpoints require a token, one monitor event log per server (0.5.0)
+- Schema models reject numbers sent as text, as the JSON Schemas do (0.6.0)
+- mTLS, PKCE and OAuth device-code fields on `SecurityExt`, and scheme and flow models accepted in `security_schemes` (0.6.1)
+- `a2a-sdk` 1.1.1 or later, so protobuf 6 and 7 can be installed alongside (0.6.2)
 
 ## In flight
 
 ### A2A v1 wire cutover (Phase 3 of the SDK migration)
-The TACO SDK is on `a2a-sdk>=1.0.2`, but the on-the-wire JSON is still v0.3. Phase 3 flips the wire format to v1 one concern at a time: flattened `Part` constructors, v1 enum literals, `supportedInterfaces[]` on the Agent Card, new JSON-RPC method names (`SendMessage`, `GetTask`, and so on), and the wrapper-keyed stream event shape.
+The TACO SDK is on `a2a-sdk>=1.1.1`, but the on-the-wire JSON is still v0.3. Phase 3 flips the wire format to v1 one concern at a time: flattened `Part` constructors, v1 enum literals, `supportedInterfaces[]` on the Agent Card, new JSON-RPC method names (`SendMessage`, `GetTask`, and so on), and the wrapper-keyed stream event shape.
 
 See [`sdk/V1_MIGRATION.md`](https://github.com/pelles-ai/taco/blob/main/sdk/V1_MIGRATION.md) for the full plan and [ADR-0007](/docs/decisions/v1-wire-cutover) for the reasoning.
 
 ### Remaining v1 features
 Still open in the migration plan:
 - JWS-signed Agent Cards (`signatures[]`), tied to `SecurityExt.trust_tier`
-- mTLS, PKCE-required, and OAuth Device Code declarations on `SecurityExt`
+- The optional `A2A-Extensions` request header
 
 ## Next
 
