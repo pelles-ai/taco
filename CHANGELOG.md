@@ -15,6 +15,10 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 ### Fixed
 - **Push notifications were never delivered** — the a2a-sdk only sends them when its request handler is given a sender, and `A2AServer` never passed one, so webhooks registered with `create_push_config` were stored and never called. `A2AServer` now delivers them, with whole numbers as JSON integers and the config's token in `X-A2A-Notification-Token`.
 - **The monitor mixed agents' traffic** — every monitored server in a process shared one event log. Each `A2AServer` now has its own (`server.monitor_event_bus`), and `TacoAgent` reports its peer calls into it.
+- **Startup warning for cards without a `url`** — the a2a-sdk warned that such cards are not spec-compliant, though `A2AServer` serves them with the address each request reached. The warning is dropped when the `url` is the only gap; other missing fields still warn.
+
+### CI
+- The sandbox demo is linted and run end to end on every pull request, offline against a fake Claude API, including every curl in its README and docstrings (`make demo-test`). Its Docker image is built and its compose file validated.
 
 ## [0.4.0] — 2026-11-01
 
