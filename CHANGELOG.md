@@ -8,6 +8,9 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 
 ## [Unreleased]
 
+### Changed
+- **Breaking: schema models reject numbers sent as text** — `number` and `integer` fields in the `taco.schemas` models (`EstimateV1`, `QuoteV1`, `ScheduleV1` and the rest) accepted `"850"` and `true` and stored them as `850.0` and `1`. The JSON Schemas reject both, so a payload the models accepted could still fail validation at the receiving agent. Both are now rejected. Integer fields still accept whole floats such as `5.0`, as JSON Schema does (A2A's protobuf layer sends every number as a float). Producers that send numbers as strings must send them unquoted.
+
 ### CI
 - Dependabot proposes weekly, grouped updates for the workflow actions (pinned to commit SHAs), the SDK's dependency ranges and the website, after a week's cooldown. Security fixes for the website arrive as one pull request.
 

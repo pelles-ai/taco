@@ -21,6 +21,9 @@ these models mirror them:
   stored as strings but validated against that format (see
   :data:`DateString` and :data:`DateTimeString`). Fields without a
   ``format`` in the schema are plain strings.
+- ``number`` and ``integer`` fields reject strings and booleans, as JSON
+  Schema does, instead of Pydantic's lax reading of ``"850"`` as 850
+  (see :data:`Number` and :data:`Integer`).
 """
 
 from __future__ import annotations
@@ -37,6 +40,7 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    Strict,
     WithJsonSchema,
     model_validator,
 )
@@ -146,6 +150,34 @@ stored and serialized as a string. Naive datetimes are rejected.
 """
 
 
+# ---------------------------------------------------------------------------
+# JSON Schema numbers
+# ---------------------------------------------------------------------------
+
+
+# Pydantic's lax mode reads "850" as 850.0 and true as 1. A JSON Schema
+# number or integer is never a string or a boolean.
+
+Number = Annotated[float, Strict()]
+"""A JSON Schema ``number``: an int or a float. Rejects strings such as
+``"850"`` and booleans."""
+
+
+def _reject_text_and_booleans(value: object) -> object:
+    if isinstance(value, bool):
+        raise ValueError(f"expected a whole number, got the boolean {value!r}")
+    if isinstance(value, (str, bytes, bytearray)):
+        raise ValueError(f"expected a whole number, got the string {value!r}; send it unquoted")
+    return value
+
+
+# Not Strict(): strict ints reject 5.0, which JSON Schema accepts as an
+# integer and which A2A's protobuf Struct produces for every number.
+Integer = Annotated[int, BeforeValidator(_reject_text_and_booleans)]
+"""A JSON Schema ``integer``. Accepts whole floats such as ``5.0``; rejects
+``5.5``, strings such as ``"5"`` and booleans."""
+
+
 class SchemaModel(A2ABaseModel):
     """Base class for models that mirror a canonical TACO JSON Schema.
 
@@ -165,33 +197,33 @@ class SchemaModel(A2ABaseModel):
 class EstimateLineItem(SchemaModel):
     bom_item_id: str = Field(alias="bomItemId")
     description: str
-    quantity: float
+    quantity: Number
     unit: str
-    material_unit_cost: float = Field(alias="materialUnitCost")
-    material_total: float = Field(alias="materialTotal")
-    labor_hours: float = Field(alias="laborHours")
-    labor_rate: float = Field(alias="laborRate")
-    labor_total: float = Field(alias="laborTotal")
-    equipment_cost: float | None = Field(None, alias="equipmentCost")
-    subtotal: float
+    material_unit_cost: Number = Field(alias="materialUnitCost")
+    material_total: Number = Field(alias="materialTotal")
+    labor_hours: Number = Field(alias="laborHours")
+    labor_rate: Number = Field(alias="laborRate")
+    labor_total: Number = Field(alias="laborTotal")
+    equipment_cost: Number | None = Field(None, alias="equipmentCost")
+    subtotal: Number
 
 
 class EstimateSummary(SchemaModel):
-    total_material: float = Field(alias="totalMaterial")
-    total_labor: float = Field(alias="totalLabor")
-    total_equipment: float = Field(alias="totalEquipment")
-    subtotal: float
-    overhead_percentage: float = Field(alias="overheadPercentage")
-    overhead_amount: float = Field(alias="overheadAmount")
-    profit_percentage: float = Field(alias="profitPercentage")
-    profit_amount: float = Field(alias="profitAmount")
-    grand_total: float = Field(alias="grandTotal")
+    total_material: Number = Field(alias="totalMaterial")
+    total_labor: Number = Field(alias="totalLabor")
+    total_equipment: Number = Field(alias="totalEquipment")
+    subtotal: Number
+    overhead_percentage: Number = Field(alias="overheadPercentage")
+    overhead_amount: Number = Field(alias="overheadAmount")
+    profit_percentage: Number = Field(alias="profitPercentage")
+    profit_amount: Number = Field(alias="profitAmount")
+    grand_total: Number = Field(alias="grandTotal")
 
 
 class EstimateMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
     generated_at: DateTimeString = Field(alias="generatedAt")
-    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    confidence: Number | None = Field(None, ge=0.0, le=1.0)
     pricing_region: str | None = Field(None, alias="pricingRegion")
     pricing_date: DateString | None = Field(None, alias="pricingDate")
     notes: list[str] | None = None
@@ -214,23 +246,23 @@ class EstimateV1(SchemaModel):
 class QuoteLineItem(SchemaModel):
     bom_item_id: str = Field(alias="bomItemId")
     description: str
-    quantity: float
+    quantity: Number
     unit: str
-    unit_price: float = Field(alias="unitPrice")
-    extended_price: float = Field(alias="extendedPrice")
+    unit_price: Number = Field(alias="unitPrice")
+    extended_price: Number = Field(alias="extendedPrice")
     manufacturer: str
     part_number: str = Field(alias="partNumber")
-    lead_time_days: int = Field(alias="leadTimeDays")
+    lead_time_days: Integer = Field(alias="leadTimeDays")
     availability: Availability
     notes: str | None = None
 
 
 class QuoteSummary(SchemaModel):
-    subtotal: float
-    tax_rate: float = Field(alias="taxRate")
-    tax_amount: float = Field(alias="taxAmount")
-    freight: float
-    total: float
+    subtotal: Number
+    tax_rate: Number = Field(alias="taxRate")
+    tax_amount: Number = Field(alias="taxAmount")
+    freight: Number
+    total: Number
 
 
 class QuoteTerms(SchemaModel):
@@ -243,7 +275,7 @@ class QuoteTerms(SchemaModel):
 class QuoteMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
     generated_at: DateTimeString = Field(alias="generatedAt")
-    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    confidence: Number | None = Field(None, ge=0.0, le=1.0)
 
 
 class QuoteV1(SchemaModel):
@@ -271,7 +303,7 @@ class BOMAlternate(SchemaModel):
 class BOMLineItem(SchemaModel):
     id: str
     description: str
-    quantity: float
+    quantity: Number
     unit: BOMUnit
     size: str | None = None
     material: str | None = None
@@ -296,7 +328,7 @@ class BOMFlaggedItem(SchemaModel):
 class BOMMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
     generated_at: DateTimeString = Field(alias="generatedAt")
-    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    confidence: Number | None = Field(None, ge=0.0, le=1.0)
     source_documents: list[BOMSourceDocument] | None = Field(None, alias="sourceDocuments")
     flagged_items: list[BOMFlaggedItem] | None = Field(None, alias="flaggedItems")
 
@@ -316,10 +348,10 @@ class BOMV1(SchemaModel):
 
 
 class RFICoordinates(SchemaModel):
-    x: float
-    y: float
-    width: float
-    height: float
+    x: Number
+    y: Number
+    width: Number
+    height: Number
 
 
 class RFIReference(SchemaModel):
@@ -347,7 +379,7 @@ class RFIAssignee(SchemaModel):
 class RFIMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
     generated_at: DateTimeString = Field(alias="generatedAt")
-    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    confidence: Number | None = Field(None, ge=0.0, le=1.0)
     related_rfis: list[str] | None = Field(None, alias="relatedRfis")
 
 
@@ -383,13 +415,13 @@ class ScheduleActivity(SchemaModel):
     name: str
     # Free text in schedule-v1 (unlike the Trade enum on bom/estimate).
     trade: str | None = None
-    duration_days: int = Field(ge=0, alias="durationDays")
+    duration_days: Integer = Field(ge=0, alias="durationDays")
     # schedule-v1 dates declare no ``format``, so any string is accepted.
     start_date: str | None = Field(None, alias="startDate")
     end_date: str | None = Field(None, alias="endDate")
     predecessors: list[str] | None = None
     successors: list[str] | None = None
-    percent_complete: float | None = Field(None, ge=0.0, le=100.0, alias="percentComplete")
+    percent_complete: Number | None = Field(None, ge=0.0, le=100.0, alias="percentComplete")
     is_critical: bool | None = Field(None, alias="isCritical")
     resources: list[str] | None = None
 
@@ -405,7 +437,7 @@ class ScheduleMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
     # schedule-v1 declares no ``format`` here (unlike bom/estimate/quote/rfi).
     generated_at: str = Field(alias="generatedAt")
-    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    confidence: Number | None = Field(None, ge=0.0, le=1.0)
     notes: list[str] | None = None
 
 
@@ -458,8 +490,8 @@ class ChangeOrderLineItem(SchemaModel):
     description: str
     # Free text in change-order-v1 (unlike the Trade enum on bom/estimate).
     trade: str | None = None
-    cost_impact: float = Field(alias="costImpact")
-    schedule_impact_days: int | None = Field(None, alias="scheduleImpactDays")
+    cost_impact: Number = Field(alias="costImpact")
+    schedule_impact_days: Integer | None = Field(None, alias="scheduleImpactDays")
     bom_item_ids: list[str] | None = Field(None, alias="bomItemIds")
 
 
@@ -467,7 +499,7 @@ class ChangeOrderMetadata(SchemaModel):
     generated_by: str = Field(alias="generatedBy")
     # change-order-v1 declares no ``format`` here (unlike bom/estimate/quote/rfi).
     generated_at: str = Field(alias="generatedAt")
-    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    confidence: Number | None = Field(None, ge=0.0, le=1.0)
     notes: list[str] | None = None
 
 
@@ -478,8 +510,8 @@ class ChangeOrderV1(SchemaModel):
     reason: ChangeOrderReason
     status: ChangeOrderStatus
     line_items: list[ChangeOrderLineItem] = Field(alias="lineItems", min_length=1)
-    total_cost_impact: float = Field(alias="totalCostImpact")
-    total_schedule_impact_days: int | None = Field(None, alias="totalScheduleImpactDays")
+    total_cost_impact: Number = Field(alias="totalCostImpact")
+    total_schedule_impact_days: Integer | None = Field(None, alias="totalScheduleImpactDays")
     related_rfis: list[str] | None = Field(None, alias="relatedRfis")
     metadata: ChangeOrderMetadata
 
