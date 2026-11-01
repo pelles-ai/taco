@@ -91,8 +91,8 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install SDK with the minimum a2a-sdk
-        run: pip install ".[test]" "a2a-sdk[http-server]==1.0.2"
+      - name: Install SDK with the minimum a2a-sdk and protobuf
+        run: pip install ".[test]" "a2a-sdk[http-server]==1.1.1" "protobuf==5.29.5"
         working-directory: sdk
 
       - name: Run tests

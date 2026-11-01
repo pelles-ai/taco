@@ -28,10 +28,6 @@ updates:
       default-days: 7
     commit-message:
       prefix: sdk
-    ignore:
-      # Held below 6 on purpose; see the comment in sdk/pyproject.toml.
-      - dependency-name: protobuf
-        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /website
