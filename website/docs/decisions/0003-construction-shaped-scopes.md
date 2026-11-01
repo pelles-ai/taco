@@ -57,7 +57,7 @@ This is what the construction software space does today. The pattern works *with
 ### Positive
 
 - Token Exchange becomes meaningful. A GC token holding `taco:trade:mechanical taco:project:PRJ-0042:write` can be narrowed to `taco:task:estimate taco:project:PRJ-0042:write` before calling the estimator, then to `taco:task:material-procurement taco:project:PRJ-0042:write` before calling the supplier. Each hop holds only what it needs.
-- Scope coverage becomes something a registry could filter on (`find me agents that accept tokens with taco:trade:electrical`), since agents list the scopes they accept in `x-construction.security.scopesOffered`. The SDK's in-process `AgentRegistry.find()` does not do this today; it filters only by trade, task type, CSI division, and project type.
+- Scope coverage becomes something a registry could filter on (`find me agents that accept tokens with taco:trade:electrical`), since agents list the scopes they accept in `x-construction.security.scopesOffered`. The SDK's in-process `AgentRegistry.find()` does not do this today; it filters only by trade, task type, CSI division, project type, and integration.
 - Auditing becomes possible. A project-scoped token narrowed at every hop produces an audit trail where each agent's exact authority is recorded.
 - Trust tiers and scopes can be combined. A future registry or authorization server could pair trust tiers with project scopes to enforce policies such as "only cert-attested agents can read this project's artifacts." Nothing in the SDK enforces this today.
 
@@ -65,7 +65,7 @@ This is what the construction software space does today. The pattern works *with
 
 - Auth servers have to be configured to issue TACO-shaped scopes. We provide a taxonomy spec, not a token issuer. Operators need to configure their IdP (Auth0, Okta, Keycloak, in-house) to emit these scopes — non-trivial.
 - The taxonomy is opinionated. Edge cases ("what scope does a value-engineering agent need?") have to be decided in a spec working group, which means RFCs and slower iteration than per-vendor extension.
-- Scope-string parsing has to be implemented per language. The Python SDK does not yet provide scope parsing or enforcement; agents parse and check scopes themselves, and future SDKs in any language will need a matching implementation.
+- Scope-string parsing has to be implemented per language. The Python SDK enforces `taco:task:{taskType}` and, for project-scoped agents, `taco:project:{id}` (through `A2AServer(token_verifier=...)`); agents check trade and CSI scopes themselves, and future SDKs in any language will need a matching implementation.
 
 ### Reversibility
 

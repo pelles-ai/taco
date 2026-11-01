@@ -1,7 +1,7 @@
 ---
 title: "Agent (server + client pool)"
 description: "`TacoAgent` bundles `A2AServer` with a pool of `TacoClient`s, for agents that both receive and call other agents."
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 :::info Generated
@@ -17,7 +17,7 @@ this MDX by hand.
 ## `TacoAgent`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/agent.py#L42)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/agent.py#L44)
 
 A TACO agent that can both receive and send A2A requests.
 
@@ -36,18 +36,36 @@ Args:
         Defaults to ``InMemoryTaskStore`` (state lost on restart).
         Pass a :class:`JsonFileTaskStore` or ``DatabaseTaskStore``
         for durable storage.
-    peer_retry_attempts: How many times to retry discovering each peer
-        at startup (default 5).
+    peer_retry_attempts: How many times to try discovering each peer
+        in the background after startup (default 5). A peer still
+        missing after that is tried again when a request needs it.
     peer_retry_delay: Seconds between retry attempts (default 2.0).
+    peer_startup_wait: Seconds startup waits for the first discovery
+        round before the agent starts serving (default 2.0). Discovery
+        carries on in the background, so agents that list each other
+        as peers find each other once both are up.
     cors_origins: CORS origins for the server. ``None`` (the default)
         disables CORS middleware entirely.
     enable_monitor: Whether to enable the Agent Monitor UI at
         ``/monitor`` on this agent's port.
+    monitor_auth_token: Token the monitor's API and WebSocket require
+        (open the UI as ``/monitor/#token=<token>``). Set it whenever
+        the agent's port is reachable by anyone but you: the monitor
+        shows every request and response payload.
+    token_verifier: Require a bearer token on inbound task requests
+        (see :mod:`taco.auth`); forwarded to :class:`A2AServer`.
+        Outbound peer calls take their own credentials through
+        ``headers=`` — never forward the caller's token.
+    require_task_scope: With ``token_verifier``, require the
+        ``taco:task:<taskType>`` scope (default ``True``).
+    require_project_scope: With ``token_verifier``, require the token
+        to cover the request data's ``projectId``. Defaults to the
+        card's ``x-construction.security.projectScoped``.
 
 #### Constructor
 
 ```python
-TacoAgent(agent_card: 'ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, peers: 'list[str] | str | None' = None, peer_retry_attempts: 'int' = 5, peer_retry_delay: 'float' = 2.0, cors_origins: 'list[str] | None' = None, enable_monitor: 'bool' = False) -> 'None'
+TacoAgent(agent_card: 'ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, peers: 'list[str] | str | None' = None, peer_retry_attempts: 'int' = 5, peer_retry_delay: 'float' = 2.0, peer_startup_wait: 'float' = 2.0, cors_origins: 'list[str] | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None, token_verifier: 'TokenVerifier | None' = None, require_task_scope: 'bool' = True, require_project_scope: 'bool | None' = None) -> 'None'
 ```
 
 #### Methods

@@ -13,11 +13,50 @@ import CopyButton from '@site/src/components/CopyButton';
  * build, so it always validates.
  */
 
-function typeLabel(prop) {
+/** Follow a local JSON Pointer ("#/$defs/Name") inside the root schema. */
+function lookupRef(root, ref) {
+  if (typeof ref !== 'string' || !ref.startsWith('#')) return undefined;
+  const tokens = ref
+    .slice(1)
+    .split('/')
+    .slice(1)
+    .map((t) => decodeURIComponent(t).replace(/~1/g, '/').replace(/~0/g, '~'));
+  let node = root;
+  for (const t of tokens) {
+    if (!node || typeof node !== 'object' || !(t in node)) return undefined;
+    node = node[t];
+  }
+  return node;
+}
+
+/**
+ * Resolve a node's local $ref (repeatedly), merging keywords written next to
+ * the $ref over the target's. `path` lists the refs already followed on the
+ * way down; meeting one again marks the node as recursive instead of looping.
+ */
+function deref(root, node, path) {
+  let current = node || {};
+  let seen = path;
+  while (current && typeof current.$ref === 'string') {
+    const {$ref: ref, ...siblings} = current;
+    const name = ref.split('/').pop();
+    if (seen.includes(ref)) return {node: {...siblings, recursiveRef: name}, path: seen};
+    const target = lookupRef(root, ref);
+    if (!target) return {node: {...siblings, unresolvedRef: ref}, path: seen};
+    current = {...target, ...siblings};
+    seen = [...seen, ref];
+  }
+  return {node: current, path: seen};
+}
+
+function typeLabel(prop, items) {
   if (!prop) return 'unknown';
+  if (prop.recursiveRef) return `${prop.recursiveRef} (recursive)`;
+  if (prop.unresolvedRef) return prop.unresolvedRef;
   if (prop.enum) return 'enum';
   if (prop.type === 'array') {
-    const items = prop.items || {};
+    if (!items) return 'array';
+    if (items.recursiveRef) return `array of ${items.recursiveRef} (recursive)`;
     return items.type ? `array of ${items.type}` : 'array';
   }
   if (Array.isArray(prop.type)) return prop.type.join(' | ');
@@ -34,14 +73,18 @@ function constraints(prop) {
   return out;
 }
 
-function childObject(prop) {
-  if (prop.type === 'object' && prop.properties) return prop;
-  if (prop.type === 'array' && prop.items && prop.items.properties) return prop.items;
-  return null;
-}
-
-function Field({name, prop, required, depth}) {
-  const child = childObject(prop);
+function Field({name, prop: raw, required, depth, root, path}) {
+  const {node: prop, path: propPath} = deref(root, raw, path);
+  const {node: items, path: itemsPath} =
+    prop.type === 'array' && prop.items ? deref(root, prop.items, propPath) : {node: null, path: propPath};
+  let child = null;
+  let childPath = propPath;
+  if (prop.properties) {
+    child = prop;
+  } else if (items && items.properties) {
+    child = items;
+    childPath = itemsPath;
+  }
   const [open, setOpen] = useState(depth < 1);
   const extras = constraints(prop);
   return (
@@ -62,7 +105,7 @@ function Field({name, prop, required, depth}) {
           <span className="sx-field__leaf" aria-hidden="true" />
         )}
         <code className="sx-field__name">{name}</code>
-        <span className="sx-field__type">{typeLabel(prop)}</span>
+        <span className="sx-field__type">{typeLabel(prop, items)}</span>
         {required ? <span className="sx-field__req">required</span> : null}
         {extras.map((c) => (
           <span className="sx-field__constraint" key={c}>
@@ -78,17 +121,25 @@ function Field({name, prop, required, depth}) {
           ))}
         </div>
       ) : null}
-      {child && open ? <Fields node={child} depth={depth + 1} /> : null}
+      {child && open ? <Fields node={child} depth={depth + 1} root={root} path={childPath} /> : null}
     </li>
   );
 }
 
-function Fields({node, depth = 0}) {
+function Fields({node, depth = 0, root = node, path = []}) {
   const required = new Set(node.required || []);
   return (
     <ul className={`sx-fields ${depth ? 'sx-fields--nested' : ''}`}>
       {Object.entries(node.properties || {}).map(([name, prop]) => (
-        <Field key={name} name={name} prop={prop} required={required.has(name)} depth={depth} />
+        <Field
+          key={name}
+          name={name}
+          prop={prop}
+          required={required.has(name)}
+          depth={depth}
+          root={root}
+          path={path}
+        />
       ))}
     </ul>
   );
@@ -305,7 +356,7 @@ export default function SchemaExplorer({schemaId}) {
         role="tabpanel"
         id={`sx-panel-${schemaId}`}
         aria-labelledby={`sx-tab-${schemaId}-${tab}`}>
-        {tab === 'fields' ? <Fields node={schema} /> : null}
+        {tab === 'fields' ? <Fields node={schema} root={schema} /> : null}
         {tab === 'validate' ? (
           <Validate schema={schema} schemaId={schemaId} example={examples[schemaId]} />
         ) : null}

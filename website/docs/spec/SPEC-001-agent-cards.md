@@ -49,7 +49,7 @@ A TACO-compliant Agent Card **SHALL** contain the following top-level fields:
 | `name` | string | Human-readable agent name |
 | `description` | string | One-paragraph description of the agent's purpose (the reference SDK rejects an empty value) |
 | `version` | string | Agent implementation version (e.g. `"1.4.2"`) |
-| `url` | string | Base URL where the agent serves its A2A endpoints |
+| `url` | string | Base URL where the agent serves its A2A endpoints (the reference SDK serves an empty `url` as the address the request reached) |
 | `skills` | array | At least one skill **SHALL** be declared |
 
 A TACO-compliant Agent Card **SHOULD** contain:

@@ -1,13 +1,18 @@
+# Ports are published on the host's loopback interface only (127.0.0.1).
+# Inside the containers the services listen on all interfaces so they can
+# reach each other over the compose network.
 services:
   orchestrator:
     build:
       context: ..
       dockerfile: examples/Dockerfile
-    command: uvicorn orchestrator.app:app --host 0.0.0.0 --port 8000 --reload
+    command: python -m orchestrator.app
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file: .env
     environment:
+      - ORCHESTRATOR_HOST=0.0.0.0
+      - ORCHESTRATOR_RELOAD=true
       - AGENT_URLS=http://estimating-agent:8001,http://supplier-agent:8002,http://rfi-agent:8003
     volumes:
       - ./orchestrator:/app/orchestrator
@@ -24,10 +29,12 @@ services:
       dockerfile: examples/Dockerfile
     command: uvicorn agents.estimating_agent:app --host 0.0.0.0 --port 8001 --reload
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     env_file: .env
     environment:
       - AGENT_HOST=estimating-agent
+      # Uncomment to have the estimator fetch supplier pricing first:
+      # - SUPPLIER_AGENT_URL=http://supplier-agent:8002
     volumes:
       - ./agents:/app/agents
       - ./common:/app/common
@@ -38,7 +45,7 @@ services:
       dockerfile: examples/Dockerfile
     command: uvicorn agents.supplier_quote_agent:app --host 0.0.0.0 --port 8002 --reload
     ports:
-      - "8002:8002"
+      - "127.0.0.1:8002:8002"
     env_file: .env
     environment:
       - AGENT_HOST=supplier-agent
@@ -52,7 +59,7 @@ services:
       dockerfile: examples/Dockerfile
     command: uvicorn agents.rfi_generation_agent:app --host 0.0.0.0 --port 8003 --reload
     ports:
-      - "8003:8003"
+      - "127.0.0.1:8003:8003"
     env_file: .env
     environment:
       - AGENT_HOST=rfi-agent

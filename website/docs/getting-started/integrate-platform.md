@@ -46,7 +46,7 @@ card = ConstructionAgentCard(
             description="Reviews and responds to RFIs using project context",
             task_type="rfi-response",
             input_schema="rfi-v1",
-            output_schema="rfi-v1",
+            output_schema="rfi-response-v1",
         ),
     ],
 )
@@ -59,19 +59,26 @@ Review the [Task Types](/docs/task-types) list and identify which ones your plat
 | Your Platform Feature | TACO Task Type | Input Schema | Output Schema |
 |---|---|---|---|
 | Cost estimation | `estimate` | `bom-v1` | `estimate-v1` |
-| RFI management | `rfi-generation` / `rfi-response` | — | `rfi-v1` |
-| Schedule management | `schedule-coordination` | — | `schedule-v1` |
-| Submittal tracking | `submittal-review` | — | — |
-| Change orders | `change-order` | — | `change-order-v1` |
+| RFI management | `rfi-generation` / `rfi-response` | — / `rfi-v1` | `rfi-v1` / `rfi-response-v1` (planned) |
+| Schedule management | `schedule-coordination` | `bom-v1`, `estimate-v1` | `schedule-v1` |
+| Submittal tracking | `submittal-review` | — | `submittal-review-v1` (planned) |
+| Change orders | `change-order-analysis` | `bom-v1`, `schedule-v1` | `change-order-v1` |
 
 ## 3. Build the Sidecar Handler
 
 The handler translates A2A requests into calls to your platform's API:
 
 ```python
-from taco import make_artifact, make_data_part
-from taco.server import A2AServer
-from taco.types import Artifact, Task
+from pydantic import ValidationError
+from taco import (
+    A2AServer,
+    Artifact,
+    Task,
+    TacoTaskError,
+    get_schema_model,
+    make_artifact,
+    make_data_part,
+)
 
 # Your existing platform client
 from your_platform import PlatformClient
@@ -80,20 +87,53 @@ platform = PlatformClient(api_key="...")
 
 
 async def handle_estimate(task: Task, input_data: dict) -> Artifact:
-    # Call your platform's existing API
-    result = await platform.estimate(input_data)
+    try:
+        bom = get_schema_model("bom-v1").model_validate(input_data)
+    except ValidationError as exc:
+        # A TacoTaskError message reaches the caller; keep internals out of it
+        raise TacoTaskError(f"Input is not a valid bom-v1 ({exc.error_count()} problems)") from exc
 
-    # Return as TACO-typed artifact
+    # Call your platform's existing API. If it raises, the caller only
+    # sees a generic error id; the details stay in your log.
+    result = await platform.estimate(bom.model_dump(by_alias=True, exclude_none=True))
+
+    # Check the platform's answer really is an estimate-v1 before it leaves
+    estimate = get_schema_model("estimate-v1").model_validate(result)
     return make_artifact(
-        parts=[make_data_part(result)],
+        parts=[make_data_part(estimate.model_dump(by_alias=True, exclude_none=True))],
         name="cost-estimate",
         description="Estimate from platform API",
     )
+
+
+server = A2AServer(card)
+server.register_handler("estimate", handle_estimate)
 ```
 
-## 4. Register with a Registry
+A handler that raises fails the task. The caller only sees the message of a `TacoTaskError`; for any other exception it gets `Task handler failed for type 'estimate' (error id ...)`, and the details (platform URLs, credentials in connection strings, stack traces) stay in your log under that id.
 
-Make your agent discoverable by other TACO agents:
+## 4. Require a token
+
+A sidecar is a door into your platform, so require a token before other companies' agents can reach it. Pass a `token_verifier` that checks tokens against your identity provider, and declare the scheme on the card:
+
+```python
+from taco import AuthContext
+
+async def verify(token: str) -> AuthContext | None:
+    claims = await platform.introspect_token(token)  # your IdP check
+    if not claims:
+        return None
+    return AuthContext(subject=claims["sub"], scopes=frozenset(claims["scope"].split()))
+
+server = A2AServer(card, token_verifier=verify)  # instead of A2AServer(card)
+server.register_handler("estimate", handle_estimate)
+```
+
+Tokens without `taco:task:estimate` are refused with HTTP 403 before the handler runs. See [Security](/docs/security#implementing-it-with-the-sdk) for the card declaration and project-scoped checks.
+
+## 5. Get discovered
+
+Other agents discover yours by fetching its Agent Card. With the SDK, an orchestrator registers your sidecar's URL in its own in-process registry and filters by task type, trade or integration:
 
 ```python
 from taco import AgentRegistry
@@ -101,9 +141,11 @@ from taco import AgentRegistry
 registry = AgentRegistry()
 await registry.register("http://your-platform:9000")
 
-# Other agents can now find you
-agents = registry.find(task_type="estimate")
+# The orchestrator can now find you
+agents = registry.find(task_type="estimate", integration="procore")
 ```
+
+There is no shared registry service to publish to yet; a hosted registry is on the [roadmap](/docs/roadmap).
 
 ## Architecture
 

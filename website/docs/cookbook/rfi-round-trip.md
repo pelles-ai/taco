@@ -55,10 +55,20 @@ from taco import (
     extract_structured_data,
 )
 
+def discovered_url(registry: AgentRegistry, **filters) -> str:
+    """URL the first matching agent was registered at.
+
+    Call that address, not the url the agent's card declares about itself:
+    a card's url can be empty, container-internal, or any host its author picks.
+    """
+    card = registry.find(**filters)[0]
+    return next(url for url, c in registry.entries() if c is card)
+
+
 async def main() -> None:
     registry = AgentRegistry()
     await registry.register("http://design-responder.example.com:8003")
-    responder = registry.find(task_type="rfi-response")[0]
+    responder = discovered_url(registry, task_type="rfi-response")
 
     # An audit agent has detected a conflict — build the typed RFI
     rfi = {
@@ -82,7 +92,7 @@ async def main() -> None:
         },
     }
 
-    async with TacoClient(agent_url=responder.url) as client:
+    async with TacoClient(agent_url=responder) as client:
         task = await client.send_message("rfi-response", rfi)
 
     # rfi-response-v1 is planned, so its field names aren't defined yet.

@@ -112,8 +112,8 @@ function Hero(props) {
             <span className="hero__prompt" aria-hidden="true">
               $
             </span>
-            <code>pip install taco-agent</code>
-            <CopyButton text="pip install taco-agent" />
+            <code>pip install "taco-agent[all]"</code>
+            <CopyButton text='pip install "taco-agent[all]"' />
           </div>
 
           <div className="hero__actions">
@@ -566,15 +566,16 @@ await registry.register("http://estimator:8001")
 
 agents = registry.find(trade="mechanical", task_type="estimate")
 
-# Send a task to the first matching agent
-async with TacoClient(agent_url=agents[0].url) as client:
+# Send a task to the first match, at the URL it was registered at
+url = next(url for url, card in registry.entries() if card is agents[0])
+async with TacoClient(agent_url=url) as client:
     task = await client.send_message("estimate", bom_data)
     estimate = extract_structured_data(task.artifacts[0].parts[0])`;
 
 const installCommands = [
-  {label: 'pip', value: 'pip', cmd: 'pip install taco-agent'},
-  {label: 'uv', value: 'uv', cmd: 'uv add taco-agent'},
-  {label: 'poetry', value: 'poetry', cmd: 'poetry add taco-agent'},
+  {label: 'pip', value: 'pip', cmd: 'pip install "taco-agent[all]"'},
+  {label: 'uv', value: 'uv', cmd: 'uv add "taco-agent[all]"'},
+  {label: 'poetry', value: 'poetry', cmd: 'poetry add "taco-agent[all]"'},
 ];
 
 function InstallTabs() {

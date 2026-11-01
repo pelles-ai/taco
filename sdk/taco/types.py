@@ -11,7 +11,7 @@ Other TACO modules should import A2A types from ``taco.types``.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 # A2A SDK v1.0+ moved the wire-format types to protobuf. The Pydantic
 # v0.3-shaped types we still rely on live at ``a2a.compat.v0_3.types``;
@@ -42,7 +42,7 @@ from a2a.compat.v0_3.types import (  # noqa: F401 — re-exports
     TextPart,
 )
 from a2a.server.tasks import InMemoryTaskStore, TaskStore  # noqa: F401 — re-export
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 # ---------------------------------------------------------------------------
 # v1.0 migration: TACO is now on a2a-sdk >=1.0.2 via the v0_3 compat layer.
@@ -160,8 +160,11 @@ class AgentSkill(A2ABaseModel):
     """A2A AgentSkill with TACO x-construction extension.
 
     Extends the standard skill with an optional x-construction field
-    for construction-specific task routing metadata.
+    for construction-specific task routing metadata. Other A2A skill fields
+    (e.g. ``security``) are kept as extra fields.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     id: str
     name: str
@@ -182,7 +185,14 @@ class AgentCard(A2ABaseModel):
     Extends the standard agent card with an optional x-construction
     field for construction-specific agent metadata (trade, CSI divisions,
     project types, etc.).
+
+    Standard A2A fields TACO does not model explicitly (``provider``,
+    ``documentationUrl``, ``preferredTransport``, ``signatures``, ...) are
+    kept as extra fields, so a card fetched from another agent round-trips
+    without losing them.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     name: str = Field(min_length=1)
     description: str = Field(min_length=1)
@@ -200,6 +210,15 @@ class AgentCard(A2ABaseModel):
         default_factory=lambda: AgentCapabilities(streaming=False),
     )
     skills: list[AgentSkill] = Field(default_factory=list)
+    security_schemes: dict[str, dict[str, Any]] | None = Field(
+        None,
+        alias="securitySchemes",
+        description="A2A security schemes by name, e.g. an oauth2 or http bearer scheme.",
+    )
+    security: list[dict[str, list[str]]] | None = Field(
+        None,
+        description="A2A security requirements: scheme name -> required scopes.",
+    )
     x_construction: AgentConstructionExt | None = Field(
         None,
         alias="x-construction",

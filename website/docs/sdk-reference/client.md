@@ -1,7 +1,7 @@
 ---
 title: "Client"
 description: "Call another TACO agent over A2A. Async HTTP, JSON-RPC and streaming, push notification config management, and the standard `A2A-Version` headers."
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 :::info Generated
@@ -17,14 +17,18 @@ Call another TACO agent over A2A. Async HTTP, JSON-RPC and streaming, push notif
 ## `TacoClient`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L51)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L74)
 
 Async client for sending tasks to a TACO-compatible agent.
+
+``headers`` are sent on every request (for example an
+``Authorization`` header for an agent that requires a token);
+per-call ``headers`` arguments are merged on top of them.
 
 #### Constructor
 
 ```python
-TacoClient(*, agent_url: 'str', http_client: 'httpx.AsyncClient | None' = None, timeout: 'float' = 120.0) -> 'None'
+TacoClient(*, agent_url: 'str', http_client: 'httpx.AsyncClient | None' = None, timeout: 'float' = 120.0, headers: 'dict[str, str] | None' = None) -> 'None'
 ```
 
 #### Methods
@@ -32,7 +36,7 @@ TacoClient(*, agent_url: 'str', http_client: 'httpx.AsyncClient | None' = None, 
 ### `cancel_task()`
 
 ```python
-async def cancel_task(self, task_id: 'str') -> 'Task'
+async def cancel_task(self, task_id: 'str', *, headers: 'dict[str, str] | None' = None) -> 'Task'
 ```
 
 Cancel a task by ID.
@@ -88,7 +92,7 @@ Fetch a single push config by its id.
 ### `get_task()`
 
 ```python
-async def get_task(self, task_id: 'str') -> 'Task'
+async def get_task(self, task_id: 'str', *, headers: 'dict[str, str] | None' = None) -> 'Task'
 ```
 
 Retrieve a task by ID.
@@ -104,14 +108,15 @@ Return every push config currently registered for ``task_id``.
 ### `list_tasks()`
 
 ```python
-async def list_tasks(self, *, cursor: 'str | None' = None, limit: 'int | None' = None, context_id: 'str | None' = None, headers: 'dict[str, str] | None' = None) -> 'tuple[list[Task], str | None]'
+async def list_tasks(self, *, cursor: 'str | None' = None, limit: 'int | None' = None, context_id: 'str | None' = None, include_artifacts: 'bool' = False, headers: 'dict[str, str] | None' = None) -> 'tuple[list[Task], str | None]'
 ```
 
 List tasks visible to this caller via the v1 ``ListTasks`` RPC.
 
 Returns ``(tasks, next_cursor)``. Pass ``next_cursor`` back as
 ``cursor`` on a subsequent call to fetch the next page; a
-``None`` cursor means there are no more results.
+``None`` cursor means there are no more results. ``ListTasks``
+leaves artifacts out unless ``include_artifacts`` is ``True``.
 
 ``ListTasks`` was added in A2A v1.0, so this method overrides
 the default ``A2A-Version: 0.3`` header with ``1.0`` for the
@@ -167,7 +172,7 @@ Base exception for TACO client errors.
 #### Constructor
 
 ```python
-TacoClientError()
+TacoClientError(*args)
 ```
 
 
@@ -184,6 +189,25 @@ A JSON-RPC error returned by the remote agent.
 
 ```python
 RpcError(code: 'int', message: 'str', data: 'Any' = None) -> 'None'
+```
+
+
+## `MessageReplyError`
+
+
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L51)
+
+*Extends:* `TacoClientError`
+
+The agent answered with a ``Message`` where a ``Task`` was expected.
+
+TACO agents always return a Task, but other A2A agents may reply to
+``message/send`` with a plain Message. The reply is on :attr:`reply`.
+
+#### Constructor
+
+```python
+MessageReplyError(reply: 'Message') -> 'None'
 ```
 
 

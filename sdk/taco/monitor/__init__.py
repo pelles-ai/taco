@@ -63,12 +63,17 @@ def enable_monitor(
     registry: AgentRegistry | None = None,
     agent_name: str | None = None,
     max_events: int = 2000,
+    auth_token: str | None = None,
 ) -> None:
     """Enable the Agent Monitor for the given server/client/registry.
 
     Instruments the provided objects so their A2A traffic appears in the
     monitor UI, and mounts the monitor routes onto the server's app at
     ``/monitor``.
+
+    The monitor shows every request and response payload. Set
+    ``auth_token`` before exposing the agent's port beyond your machine;
+    the UI is then opened as ``/monitor/#token=<token>``.
     """
     bus = get_event_bus(max_events)
 
@@ -84,7 +89,11 @@ def enable_monitor(
         _instrument_registry(registry, bus)
 
     if server is not None:
-        monitor = MonitorServer(bus, agent_name=agent_name or "TACO Agent")
+        monitor = MonitorServer(
+            bus,
+            agent_name=agent_name or "TACO Agent",
+            auth_token=auth_token,
+        )
         monitor.mount_on(server.app)
 
 
@@ -100,30 +109,57 @@ def _instrument_server(server: A2AServer, bus: EventBus) -> None:
 
 
 def _add_server_middleware(server: A2AServer, bus: EventBus) -> None:
-    """Add HTTP middleware that traces incoming JSON-RPC requests."""
-    from starlette.middleware.base import BaseHTTPMiddleware
-    from starlette.requests import Request
-    from starlette.responses import Response as StarletteResponse
+    """Add ASGI middleware that traces incoming JSON-RPC requests.
 
+    Written as plain ASGI rather than ``BaseHTTPMiddleware``: the response is
+    passed through message by message, so ``message/stream`` SSE responses
+    reach the caller as they are produced. Only non-streaming bodies are
+    copied for the trace.
+    """
     agent_name = server.agent_card.name
 
-    class _MonitorMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request: Request, call_next: Any) -> Any:
+    class _MonitorMiddleware:
+        def __init__(self, app: Any) -> None:
+            self.app = app
+
+        async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
             # Only trace JSON-RPC POST to /
-            if request.method != "POST" or request.url.path != "/":
-                return await call_next(request)
+            if scope["type"] != "http" or scope["method"] != "POST" or scope["path"] != "/":
+                await self.app(scope, receive, send)
+                return
 
-            body = await request.body()
+            # Read the whole request body, then replay it to the app.
+            received: list[Any] = []
+            body_parts: list[bytes] = []
+            while True:
+                message = await receive()
+                received.append(message)
+                if message["type"] != "http.request":
+                    break
+                body_parts.append(message.get("body", b""))
+                if not message.get("more_body", False):
+                    break
+
+            async def replay_receive() -> Any:
+                if received:
+                    return received.pop(0)
+                return await receive()
+
             try:
-                payload = json.loads(body)
-            except (json.JSONDecodeError, ValueError):
-                return await call_next(request)
+                payload = json.loads(b"".join(body_parts))
+            except ValueError:
+                payload = None
+            if not isinstance(payload, dict):
+                await self.app(scope, replay_receive, send)
+                return
 
-            method = payload.get("method", "unknown")
+            method = str(payload.get("method", "unknown"))
             params = payload.get("params", {})
             task_type = None
             if isinstance(params, dict):
-                task_type = (params.get("metadata") or {}).get("taskType")
+                metadata = params.get("metadata")
+                if isinstance(metadata, dict):
+                    task_type = metadata.get("taskType")
 
             label = task_type or method
             bus.emit(
@@ -140,18 +176,43 @@ def _add_server_middleware(server: A2AServer, bus: EventBus) -> None:
             )
 
             start = time.monotonic()
-            response = await call_next(request)
-            duration_ms = (time.monotonic() - start) * 1000
+            is_stream = False
+            body_chunks: list[bytes] = []
+            stream_events = 0
+            last_stream_data: bytes | None = None
+            line_buffer = b""
 
-            # Read response body (consumed by iteration)
-            resp_body = b""
-            async for chunk in response.body_iterator:
-                resp_body += chunk if isinstance(chunk, bytes) else chunk.encode()
+            async def traced_send(message: Any) -> None:
+                nonlocal is_stream, stream_events, last_stream_data, line_buffer
+                if message["type"] == "http.response.start":
+                    for key, value in message.get("headers", []):
+                        if key.lower() == b"content-type":
+                            is_stream = value.lower().startswith(b"text/event-stream")
+                elif message["type"] == "http.response.body":
+                    chunk = message.get("body", b"")
+                    if is_stream:
+                        # Count SSE events without holding the stream back.
+                        lines = (line_buffer + chunk).split(b"\n")
+                        line_buffer = lines.pop()
+                        for line in lines:
+                            if line.startswith(b"data:"):
+                                stream_events += 1
+                                last_stream_data = line[len(b"data:") :].strip()
+                    else:
+                        body_chunks.append(chunk)
+                await send(message)
 
-            resp_data: dict[str, Any] | None = None
-            error: str | None = None
             try:
-                resp_data = json.loads(resp_body)
+                await self.app(scope, replay_receive, traced_send)
+            finally:
+                duration_ms = (time.monotonic() - start) * 1000
+                raw = last_stream_data if is_stream else b"".join(body_chunks)
+                resp_data: Any = None
+                error: str | None = None
+                try:
+                    resp_data = json.loads(raw) if raw else None
+                except ValueError:
+                    resp_data = None
                 if isinstance(resp_data, dict) and resp_data.get("error"):
                     err_obj = resp_data["error"]
                     error = (
@@ -159,36 +220,57 @@ def _add_server_middleware(server: A2AServer, bus: EventBus) -> None:
                         if isinstance(err_obj, dict)
                         else str(err_obj)
                     )
-            except (json.JSONDecodeError, ValueError):
-                pass
-
-            bus.emit(
-                make_event(
-                    kind="incoming_response",
-                    method=method,
-                    direction="in",
-                    summary=f"Sent {label} response",
-                    payload=resp_data,
-                    duration_ms=round(duration_ms, 1),
-                    error=error,
-                    task_type=task_type,
-                    agent_name=agent_name,
+                summary = (
+                    f"Streamed {label} response ({stream_events} events)"
+                    if is_stream
+                    else f"Sent {label} response"
                 )
-            )
-
-            # Reconstruct the response since we consumed body_iterator
-            return StarletteResponse(
-                content=resp_body,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-                media_type=response.media_type,
-            )
+                bus.emit(
+                    make_event(
+                        kind="incoming_response",
+                        method=method,
+                        direction="in",
+                        summary=summary,
+                        payload=resp_data,
+                        duration_ms=round(duration_ms, 1),
+                        error=error,
+                        task_type=task_type,
+                        agent_name=agent_name,
+                    )
+                )
 
     server.app.add_middleware(_MonitorMiddleware)
 
 
+class _OutcomeQueue:
+    """Event-queue proxy that records how the task ended.
+
+    The executor reports handler errors as a ``failed`` status event rather
+    than raising, so the monitor reads the outcome off the queue.
+    """
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+        self.state: int | None = None
+        self.message: str | None = None
+
+    async def enqueue_event(self, event: Any) -> None:
+        from a2a.types.a2a_pb2 import TaskStatusUpdateEvent
+
+        if isinstance(event, TaskStatusUpdateEvent):
+            self.state = event.status.state
+            texts = [p.text for p in event.status.message.parts if p.text]
+            self.message = " ".join(texts) or None
+        await self._inner.enqueue_event(event)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
 def _wrap_executor(server: A2AServer, bus: EventBus) -> None:
     """Wrap the executor's execute method to trace handler execution."""
+    from a2a.types.a2a_pb2 import TaskState
+
     executor = server._executor
     original_execute = executor.execute
     agent_name = server.agent_card.name
@@ -211,15 +293,32 @@ def _wrap_executor(server: A2AServer, bus: EventBus) -> None:
         )
 
         start = time.monotonic()
+        outcome: Any = _OutcomeQueue(event_queue)  # duck-types EventQueue
         try:
-            await original_execute(context, event_queue)
+            await original_execute(context, outcome)
             duration_ms = (time.monotonic() - start) * 1000
+            if outcome.state == TaskState.TASK_STATE_FAILED:
+                bus.emit(
+                    make_event(
+                        kind="handler_error",
+                        method=task_type,
+                        direction="internal",
+                        summary=f"Failed processing {task_type}",
+                        duration_ms=round(duration_ms, 1),
+                        error=outcome.message,
+                        task_id=task_id,
+                        task_type=task_type,
+                        agent_name=agent_name,
+                    )
+                )
+                return
+            verb = "Canceled" if outcome.state == TaskState.TASK_STATE_CANCELED else "Completed"
             bus.emit(
                 make_event(
                     kind="handler_end",
                     method=task_type,
                     direction="internal",
-                    summary=f"Completed {task_type}",
+                    summary=f"{verb} {task_type}",
                     duration_ms=round(duration_ms, 1),
                     task_id=task_id,
                     task_type=task_type,

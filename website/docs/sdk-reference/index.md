@@ -16,15 +16,17 @@ Every public class, function, and constant in `taco-agent`, introspected directl
 
 | Group | Symbols |
 |------|--------|
-| [Agent Cards](./agent-cards) | `ConstructionAgentCard`, `ConstructionSkill`, `AgentCard` + 9 more |
-| [Server](./server) | `A2AServer` |
-| [Client](./client) | `TacoClient`, `TacoClientError`, `RpcError` |
+| [Agent Cards](./agent-cards) | `ConstructionAgentCard`, `ConstructionSkill`, `AgentCard` + 10 more |
+| [Server](./server) | `A2AServer`, `TacoTaskError`, `enable_monitor` |
+| [Auth](./auth) | `AuthContext`, `TokenVerifier`, `current_auth` + 2 more |
+| [Client](./client) | `TacoClient`, `TacoClientError`, `RpcError` + 1 more |
 | [Agent (server + client pool)](./agent) | `TacoAgent` |
 | [Registry](./registry) | `AgentRegistry` |
 | [Tasks & Messages](./tasks-and-messages) | `Task`, `TaskStatus`, `TaskState` + 7 more |
-| [Helpers](./helpers) | `make_message`, `make_text_part`, `make_data_part` + 11 more |
-| [Persistence](./persistence) | `TaskStore` |
+| [Helpers](./helpers) | `make_message`, `make_text_part`, `make_data_part` + 12 more |
+| [Persistence](./persistence) | `TaskStore`, `JsonFileTaskStore` |
 | [Push Notifications](./push-notifications) | `PushNotificationConfig`, `PushNotificationAuthenticationInfo`, `TaskPushNotificationConfig` |
+| [Schema lookup](./schemas) | `get_schema_model`, `SCHEMA_MODELS` |
 | [Enums](./enums) | `Trade`, `ProjectType`, `Integration` + 6 more |
 
 ## Schema models
@@ -43,6 +45,8 @@ Schema models have dedicated interactive pages with a live validator — they ar
 ## Regenerating
 
 ```bash
-cd sdk && pip install -e .[all]
+cd sdk && pip install -e ".[all]"
 cd ../website && python scripts/gen-sdk-reference.py
 ```
+
+Use Python 3.10, the SDK's minimum version: a few signatures (Enum constructors, for example) render differently on newer versions.

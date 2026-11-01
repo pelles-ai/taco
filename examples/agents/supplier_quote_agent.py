@@ -17,11 +17,13 @@ from common.a2a_models import (
     Artifact,
     SkillConstructionExt,
     Task,
+    apply_construction_extension_declaration,
     make_artifact,
     make_data_part,
 )
 from common.a2a_server import A2AServer
 from common.llm_provider import LLMProvider
+from common.schemas import QuoteV1
 
 llm = LLMProvider()
 
@@ -85,12 +87,16 @@ card = AgentCard(
         integrations=["procore"],
     ),
 )
+# Advertise x-construction in capabilities.extensions[] (as ConstructionAgentCard does).
+apply_construction_extension_declaration(card)
 
 server = A2AServer(card, enable_admin=True, enable_monitor=True)
 
 
 async def handle_procurement(task: Task, input_data: dict) -> Artifact:
-    result = await llm.generate_json(SYSTEM_PROMPT, json.dumps(input_data, indent=2))
+    result = await llm.generate_json(
+        SYSTEM_PROMPT, json.dumps(input_data, indent=2), QuoteV1
+    )
     return make_artifact(
         parts=[make_data_part(result)],
         name="supplier-quote",
@@ -103,4 +109,9 @@ server.register_handler("material-procurement", handle_procurement)
 app = server.app
 
 if __name__ == "__main__":
-    uvicorn.run("agents.supplier_quote_agent:app", host="0.0.0.0", port=8002, reload=False)
+    uvicorn.run(
+        "agents.supplier_quote_agent:app",
+        host=os.getenv("AGENT_BIND_HOST", "127.0.0.1"),
+        port=8002,
+        reload=False,
+    )

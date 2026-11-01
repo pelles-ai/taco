@@ -22,7 +22,9 @@ TACO 0.3.x.
 
 from __future__ import annotations
 
+import asyncio
 import hmac
+import json
 import logging
 import time
 import uuid
@@ -48,8 +50,13 @@ from ._compat import (
     extract_structured_data,
     make_artifact,
     make_text_part,
+    restore_integers,
 )
+from .agent_card import ConstructionAgentCard
+from .auth import BearerAuthMiddleware, TokenVerifier, _set_current_auth, auth_from_call_context
+from .errors import TacoTaskError
 from .types import (
+    AgentCapabilities,
     AgentCard,
     AgentSkill,
     Artifact,
@@ -63,10 +70,120 @@ from .types import (
     TaskStatusUpdateEvent,
 )
 
-logger = logging.getLogger("a2a")
+logger = logging.getLogger("taco.server")
 
 TaskHandler = Callable[[Task, dict], Coroutine[Any, Any, Artifact]]
 StreamingTaskHandler = Callable[[Task, dict], AsyncIterator[Part]]
+
+# JSON-RPC method names (v0.3 compat and v1) that open an SSE stream. The
+# a2a-sdk dispatcher records the method on ``ServerCallContext.state``.
+_STREAMING_METHODS = frozenset({"message/stream", "SendStreamingMessage"})
+
+
+def _failure_text(task_type: str, exc: Exception) -> str:
+    """The status message a caller sees when a handler raises ``exc``.
+
+    Only :class:`TacoTaskError` messages are passed through. Anything else is
+    logged with an error id and reported generically, so exception text
+    (connection strings, paths, upstream API errors) never leaves the server.
+    """
+    if isinstance(exc, TacoTaskError):
+        logger.info("Task handler for %s failed: %s", task_type, exc)
+        return str(exc)
+    error_id = uuid.uuid4().hex[:12]
+    logger.error("Task handler for %s failed (error id %s)", task_type, error_id, exc_info=exc)
+    return f"Task handler failed for type '{task_type}' (error id {error_id})"
+
+
+class _WireIntegerMiddleware:
+    """Send whole numbers in JSON-RPC responses as JSON integers.
+
+    A2A v1 carries ``DataPart`` payloads as protobuf ``Struct`` values, whose
+    numbers are doubles, so the a2a-sdk serialises ``{"count": 120}`` as
+    ``{"count": 120.0}``. JSON has a single number type, but many clients
+    (and anything reading the payload as a typed record) treat ``120.0`` as a
+    float. This rewrites JSON responses and SSE ``data:`` lines on the
+    JSON-RPC endpoint with :func:`taco.restore_integers`.
+    """
+
+    def __init__(self, app: Any, rpc_path: str = "/") -> None:
+        self.app = app
+        self.rpc_path = rpc_path
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http" or scope["method"] != "POST" or scope["path"] != self.rpc_path:
+            await self.app(scope, receive, send)
+            return
+
+        mode = "passthrough"
+        held_start: dict[str, Any] | None = None
+        body_parts: list[bytes] = []
+        line_buffer = b""
+
+        async def rewriting_send(message: Any) -> None:
+            nonlocal mode, held_start, line_buffer
+            if message["type"] == "http.response.start":
+                content_type = b""
+                for key, value in message.get("headers", []):
+                    if key.lower() == b"content-type":
+                        content_type = value.lower()
+                if content_type.startswith(b"application/json"):
+                    mode, held_start = "json", message  # sent once the body is rewritten
+                    return
+                if content_type.startswith(b"text/event-stream"):
+                    mode = "sse"
+                await send(message)
+            elif message["type"] == "http.response.body" and mode == "json":
+                body_parts.append(message.get("body", b""))
+                if message.get("more_body", False):
+                    return
+                body = _restore_json_integers(b"".join(body_parts))
+                assert held_start is not None
+                headers = [
+                    (k, v)
+                    for k, v in held_start.get("headers", [])
+                    if k.lower() != b"content-length"
+                ]
+                headers.append((b"content-length", str(len(body)).encode()))
+                await send({**held_start, "headers": headers})
+                await send({"type": "http.response.body", "body": body})
+            elif message["type"] == "http.response.body" and mode == "sse":
+                lines = (line_buffer + message.get("body", b"")).split(b"\n")
+                line_buffer = lines.pop()  # keep a partial line for the next chunk
+                out = [_restore_sse_line(line) for line in lines]
+                chunk = b"".join(line + b"\n" for line in out)
+                if not message.get("more_body", False) and line_buffer:
+                    chunk += _restore_sse_line(line_buffer)
+                    line_buffer = b""
+                await send({**message, "body": chunk})
+            else:
+                await send(message)
+
+        await self.app(scope, receive, rewriting_send)
+
+
+def _restore_json_integers(raw: bytes) -> bytes:
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return raw
+    return json.dumps(restore_integers(data), separators=(",", ":"), ensure_ascii=False).encode()
+
+
+def _restore_sse_line(line: bytes) -> bytes:
+    if not line.startswith(b"data:"):
+        return line
+    payload = line[len(b"data:") :]
+    ending = b"\r" if payload.endswith(b"\r") else b""
+    restored = _restore_json_integers(payload.strip())
+    return b"data: " + restored + ending
+
+
+def _is_streaming_request(context: Any) -> bool:
+    """Return True when the request that started this execution is a stream."""
+    call_context = getattr(context, "call_context", None)
+    state = getattr(call_context, "state", None) or {}
+    return state.get("method") in _STREAMING_METHODS
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +225,9 @@ class _TacoAgentExecutor(AgentExecutor):
     def __init__(self) -> None:
         self._handlers: dict[str, TaskHandler] = {}
         self._streaming_handlers: dict[str, StreamingTaskHandler] = {}
+        # Running handler jobs by task id, so cancel() can stop them.
+        self._running: dict[str, asyncio.Future[None]] = {}
+        self._canceled: set[str] = set()
 
     def _resolve_task_type(self, metadata: dict[str, Any] | None) -> str:
         """Determine task_type from request metadata, or auto-select sole handler."""
@@ -181,10 +301,28 @@ class _TacoAgentExecutor(AgentExecutor):
     # ------------------------------------------------------------------
 
     async def execute(self, context, event_queue: EventQueue) -> None:
+        """Run the handler for this task as a job :meth:`cancel` can stop."""
+        task_id = context.task_id or str(uuid.uuid4())
+        work = asyncio.ensure_future(self._run(context, event_queue, task_id))
+        self._running[task_id] = work
+        try:
+            await work
+        except asyncio.CancelledError:
+            work.cancel()
+            if task_id in self._canceled:
+                return  # cancel() already reported the task as canceled
+            raise
+        finally:
+            self._running.pop(task_id, None)
+            self._canceled.discard(task_id)
+
+    async def _run(self, context, event_queue: EventQueue, task_id: str) -> None:
         """Dispatch to the registered TACO handler for this task type."""
+        # Make the caller's identity available to handlers via
+        # taco.current_auth(). This runs in its own task, so it never leaks.
+        _set_current_auth(auth_from_call_context(getattr(context, "call_context", None)))
         metadata = context.metadata
         message = _pb_message_to_compat(context.message)
-        task_id = context.task_id or str(uuid.uuid4())
         context_id = context.context_id or str(uuid.uuid4())
 
         try:
@@ -195,21 +333,39 @@ class _TacoAgentExecutor(AgentExecutor):
 
         input_data = self._extract_input(message) if message else {}
 
-        # Build a TACO-style Task object for the handler
+        # Report the task as working before the handler runs. Without an
+        # early event, return_immediately callers and streaming clients saw
+        # nothing until the handler had finished.
         task = _pb_task_to_compat(context.current_task)
         if task is None:
             task = Task(
                 id=task_id,
                 context_id=context_id,
                 status=TaskStatus(state=TaskState.working),
+                history=[message] if message else None,
                 metadata={"taskType": task_type},
             )
+            await _enqueue(event_queue, task)
+        else:
+            await _enqueue(
+                event_queue,
+                TaskStatusUpdateEvent(
+                    task_id=task_id,
+                    context_id=context_id,
+                    status=TaskStatus(state=TaskState.working),
+                    final=False,
+                ),
+            )
 
-        # Check if it's a streaming-only handler called via send
-        is_streaming = task_type in self._streaming_handlers
-        is_regular = task_type in self._handlers
+        # A ``message/stream`` request uses the streaming handler when there is
+        # one; ``message/send`` prefers the regular handler and falls back to
+        # collecting a streaming handler's parts into one artifact.
+        has_streaming = task_type in self._streaming_handlers
+        has_regular = task_type in self._handlers
+        is_stream_request = _is_streaming_request(context)
+        use_streaming = has_streaming and (is_stream_request or not has_regular)
 
-        if is_regular:
+        if has_regular and not use_streaming:
             try:
                 artifact = await self._handlers[task_type](task, input_data)
                 await _enqueue(
@@ -223,14 +379,10 @@ class _TacoAgentExecutor(AgentExecutor):
                 )
                 await self._emit_completed(event_queue, task_id, context_id)
             except Exception as exc:
-                logger.exception("Task handler failed for %s", task_type)
                 await self._emit_failure(
-                    event_queue,
-                    task_id,
-                    context_id,
-                    f"Task handler failed for type '{task_type}': {exc}",
+                    event_queue, task_id, context_id, _failure_text(task_type, exc)
                 )
-        elif is_streaming:
+        elif use_streaming:
             try:
                 collected_parts: list[Part] = []
                 handler = self._streaming_handlers[task_type]
@@ -242,6 +394,10 @@ class _TacoAgentExecutor(AgentExecutor):
                 async for part in handler(task, input_data):
                     is_first_chunk = not collected_parts
                     collected_parts.append(part)
+                    if not is_stream_request:
+                        # message/send only returns the finished task; chunk
+                        # artifacts would duplicate the final result.
+                        continue
                     await _enqueue(
                         event_queue,
                         TaskArtifactUpdateEvent(
@@ -271,12 +427,8 @@ class _TacoAgentExecutor(AgentExecutor):
                     )
                 await self._emit_completed(event_queue, task_id, context_id)
             except Exception as exc:
-                logger.exception("Streaming handler error for %s", task_type)
                 await self._emit_failure(
-                    event_queue,
-                    task_id,
-                    context_id,
-                    f"Streaming handler failed for type '{task_type}': {exc}",
+                    event_queue, task_id, context_id, _failure_text(task_type, exc)
                 )
         else:
             await self._emit_failure(
@@ -287,9 +439,13 @@ class _TacoAgentExecutor(AgentExecutor):
             )
 
     async def cancel(self, context, event_queue: EventQueue) -> None:
-        """Handle task cancellation."""
+        """Stop the task's handler, if it is still running, and report it canceled."""
         task_id = context.task_id or str(uuid.uuid4())
         context_id = context.context_id or str(uuid.uuid4())
+        work = self._running.get(task_id)
+        if work is not None and not work.done():
+            self._canceled.add(task_id)
+            work.cancel()
         await _enqueue(
             event_queue,
             TaskStatusUpdateEvent(
@@ -311,7 +467,7 @@ class A2AServer:
 
     def __init__(
         self,
-        agent_card: AgentCard,
+        agent_card: AgentCard | ConstructionAgentCard,
         *,
         task_store: TaskStore | None = None,
         push_config_store: PushNotificationConfigStore | None = None,
@@ -319,8 +475,34 @@ class A2AServer:
         enable_admin: bool = False,
         admin_auth_token: str | None = None,
         enable_monitor: bool = False,
+        monitor_auth_token: str | None = None,
+        token_verifier: TokenVerifier | None = None,
+        require_task_scope: bool = True,
+        require_project_scope: bool | None = None,
     ) -> None:
+        """Create the server.
+
+        ``token_verifier`` turns on bearer-token auth for the JSON-RPC
+        endpoint (see :mod:`taco.auth`): requests without a valid token get
+        HTTP 401 and, with ``require_task_scope``, a token lacking
+        ``taco:task:<taskType>`` gets HTTP 403. With ``require_project_scope``
+        (default: the card's ``x-construction.security.projectScoped``), a
+        token must also cover the request data's ``projectId``
+        (``taco:project:<id>:write``), or the request gets HTTP 403. Declare the scheme in the
+        card's ``security_schemes`` / ``security`` so callers know to send it.
+
+        ``agent_card`` may be a :class:`ConstructionAgentCard`; it is
+        converted with ``to_a2a()``.
+        """
+        if isinstance(agent_card, ConstructionAgentCard):
+            agent_card = agent_card.to_a2a()
         self.agent_card = agent_card
+        if not agent_card.url:
+            logger.info(
+                "Agent card %r has no url; the served card will use the address "
+                "each request reached. Set url= to the agent's public address.",
+                agent_card.name,
+            )
         self._executor = _TacoAgentExecutor()
         self._start_time = time.monotonic()
         self._admin_auth_token = admin_auth_token
@@ -355,14 +537,6 @@ class A2AServer:
             )
         )
 
-        if cors_origins is not None:
-            self.app.add_middleware(
-                CORSMiddleware,
-                allow_origins=cors_origins,
-                allow_methods=["*"],
-                allow_headers=["*"],
-            )
-
         # TACO serves its own card (with the x-construction extension) at
         # both the new v0.3+ path and the legacy path.
         self.app.get("/.well-known/agent-card.json")(self._serve_agent_card)
@@ -378,10 +552,37 @@ class A2AServer:
             self.app.delete("/admin/skills/{skill_id}")(self._remove_skill)
             self.app.get("/admin/skills")(self._list_skills)
 
+        # Middleware added later wraps earlier middleware: CORS outermost (so
+        # 401/403 responses still carry CORS headers), then auth, then the
+        # monitor's tracer (rejected requests never reach handlers), and
+        # innermost the integer fix-up, so the monitor shows what callers get.
+        self.app.add_middleware(_WireIntegerMiddleware)
+
         if enable_monitor:
             from .monitor import enable_monitor as _enable_monitor
 
-            _enable_monitor(server=self, agent_name=agent_card.name)
+            _enable_monitor(
+                server=self,
+                agent_name=agent_card.name,
+                auth_token=monitor_auth_token,
+            )
+
+        if token_verifier is not None:
+            self.app.add_middleware(
+                BearerAuthMiddleware,
+                server=self,
+                verifier=token_verifier,
+                require_task_scope=require_task_scope,
+                require_project_scope=require_project_scope,
+            )
+
+        if cors_origins is not None:
+            self.app.add_middleware(
+                CORSMiddleware,
+                allow_origins=cors_origins,
+                allow_methods=["*"],
+                allow_headers=["*"],
+            )
 
     @staticmethod
     def _to_protobuf_card(card: AgentCard):
@@ -443,10 +644,19 @@ class A2AServer:
         """Register an async streaming handler for a TACO task type.
 
         Handler signature: async def handler(task: Task, input_data: dict) -> AsyncIterator[Part]
+
+        Marks the agent card as streaming-capable. ``message/stream`` requests
+        for ``task_type`` use this handler even when a regular handler is also
+        registered; ``message/send`` requests prefer the regular handler.
         """
         self._executor._streaming_handlers[task_type] = handler
-        if self.agent_card.capabilities:
+        if self.agent_card.capabilities is None:
+            self.agent_card.capabilities = AgentCapabilities(streaming=True)
+        else:
             self.agent_card.capabilities.streaming = True
+        # The a2a-sdk request handler checks the protobuf card's capabilities
+        # before accepting ``message/stream``, so it must be rebuilt too.
+        self._sync_a2a_card()
 
     # ------------------------------------------------------------------
     # Health endpoint
@@ -470,10 +680,14 @@ class A2AServer:
     # Agent card endpoint (serves TACO card with x-construction)
     # ------------------------------------------------------------------
 
-    async def _serve_agent_card(self) -> JSONResponse:
-        return JSONResponse(
-            self.agent_card.model_dump(by_alias=True, exclude_none=True),
-        )
+    async def _serve_agent_card(self, request: Request) -> JSONResponse:
+        card = self.agent_card.model_dump(mode="json", by_alias=True, exclude_none=True)
+        if not card.get("url"):
+            # A2A clients connect to the card's url; an empty one makes the
+            # agent unreachable through standard clients. Fall back to the
+            # address this request reached.
+            card["url"] = str(request.base_url).rstrip("/")
+        return JSONResponse(card)
 
     # ------------------------------------------------------------------
     # A2A SDK card sync

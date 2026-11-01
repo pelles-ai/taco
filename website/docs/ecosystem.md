@@ -37,8 +37,8 @@ Any of the platforms above can be made TACO-compatible with a sidecar — see [I
 All Apache 2.0, all in the [main repo](https://github.com/pelles-ai/taco):
 
 - **[`examples/`](https://github.com/pelles-ai/taco/tree/main/examples)** — standalone examples (`quick_start.py`, `peer_communication.py`) that run locally with no API key, plus a sandbox demo with three LLM-powered agents and an orchestrator dashboard, which needs an Anthropic or OpenAI API key.
-- **[`sdk/`](https://github.com/pelles-ai/taco/tree/main/sdk)** — the Python SDK itself, with `taco-agent` published to PyPI.
-- **CLI** — `pip install taco-agent` ships the `taco` command for discovering and calling any TACO agent. See the [CLI Reference](/docs/cli).
+- **[`sdk/`](https://github.com/pelles-ai/taco/tree/main/sdk)** — the Python SDK itself, with `taco-agent` published to PyPI. A new release is cut only when a change under `sdk/` lands on `main` and the test suite passes; doc and website changes do not produce releases.
+- **CLI** — `pip install "taco-agent[client]"` ships the `taco` command for discovering and calling any TACO agent. See the [CLI Reference](/docs/cli).
 
 ## How to be listed here
 

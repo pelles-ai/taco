@@ -27,6 +27,14 @@ async function install(requirements) {
   await py.runPythonAsync('import micropip\\nawait micropip.install(' + JSON.stringify(requirements) + ')');
 }
 
+// The line of a Python error that names the exception, without the traceback.
+function errorSummary(err) {
+  const lines = String((err && err.message) || err).split('\\n').map((l) => l.trim()).filter(Boolean);
+  const named = lines.filter((l) => /^[A-Za-z_][\\w.]*(Error|Exception)\\b/.test(l));
+  const line = named.length ? named[named.length - 1] : lines[lines.length - 1] || 'unknown error';
+  return line.length > 300 ? line.slice(0, 300) + '…' : line;
+}
+
 async function boot({indexURL, requirements, fallback}) {
   postMessage({type: 'status', stage: 'download'});
   const {loadPyodide} = await import(indexURL + 'pyodide.mjs');
@@ -35,17 +43,27 @@ async function boot({indexURL, requirements, fallback}) {
   py.setStderr({batched: (text) => postMessage({type: 'out', stream: 'err', text})});
   postMessage({type: 'status', stage: 'install'});
   await py.loadPackage('micropip', {messageCallback() {}});
-  let pinned = true;
+  let pinError = null;
   try {
     await install(requirements);
   } catch (err) {
-    // The release this site was built from is not on PyPI yet: take the latest.
-    pinned = false;
-    await install(fallback);
+    // Usually the release this site was built from is not on PyPI yet, but
+    // say what actually failed, then try the latest release.
+    pinError = errorSummary(err);
+    postMessage({
+      type: 'out',
+      stream: 'err',
+      text: 'Could not install ' + requirements[requirements.length - 1] + ': ' + pinError + '\\nTrying the latest release instead.',
+    });
+    try {
+      await install(fallback);
+    } catch (err2) {
+      throw new Error('Installing taco-agent failed: ' + errorSummary(err2));
+    }
   }
   const version = py.runPython("from importlib.metadata import version\\nversion('taco-agent')");
   const python = py.runPython("import sys\\n'.'.join(map(str, sys.version_info[:3]))");
-  postMessage({type: 'ready', version, python, pinned});
+  postMessage({type: 'ready', version, python, pinned: pinError === null, pinError});
 }
 
 async function run({code}) {
@@ -108,6 +126,31 @@ function stopRuntime() {
   runtime = null;
 }
 
+// Output kept on screen. A print loop can produce output faster than anyone
+// can read it, and an unbounded list slows the page to a halt.
+const MAX_OUTPUT_LINES = 2000;
+const MAX_OUTPUT_CHARS = 200000;
+const TRIM_NOTE = {stream: 'err', text: '… earlier output trimmed', trimmed: true};
+
+function capOutput(lines) {
+  let chars = 0;
+  let start = lines.length;
+  while (start > 0 && lines.length - start < MAX_OUTPUT_LINES) {
+    const next = chars + lines[start - 1].text.length;
+    if (next > MAX_OUTPUT_CHARS) break;
+    chars = next;
+    start -= 1;
+  }
+  if (start === 0) return lines;
+  const kept = lines.slice(start).filter((l) => !l.trimmed);
+  if (!kept.length) {
+    // A single chunk larger than the cap: keep its end.
+    const last = lines[lines.length - 1];
+    kept.push({...last, text: last.text.slice(-MAX_OUTPUT_CHARS)});
+  }
+  return [TRIM_NOTE, ...kept];
+}
+
 const STAGE_TEXT = {
   download: `Downloading Python (Pyodide ${PYODIDE_VERSION})`,
   install: 'Installing taco-agent and its dependencies from PyPI',
@@ -136,7 +179,7 @@ export default function Playground() {
   const edited = code !== preset.code;
 
   const append = useCallback((stream, text) => {
-    setOutput((prev) => [...prev, {stream, text}]);
+    setOutput((prev) => capOutput([...prev, {stream, text}]));
   }, []);
 
   const handle = useCallback(
@@ -331,7 +374,9 @@ export default function Playground() {
           {info ? (
             <>
               taco-agent {info.version} · Python {info.python} on Pyodide {PYODIDE_VERSION}
-              {!info.pinned ? ` · ${sdkVersion} is not on PyPI yet, so this is the latest release` : ''}
+              {!info.pinned
+                ? ` · taco-agent ${sdkVersion} could not be installed (${info.pinError}), so this is the latest release`
+                : ''}
             </>
           ) : (
             <>

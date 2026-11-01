@@ -25,15 +25,21 @@ from ._compat import (
     new_agent_text_message,
     new_data_artifact,
     new_text_artifact,
+    restore_integers,
 )
 
 # Convenience factories
 from .agent_card import ConstructionAgentCard, ConstructionSkill
 
+# Auth (no server dependencies at import time)
+from .auth import AuthContext, TokenVerifier, current_auth, project_scope, task_scope
+from .errors import TacoTaskError
+
 # TACO data schemas
 from .schemas import (
     BOMV1,
     RFIV1,
+    SCHEMA_MODELS,
     BOMAlternate,
     BOMFlaggedItem,
     BOMLineItem,
@@ -63,6 +69,7 @@ from .schemas import (
     ScheduleMilestone,
     ScheduleSchema,
     ScheduleV1,
+    get_schema_model,
 )
 from .types import (
     X_CONSTRUCTION_EXTENSION_URI,
@@ -159,6 +166,7 @@ __all__ = [
     "make_data_part",
     "make_message",
     "make_text_part",
+    "restore_integers",
     # Upstream a2a.utils re-exports
     "get_text_parts",
     "get_data_parts",
@@ -200,6 +208,8 @@ __all__ = [
     "ScheduleMilestone",
     "ScheduleSchema",
     "ScheduleV1",
+    "SCHEMA_MODELS",
+    "get_schema_model",
     # Task store (lazy)
     "JsonFileTaskStore",
     # Server (lazy — requires taco[server])
@@ -215,10 +225,19 @@ __all__ = [
     # Convenience factories
     "ConstructionAgentCard",
     "ConstructionSkill",
+    # Errors
+    "TacoTaskError",
+    # Auth
+    "AuthContext",
+    "TokenVerifier",
+    "current_auth",
+    "project_scope",
+    "task_scope",
     # Client (lazy — requires taco[client])
     "TacoClient",
     "TacoClientError",
     "RpcError",
+    "MessageReplyError",
     "AgentRegistry",
     # Adapters (lazy — requires taco[langgraph])
     "LangGraphAdapter",
@@ -233,6 +252,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TacoClient": (".client", "taco-agent[client]"),
     "TacoClientError": (".client", "taco-agent[client]"),
     "RpcError": (".client", "taco-agent[client]"),
+    "MessageReplyError": (".client", "taco-agent[client]"),
     "AgentRegistry": (".registry", "taco-agent[client]"),
     "JsonFileTaskStore": (".task_store", "taco-agent"),
     "TacoAgent": (".agent", "taco-agent[all]"),
@@ -254,6 +274,6 @@ def __getattr__(name: str):
         module = importlib.import_module(module_path, package=__name__)
     except ImportError:
         raise ImportError(
-            f"Dependencies not installed. Install with: pip install {install_hint}"
+            f"Dependencies not installed. Install with: pip install '{install_hint}'"
         ) from None
     return getattr(module, name)

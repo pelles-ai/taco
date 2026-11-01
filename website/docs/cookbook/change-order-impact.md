@@ -54,8 +54,18 @@ from taco import (
 )
 
 
-async def fetch_artifact(agent, task_type, payload):
-    async with TacoClient(agent_url=agent.url) as client:
+def discovered_url(registry: AgentRegistry, **filters) -> str:
+    """URL the first matching agent was registered at.
+
+    Call that address, not the url the agent's card declares about itself:
+    a card's url can be empty, container-internal, or any host its author picks.
+    """
+    card = registry.find(**filters)[0]
+    return next(url for url, c in registry.entries() if c is card)
+
+
+async def fetch_artifact(agent_url, task_type, payload):
+    async with TacoClient(agent_url=agent_url) as client:
         task = await client.send_message(task_type, payload)
     return extract_structured_data(task.artifacts[0].parts[0])
 
@@ -126,8 +136,8 @@ async def main() -> None:
     ]:
         await registry.register(url)
 
-    estimator = registry.find(task_type="estimate")[0]
-    scheduler = registry.find(task_type="schedule-coordination")[0]
+    estimator = discovered_url(registry, task_type="estimate")
+    scheduler = discovered_url(registry, task_type="schedule-coordination")
 
     project = {"projectId": "PRJ-2026-OAKRIDGE-MEDICAL"}
 
@@ -201,7 +211,7 @@ A change order is binding. If the analyzer used a stale snapshot of the estimate
 
 **Computing cost without a real pricing call.** The example uses toy pricing (`* 14.50`) for brevity. In production, the cost delta should come from the same estimator agent that produced the baseline — call it again with the proposed scope as a `bom-v1` and use its returned `estimate-v1` for the delta math. This way the change order inherits the estimator's actual pricing model, including labor rates and material markups.
 
-**Forgetting to record baseline provenance.** `change-order-v1` has no dedicated field for it, so the example writes the baseline agents and their `generatedAt` timestamps into `metadata.notes`. You can also add your own extension key to `metadata`: the JSON Schema doesn't forbid extra properties, but the key isn't part of the schema, other consumers won't know it, and the SDK's typed `ChangeOrderV1` model drops unknown keys when it parses. Without provenance, when someone in 2028 asks "what schedule version did this change order target?", the answer is a shrug.
+**Forgetting to record baseline provenance.** `change-order-v1` has no dedicated field for it, so the example writes the baseline agents and their `generatedAt` timestamps into `metadata.notes`. You can also add your own extension key to `metadata`, such as `metadata.vendorExtensions`: the JSON Schema doesn't forbid extra properties, and the SDK's typed `ChangeOrderV1` model keeps unknown keys through `model_validate` and `model_dump`. The key isn't part of the schema, though, so other consumers won't know what it means. Without provenance, when someone in 2028 asks "what schedule version did this change order target?", the answer is a shrug.
 
 **Setting `status: "approved"` directly from the analyzer.** Change orders need human approval. The analyzer should emit `status: "draft"`; an approval workflow (often human-in-the-loop) moves it to `"submitted"` and then `"approved"` with a signature. Skipping this skips the contract law.
 

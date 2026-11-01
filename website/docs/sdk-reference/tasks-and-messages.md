@@ -1,7 +1,7 @@
 ---
 title: "Tasks & Messages"
 description: "The core A2A protocol types: tasks, their lifecycle states, messages, parts, and the event types streamed during a task."
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 :::info Generated

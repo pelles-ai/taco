@@ -72,8 +72,7 @@ class TestSendMessage:
             {"turn": 1},
             context_id="ctx-test",
         )
-        # A2A SDK manages context_id — verify the task has one
-        assert task.context_id is not None
+        assert task.context_id == "ctx-test"
 
 
 class TestGetTask:
@@ -359,12 +358,14 @@ class TestMessageParams:
     def test_message_params_format(self):
         params = TacoClient._message_params("estimate", {"x": 1}, context_id="ctx-1")
         assert params["metadata"]["taskType"] == "estimate"
-        assert "message" in params
-        assert params["contextId"] == "ctx-1"
+        # A2A carries the context id on the message, not on the params.
+        assert params["message"]["contextId"] == "ctx-1"
+        assert "contextId" not in params
 
     def test_message_params_no_context_id(self):
         params = TacoClient._message_params("estimate", {"x": 1})
         assert "contextId" not in params
+        assert "contextId" not in params["message"]
 
 
 class TestReturnImmediately:

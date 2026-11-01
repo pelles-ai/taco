@@ -21,10 +21,13 @@ from taco.types import (  # noqa: F401
     TaskState,
     TaskStatus,
     TextPart,
+    apply_construction_extension_declaration,
 )
 from taco._compat import (  # noqa: F401
     extract_structured_data,
     extract_text,
+    get_data_parts,
+    get_message_text,
     make_artifact,
     make_data_part,
     make_message,

@@ -74,15 +74,51 @@ Added to individual skill entries in the Agent Card's `skills` array.
 | `inputSchema` | string | No | Expected input schema identifier |
 | `outputSchema` | string | Yes | Output schema identifier (see [Data Schemas](./schemas/)) |
 
+## Setting the fields in Python
+
+`ConstructionAgentCard` takes each field as a snake_case argument and writes the camelCase JSON above:
+
+```python
+from taco import ConstructionAgentCard, ConstructionSkill, SecurityExt
+
+card = ConstructionAgentCard(
+    name="BuildRight Mechanical Estimating Agent",
+    url="https://api.buildright.io/a2a",
+    trade="mechanical",
+    csi_divisions=["22", "23"],
+    project_types=["commercial", "healthcare"],
+    certifications=["SOC2"],
+    data_formats={"input": ["bom-json"], "output": ["estimate-json", "csv", "pdf"]},
+    integrations=["procore", "acc"],
+    construction_security=SecurityExt(scopes_offered=["taco:task:estimate"], project_scoped=True),
+    skills=[
+        ConstructionSkill(id="generate-estimate", name="Generate Cost Estimate",
+                          task_type="estimate", input_schema="bom-v1", output_schema="estimate-v1"),
+    ],
+)
+```
+
 ## Discovery Queries
 
-The TACO Agent Registry supports querying agents using these extension fields:
+Orchestrators find agents by these extension fields. In the reference SDK, discovery is the in-process [`AgentRegistry`](/docs/sdk-reference/registry): you register the agents you know about, then filter them with `find()`:
 
-```
-GET /agents?trade=mechanical&taskType=schedule-coordination&projectType=healthcare&integration=procore
+```python
+from taco import AgentRegistry
+
+registry = AgentRegistry()
+await registry.register("https://api.buildright.io/a2a")
+
+agents = registry.find(
+    trade="mechanical",
+    task_type="schedule-coordination",
+    project_type="healthcare",
+    integration="procore",
+)
 ```
 
-This returns all registered Agent Cards matching the filter criteria.
+`find()` returns every registered Agent Card that matches all the filters given (`trade`, `task_type`, `csi_division`, `project_type`, `integration`); `task_type` matches a skill's `x-construction.taskType`. Send requests to the URL you registered (`registry.entries()` returns `(url, card)` pairs) rather than to the `url` a card declares.
+
+There is no HTTP registry service yet. A hosted registry with a query endpoint over these fields is future work; see [ADR-0005](/docs/decisions/in-memory-registry-first) and the [roadmap](/docs/roadmap).
 
 ## Full Agent Card Example
 

@@ -9,6 +9,7 @@ import json
 import os
 
 import uvicorn
+from pydantic import BaseModel
 
 from common.a2a_models import (
     AgentCard,
@@ -17,11 +18,13 @@ from common.a2a_models import (
     Artifact,
     SkillConstructionExt,
     Task,
+    apply_construction_extension_declaration,
     make_artifact,
     make_data_part,
 )
 from common.a2a_server import A2AServer
 from common.llm_provider import LLMProvider
+from common.schemas import RFIV1
 
 llm = LLMProvider()
 
@@ -91,12 +94,22 @@ card = AgentCard(
         integrations=["procore", "bluebeam"],
     ),
 )
+# Advertise x-construction in capabilities.extensions[] (as ConstructionAgentCard does).
+apply_construction_extension_declaration(card)
 
 server = A2AServer(card, enable_admin=True, enable_monitor=True)
 
 
+class RFISet(BaseModel):
+    """The rfi-generation artifact: the rfi-v1 records raised against one BOM."""
+
+    rfis: list[RFIV1]
+
+
 async def handle_rfi_generation(task: Task, input_data: dict) -> Artifact:
-    result = await llm.generate_json(SYSTEM_PROMPT, json.dumps(input_data, indent=2))
+    result = await llm.generate_json(
+        SYSTEM_PROMPT, json.dumps(input_data, indent=2), RFISet
+    )
     return make_artifact(
         parts=[make_data_part(result)],
         name="rfi-set",
@@ -109,4 +122,9 @@ server.register_handler("rfi-generation", handle_rfi_generation)
 app = server.app
 
 if __name__ == "__main__":
-    uvicorn.run("agents.rfi_generation_agent:app", host="0.0.0.0", port=8003, reload=False)
+    uvicorn.run(
+        "agents.rfi_generation_agent:app",
+        host=os.getenv("AGENT_BIND_HOST", "127.0.0.1"),
+        port=8003,
+        reload=False,
+    )

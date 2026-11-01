@@ -1,7 +1,10 @@
-fastapi>=0.110
+# Demo dependencies. The TACO SDK itself is installed separately from ../sdk
+# (see `make demo-install` or the README) so the local checkout is used.
+fastapi>=0.115
 uvicorn[standard]>=0.27
 httpx>=0.27
-pydantic>=2.0
+pydantic>=2.11
 python-dotenv>=1.0
-anthropic>=0.50
+# beta.messages.parse() with structured outputs and fallbacks="default"
+anthropic>=0.120
 openai>=1.30

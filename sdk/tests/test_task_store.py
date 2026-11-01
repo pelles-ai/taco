@@ -122,7 +122,7 @@ class TestEdgeCases:
         for i in range(5):
             assert (await store2.get(f"t{i}")) is not None
 
-    def test_invalid_task_schema_skipped(self, store_path: str):
+    async def test_invalid_task_schema_skipped(self, store_path: str):
         """Valid JSON with invalid task data should be skipped, not crash."""
         valid_task = _make_task("t-good").model_dump(by_alias=True, exclude_none=True)
         data = {
@@ -133,5 +133,112 @@ class TestEdgeCases:
             json.dump(data, f)
 
         store = JsonFileTaskStore(store_path)
-        assert "t-good" in store._tasks
-        assert "t-bad" not in store._tasks
+        assert await store.get("t-good") is not None
+        assert await store.get("t-bad") is None
+
+
+def _ctx(user: str | None):
+    """A call context for an authenticated user (or anonymous when None)."""
+    from a2a.server.context import ServerCallContext
+    from a2a.server.routes.common import StarletteUser
+    from starlette.authentication import SimpleUser
+
+    if user is None:
+        return ServerCallContext()
+    return ServerCallContext(user=StarletteUser(SimpleUser(user)))
+
+
+class TestOwnerScoping:
+    async def test_owners_cannot_see_each_others_tasks(self, store_path: str):
+        store = JsonFileTaskStore(store_path)
+        await store.save(_make_task("alice-task"), _ctx("alice"))
+        await store.save(_make_task("bob-task"), _ctx("bob"))
+
+        assert await store.get("alice-task", _ctx("alice")) is not None
+        assert await store.get("alice-task", _ctx("bob")) is None
+        assert await store.get("alice-task", _ctx(None)) is None
+        listed = await store.list(None, _ctx("bob"))
+        assert [t.id for t in listed.tasks] == ["bob-task"]
+
+        await store.delete("alice-task", _ctx("bob"))  # not bob's: no-op
+        assert await store.get("alice-task", _ctx("alice")) is not None
+
+    async def test_owners_survive_a_reload(self, store_path: str):
+        store = JsonFileTaskStore(store_path)
+        await store.save(_make_task("alice-task"), _ctx("alice"))
+
+        reloaded = JsonFileTaskStore(store_path)
+        assert await reloaded.get("alice-task", _ctx("alice")) is not None
+        assert await reloaded.get("alice-task", _ctx("bob")) is None
+
+        with open(store_path) as f:
+            on_disk = json.load(f)
+        assert on_disk["version"] == 2
+        assert "alice-task" in on_disk["owners"]["alice"]
+
+    async def test_legacy_flat_file_belongs_to_anonymous_owner(self, store_path: str):
+        legacy = {"old-task": _make_task("old-task").model_dump(by_alias=True, exclude_none=True)}
+        with open(store_path, "w") as f:
+            json.dump(legacy, f)
+
+        store = JsonFileTaskStore(store_path)
+        assert await store.get("old-task") is not None
+        assert await store.get("old-task", _ctx(None)) is not None
+        assert await store.get("old-task", _ctx("alice")) is None
+
+
+class TestListFiltersAndPaging:
+    async def test_context_filter(self, store_path: str):
+        from a2a.types.a2a_pb2 import ListTasksRequest
+
+        store = JsonFileTaskStore(store_path)
+        for tid, ctx in (("a1", "ctx-a"), ("a2", "ctx-a"), ("b1", "ctx-b")):
+            await store.save(
+                Task(id=tid, context_id=ctx, status=TaskStatus(state=TaskState.completed))
+            )
+
+        result = await store.list(ListTasksRequest(context_id="ctx-b"))
+        assert [t.id for t in result.tasks] == ["b1"]
+        assert result.total_size == 1
+
+    async def test_status_filter(self, store_path: str):
+        from a2a.types.a2a_pb2 import ListTasksRequest
+        from a2a.types.a2a_pb2 import TaskState as PbTaskState
+
+        store = JsonFileTaskStore(store_path)
+        await store.save(_make_task("done", TaskState.completed))
+        await store.save(_make_task("busy", TaskState.working))
+
+        result = await store.list(ListTasksRequest(status=PbTaskState.TASK_STATE_WORKING))
+        assert [t.id for t in result.tasks] == ["busy"]
+
+    async def test_pagination(self, store_path: str):
+        from a2a.types.a2a_pb2 import ListTasksRequest
+        from a2a.utils.errors import InvalidParamsError
+
+        store = JsonFileTaskStore(store_path)
+        for i in range(5):
+            await store.save(_make_task(f"t{i}"))
+
+        seen: list[str] = []
+        token = ""
+        while True:
+            page = await store.list(ListTasksRequest(page_size=2, page_token=token))
+            assert len(page.tasks) <= 2
+            seen.extend(t.id for t in page.tasks)
+            if not page.next_page_token:
+                break
+            token = page.next_page_token
+        assert sorted(seen) == [f"t{i}" for i in range(5)]
+        assert len(seen) == 5
+
+        with pytest.raises(InvalidParamsError):
+            await store.list(ListTasksRequest(page_token="bm90LWEtdGFzaw"))
+
+    async def test_returned_tasks_are_copies(self, store_path: str):
+        store = JsonFileTaskStore(store_path)
+        await store.save(_make_task("t1"))
+        fetched = await store.get("t1")
+        fetched.context_id = "mutated"
+        again = await store.get("t1")
+        assert again.context_id == "ctx-1"

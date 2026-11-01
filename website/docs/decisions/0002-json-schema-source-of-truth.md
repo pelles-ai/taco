@@ -21,7 +21,7 @@ These two answers point at different futures. Pick the Python source and JS, Go,
 
 TACO's schemas are authored as **JSON Schema 2020-12** files committed at [`/spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas). The Pydantic models in `taco/schemas.py` mirror those files faithfully but are not the source of truth. When the JSON Schema changes, the Python models must change to match.
 
-Both forms ship: the canonical JSON Schema files live in the repository at [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas), each identified by its `$id` (for example `https://taco-protocol.dev/schemas/bom-v1.json`), and each has a reference page under [Data Schemas](/docs/schemas/); the Pydantic models are part of the `taco-agent` package. The site does not yet serve the schema documents themselves.
+Both forms ship: the canonical JSON Schema files live in the repository at [`spec/schemas/`](https://github.com/pelles-ai/taco/tree/main/spec/schemas), each identified by its `$id` (for example `https://taco-protocol.dev/schemas/bom-v1.json`), and each has a reference page under [Data Schemas](/docs/schemas/); the Pydantic models are part of the `taco-agent` package. The site also serves each schema document at `/schemas/<name>.json` (for example [`/schemas/bom-v1.json`](pathname:///schemas/bom-v1.json)), copied from `spec/schemas/` at build time by the site's `taco-spec` plugin, which also fails the build if a schema page's example does not validate.
 
 ## Alternatives considered
 
@@ -63,7 +63,7 @@ Cons:
 ### Negative
 
 - Adding a field is a two-step change: edit the JSON Schema, then update the Pydantic model. We accept this drift risk in exchange for portability.
-- The Pydantic model isn't auto-generated today, so it can drift from the JSON Schema. A future test that asserts `model.model_json_schema() == authoritative_schema` would close this gap; until then, code review catches it.
+- The Pydantic models aren't generated from the schemas, so they can drift. A parity test in the SDK ([`sdk/tests/test_schema_parity.py`](https://github.com/pelles-ai/taco/blob/main/sdk/tests/test_schema_parity.py)) closes most of that gap: it compares each model's `model_json_schema()` with its file in `spec/schemas/` (required fields, types, enums, formats, bounds, defaults and the handling of unknown properties), and round-trips the site's schema examples, and spec-valid and spec-invalid variants of them, through both the JSON Schema and the model. Drift fails CI instead of depending on code review.
 - Some Pydantic-isms (custom validators, complex unions) are awkward to express in JSON Schema. We resist the urge to add them; if a constraint can't live in the JSON Schema, it shouldn't be enforced by the canonical model either.
 
 ### Reversibility

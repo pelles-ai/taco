@@ -207,3 +207,24 @@ class TestPersistence:
         path.write_text('{"http://localhost:8001": {"invalid": true}}')
         reg = AgentRegistry(persistence_path=str(path))
         assert reg.list_agents() == []
+
+
+class TestIntegrationFilter:
+    def test_find_by_integration(self):
+        from taco.registry import AgentRegistry
+        from taco.types import AgentCard, AgentConstructionExt
+
+        registry = AgentRegistry()
+        for name, integrations in (("procore-agent", ["procore"]), ("acc-agent", ["acc"])):
+            registry.register_card(
+                f"http://{name}",
+                AgentCard(
+                    name=name,
+                    description="d",
+                    url=f"http://{name}",
+                    x_construction=AgentConstructionExt(
+                        trade="general", csi_divisions=["01"], integrations=integrations
+                    ),
+                ),
+            )
+        assert [c.name for c in registry.find(integration="procore")] == ["procore-agent"]

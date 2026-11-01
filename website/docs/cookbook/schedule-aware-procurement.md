@@ -61,8 +61,18 @@ LINE_TO_ACTIVITY = {
 }
 
 
-async def fetch(agent, task_type, payload):
-    async with TacoClient(agent_url=agent.url) as client:
+def discovered_url(registry: AgentRegistry, **filters) -> str:
+    """URL the first matching agent was registered at.
+
+    Call that address, not the url the agent's card declares about itself:
+    a card's url can be empty, container-internal, or any host its author picks.
+    """
+    card = registry.find(**filters)[0]
+    return next(url for url, c in registry.entries() if c is card)
+
+
+async def fetch(agent_url, task_type, payload):
+    async with TacoClient(agent_url=agent_url) as client:
         task = await client.send_message(task_type, payload)
     return extract_structured_data(task.artifacts[0].parts[0])
 
@@ -110,8 +120,8 @@ async def main() -> None:
     ]:
         await registry.register(url)
 
-    supplier = registry.find(task_type="material-procurement")[0]
-    scheduler = registry.find(task_type="schedule-coordination")[0]
+    supplier = discovered_url(registry, task_type="material-procurement")
+    scheduler = discovered_url(registry, task_type="schedule-coordination")
 
     bom = {
         "projectId": "PRJ-2026-OAKRIDGE-MEDICAL",

@@ -2,7 +2,7 @@
 """Two agents communicating via TACO — demonstrates peer discovery and messaging.
 
 Run:
-    pip install taco-agent[all]
+    pip install "taco-agent[all]"     # or, from this repo: pip install -e "../sdk[all]"
 
     # Terminal 1: Start the data agent
     python peer_communication.py data
@@ -17,7 +17,8 @@ Then:
       -d '{
         "jsonrpc": "2.0", "id": "1", "method": "message/send",
         "params": {
-          "message": {"role": "user", "parts": [{"type": "data", "data": {"question": "How many items?"}}]},
+          "message": {"role": "user", "messageId": "msg-1",
+                      "parts": [{"kind": "data", "data": {"question": "How many items?"}}]},
           "metadata": {"taskType": "analyze"}
         }
       }'

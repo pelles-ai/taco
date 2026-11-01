@@ -55,3 +55,18 @@ print(bom.line_items[0].description)
 # Serialize to camelCase JSON
 json_output = bom.model_dump(by_alias=True, exclude_none=True)
 ```
+
+The models follow the JSON Schema files, and a parity test in the SDK keeps them in step:
+
+- Optional fields default to `None` and are left out of `model_dump(exclude_none=True)`; the models never invent values.
+- `format: date` fields take `YYYY-MM-DD`; `format: date-time` fields need a timezone offset (`2026-05-24T15:00:00Z`), and naive values are rejected.
+- Properties the schema doesn't declare, such as `metadata.vendorExtensions`, are kept through a parse and dump.
+
+To get the model for a schema name, such as a skill's `inputSchema` or `outputSchema`:
+
+```python
+from taco import get_schema_model
+
+model = get_schema_model("estimate-v1")  # EstimateV1; KeyError for an unknown name
+estimate = model.model_validate(json_data)
+```

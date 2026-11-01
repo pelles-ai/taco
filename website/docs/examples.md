@@ -19,7 +19,7 @@ No API keys or configuration needed — run these right away:
 
 ```bash
 # Minimal agent — runs on http://localhost:8080
-pip install taco-agent[all]
+pip install "taco-agent[all]"
 python examples/quick_start.py
 
 # Two agents communicating
@@ -80,6 +80,8 @@ To enable the monitor in your own agent:
 server = A2AServer(card.to_a2a(), enable_monitor=True)
 # Monitor UI at http://localhost:<port>/monitor
 ```
+
+The monitor shows every request and response payload to anyone who can reach the port, which is fine for the demo on your laptop. Before an agent's port is reachable by anyone else, add `monitor_auth_token=...` and open the UI as `/monitor/#token=<token>`, or turn the monitor off.
 
 ## Building Your Own
 

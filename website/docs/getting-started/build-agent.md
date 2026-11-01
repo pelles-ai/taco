@@ -12,14 +12,14 @@ In the [Quick Start](/docs/getting-started/quick-start) you ran a minimal echo a
 
 A mechanical takeoff agent that:
 - Advertises itself as a **mechanical** agent covering **plumbing and HVAC** (CSI divisions 22, 23)
-- Accepts `takeoff` tasks with BOM input
-- Returns structured `bom-v1` data
+- Accepts `takeoff` tasks for a project
+- Returns structured `bom-v1` data, checked against the schema before it leaves the agent
 - Includes a live tracing UI at `/monitor`
 
 ## Prerequisites
 
 ```bash
-pip install taco-agent[all]
+pip install "taco-agent[all]"
 ```
 
 ## Step 1: Define your Agent Card
@@ -40,7 +40,6 @@ card = ConstructionAgentCard(
             name="Generate Bill of Materials",
             description="Generates a BOM from project drawings",
             task_type="takeoff",
-            input_schema="bom-v1",
             output_schema="bom-v1",
         )
     ],
@@ -55,36 +54,51 @@ Key fields:
 | `csi_divisions` | CSI MasterFormat divisions you cover | `["22", "23"]` (Plumbing, HVAC) |
 | `skills` | What your agent can do | Each has a `task_type` and optional input/output schemas |
 
-See [Agent Card Extensions](/docs/agent-card-extensions) for all available fields including `integrations`, `project_types`, and `file_formats`.
+A takeoff reads drawings, which have no TACO schema yet, so the skill declares only its output schema. A skill that takes typed input names it with `input_schema`, for example `input_schema="bom-v1"` on an estimating skill.
+
+See [Agent Card Extensions](/docs/agent-card-extensions) for all available fields, including `integrations`, `project_types` and `data_formats`.
 
 ## Step 2: Write a handler
 
 The handler is your agent's core logic. It receives a `Task` object and parsed input data, and returns an `Artifact` with the result.
 
 ```python
-from taco import Artifact, Task, make_artifact, make_data_part
+from datetime import datetime, timezone
+
+from taco import BOMV1, Artifact, Task, make_artifact, make_data_part
+
+
+def build_bom(project_id: str) -> dict:
+    # Your takeoff logic here — call an LLM, query a database,
+    # run a calculation, etc.
+    bom = BOMV1.model_validate({
+        "projectId": project_id,
+        "trade": "mechanical",
+        "csiDivision": "22",
+        "lineItems": [
+            {"id": "L-001", "description": "Copper pipe 1/2in", "quantity": 120, "unit": "LF"},
+            {"id": "L-002", "description": "90° elbow 1/2in", "quantity": 24, "unit": "EA"},
+        ],
+        "metadata": {
+            "generatedBy": "my-mechanical-takeoff-agent",
+            "generatedAt": datetime.now(timezone.utc).isoformat(),
+        },
+    })
+    # Validated against bom-v1; dump it back to camelCase JSON.
+    return bom.model_dump(by_alias=True, exclude_none=True)
 
 
 async def handle_takeoff(task: Task, input_data: dict) -> Artifact:
-    # Your takeoff logic here — call an LLM, query a database,
-    # run a calculation, etc.
-    bom_result = {
-        "projectId": input_data.get("projectId", "unknown"),
-        "trade": "mechanical",
-        "lineItems": [
-            {"description": "Copper pipe 1/2in", "quantity": 120, "unit": "LF"},
-            {"description": "90° elbow 1/2in", "quantity": 24, "unit": "EA"},
-        ],
-    }
-
     return make_artifact(
-        parts=[make_data_part(bom_result)],
+        parts=[make_data_part(build_bom(input_data.get("projectId", "unknown")))],
         name="bom",
         description="Generated bill of materials",
     )
 ```
 
-The server handles task lifecycle automatically — status transitions (`working` → `completed`), error handling, and event streaming.
+`BOMV1.model_validate` raises if the result is not a valid `bom-v1` (a missing `csiDivision`, a line item without an `id`, a `generatedAt` without a timezone offset), so a bug in your takeoff logic fails the task instead of sending other agents a payload they can't read.
+
+The server handles the task lifecycle automatically: status transitions (`working` → `completed`), error handling, and event streaming. If the handler raises, the task ends `failed`. The caller sees a generic message with an error id, and the details go to your server log under that id. Raise `taco.TacoTaskError("...")` when the caller should see your message, for example `raise TacoTaskError("projectId is required")`.
 
 ## Step 3: Create the server and run
 
@@ -96,10 +110,14 @@ server = A2AServer(card.to_a2a(), enable_monitor=True)
 server.register_handler("takeoff", handle_takeoff)
 
 if __name__ == "__main__":
-    uvicorn.run(server.app, host="0.0.0.0", port=8080)
+    uvicorn.run(server.app, host="127.0.0.1", port=8080)
 ```
 
 `enable_monitor=True` mounts a live tracing UI at `/monitor` — no extra servers or ports needed.
+
+:::warning Set a monitor token before you expose the port
+The monitor shows every request and response payload to anyone who can reach the port. Binding to `127.0.0.1` keeps it on your machine. Before you bind to `0.0.0.0` or deploy, pass `monitor_auth_token=...` to `A2AServer` and open the UI as `/monitor/#token=<token>`, or turn the monitor off.
+:::
 
 :::tip Persist tasks across restarts
 By default, tasks are stored in memory and lost on restart. For durable storage:
@@ -110,14 +128,14 @@ from taco import JsonFileTaskStore
 server = A2AServer(card.to_a2a(), task_store=JsonFileTaskStore("tasks.json"), enable_monitor=True)
 ```
 
-See [Task persistence](/docs/sdk#task-persistence) in the SDK Reference.
+See [Task persistence](/docs/sdk#task-persistence) in the SDK Guide.
 :::
 
 :::tip Discovery-only mode
 If you only need to expose your Agent Card for discovery (no task handlers), use the shorthand:
 
 ```python
-card.serve(host="0.0.0.0", port=8080)
+card.serve(host="127.0.0.1", port=8080)
 ```
 :::
 
@@ -130,10 +148,10 @@ python my_agent.py
 **Check the Agent Card:**
 
 ```bash
-curl http://localhost:8080/.well-known/agent.json | python -m json.tool
+curl http://localhost:8080/.well-known/agent-card.json | python -m json.tool
 ```
 
-You'll see your trade, CSI divisions, and skills in the response.
+You'll see your trade, CSI divisions, and skills in the response. (`/.well-known/agent.json` serves the same card for older clients.)
 
 **Open the monitor:**
 
@@ -151,14 +169,15 @@ curl -X POST http://localhost:8080/ \
     "params": {
       "message": {
         "role": "user",
-        "parts": [{"kind": "data", "data": {"projectId": "PRJ-001", "trade": "mechanical"}}]
+        "messageId": "msg-1",
+        "parts": [{"kind": "data", "data": {"projectId": "PRJ-001"}}]
       },
       "metadata": {"taskType": "takeoff"}
     }
   }'
 ```
 
-Watch the request flow through in the monitor UI in real time.
+The response is a `completed` task whose artifact holds the `bom-v1`. Watch the request flow through in the monitor UI in real time. `taco send http://localhost:8080 takeoff` does the same from the [CLI](/docs/cli).
 
 ## Streaming responses
 
@@ -174,21 +193,24 @@ async def stream_takeoff(task: Task, input_data: dict) -> AsyncIterator[Part]:
     # ... do work ...
     yield make_text_part("Identifying materials...")
     # ... do work ...
-    yield make_data_part(final_bom_result)
+    yield make_data_part(build_bom(input_data.get("projectId", "unknown")))
 
 
 server.register_streaming_handler("takeoff", stream_takeoff)
 ```
 
-Clients receive updates in real time via `message/stream`.
+Clients receive each part as it is yielded via `message/stream` (`TacoClient.stream_message()` in Python). Registering a streaming handler also sets `capabilities.streaming` on the served card. With both handlers registered for `takeoff`, `message/stream` requests use `stream_takeoff` and `message/send` requests use `handle_takeoff`.
 
 ## Full example
 
 Here's everything in one file:
 
 ```python
+from datetime import datetime, timezone
+
 import uvicorn
 from taco import (
+    BOMV1,
     A2AServer,
     Artifact,
     ConstructionAgentCard,
@@ -209,7 +231,6 @@ card = ConstructionAgentCard(
             name="Generate Bill of Materials",
             description="Generates a BOM from project drawings",
             task_type="takeoff",
-            input_schema="bom-v1",
             output_schema="bom-v1",
         )
     ],
@@ -218,17 +239,26 @@ card = ConstructionAgentCard(
 server = A2AServer(card.to_a2a(), enable_monitor=True)
 
 
-async def handle_takeoff(task: Task, input_data: dict) -> Artifact:
-    bom_result = {
-        "projectId": input_data.get("projectId", "unknown"),
+def build_bom(project_id: str) -> dict:
+    bom = BOMV1.model_validate({
+        "projectId": project_id,
         "trade": "mechanical",
+        "csiDivision": "22",
         "lineItems": [
-            {"description": "Copper pipe 1/2in", "quantity": 120, "unit": "LF"},
-            {"description": "90° elbow 1/2in", "quantity": 24, "unit": "EA"},
+            {"id": "L-001", "description": "Copper pipe 1/2in", "quantity": 120, "unit": "LF"},
+            {"id": "L-002", "description": "90° elbow 1/2in", "quantity": 24, "unit": "EA"},
         ],
-    }
+        "metadata": {
+            "generatedBy": "my-mechanical-takeoff-agent",
+            "generatedAt": datetime.now(timezone.utc).isoformat(),
+        },
+    })
+    return bom.model_dump(by_alias=True, exclude_none=True)
+
+
+async def handle_takeoff(task: Task, input_data: dict) -> Artifact:
     return make_artifact(
-        parts=[make_data_part(bom_result)],
+        parts=[make_data_part(build_bom(input_data.get("projectId", "unknown")))],
         name="bom",
         description="Generated bill of materials",
     )
@@ -237,14 +267,15 @@ async def handle_takeoff(task: Task, input_data: dict) -> Artifact:
 server.register_handler("takeoff", handle_takeoff)
 
 if __name__ == "__main__":
-    print("Agent:   http://localhost:8080/.well-known/agent.json")
+    print("Agent:   http://localhost:8080/.well-known/agent-card.json")
     print("Monitor: http://localhost:8080/monitor")
-    uvicorn.run(server.app, host="0.0.0.0", port=8080)
+    uvicorn.run(server.app, host="127.0.0.1", port=8080)
 ```
 
 ## Next steps
 
 - [Agent-to-agent communication](/docs/getting-started/multi-agent) — connect multiple agents with peer discovery
 - [Integrate your platform](/docs/getting-started/integrate-platform) — wrap an existing system as a TACO agent
+- [Security](/docs/security) — require a bearer token and scopes before you expose the agent
 - Browse the full list of [Task Types](/docs/task-types) your agent can support
 - Learn about [Data Schemas](/docs/schemas/) for typed input and output

@@ -51,20 +51,34 @@ The three `send_message` calls are dispatched concurrently with `asyncio.gather`
 ```python
 import asyncio
 from taco import (
+    AgentCard,
     AgentRegistry,
     TacoClient,
     extract_structured_data,
 )
 
 
-async def quote_one(agent_card, bom):
+def discovered(registry: AgentRegistry, **filters) -> list[tuple[str, AgentCard]]:
+    """(url, card) for every matching agent, url being where it was registered.
+
+    Call that address, not the url the card declares about itself.
+    """
+    matches = registry.find(**filters)
+    return [(url, card) for url, card in registry.entries()
+            if any(card is m for m in matches)]
+
+
+async def quote_one(url, agent_card, bom):
     """Ask a single supplier for a quote. Returns (agent_name, quote) or None."""
-    async with TacoClient(agent_url=agent_card.url) as client:
+    async with TacoClient(agent_url=url) as client:
         try:
             task = await client.send_message("material-procurement", bom)
         except Exception as exc:
             print(f"[{agent_card.name}] failed: {exc}")
             return None
+    if task.status.state.value != "completed":
+        print(f"[{agent_card.name}] task {task.status.state.value}")
+        return None
     return agent_card.name, extract_structured_data(task.artifacts[0].parts[0])
 
 
@@ -86,8 +100,8 @@ async def main() -> None:
     ]:
         await registry.register(url)
 
-    suppliers = registry.find(
-        trade="mechanical", task_type="material-procurement"
+    suppliers = discovered(
+        registry, trade="mechanical", task_type="material-procurement"
     )
     print(f"Found {len(suppliers)} mechanical suppliers")
 
@@ -106,7 +120,7 @@ async def main() -> None:
     }
 
     # Fan-out
-    quotes = await asyncio.gather(*[quote_one(s, bom) for s in suppliers])
+    quotes = await asyncio.gather(*[quote_one(url, card, bom) for url, card in suppliers])
     quotes = [q for q in quotes if q is not None]
 
     if not quotes:
@@ -145,7 +159,7 @@ The example above uses *cheapest within a lead-time ceiling*. Real procurement t
 
 ## Variations
 
-- **Add a minimum trust tier.** `registry.find()` has no trust filter, so filter the returned cards yourself. The tier lives at `x-construction.security.trustTier` on each card:
+- **Add a minimum trust tier.** `registry.find()` has no trust filter, so filter the discovered cards yourself. The tier lives at `x-construction.security.trustTier` on each card:
 
   ```python
   from taco import get_construction_ext
@@ -156,7 +170,7 @@ The example above uses *cheapest within a lead-time ceiling*. Real procurement t
           return 0
       return xc.security.trust_tier
 
-  suppliers = [s for s in suppliers if trust_tier(s) >= 1]  # drop unverified
+  suppliers = [(url, card) for url, card in suppliers if trust_tier(card) >= 1]  # drop unverified
   ```
 
   The in-process `AgentRegistry` doesn't verify this value; it's whatever the card declares. Treat it as a claim until a registry has validated it (see [SPEC-004](/docs/spec/SPEC-004-security)).
