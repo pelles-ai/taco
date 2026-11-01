@@ -98,7 +98,7 @@ Each entry follows the same shape: **what it is**, **how TACO uses it**, **what 
 
 **What it is.** Standard auth flows beyond plain OAuth 2.0. mTLS for high-assurance deployments. [PKCE (RFC 7636)](https://datatracker.ietf.org/doc/html/rfc7636) for public clients. [Device Authorization Grant (RFC 8628)](https://datatracker.ietf.org/doc/html/rfc8628) for input-constrained devices.
 
-**How TACO uses it.** Planned, not shipped. A2A v1 formalizes these flows, and surfacing mTLS, PKCE-required, and device-code support on `SecurityExt` is an open item in the [v1 migration plan](https://github.com/pelles-ai/taco/blob/main/sdk/V1_MIGRATION.md). Today `SecurityExt` carries `trustTier`, `scopesOffered`, `projectScoped`, `delegationSupported`, and `extendedCardUrl`; declare the flows themselves in the standard A2A `securitySchemes` block.
+**How TACO uses it.** `SecurityExt` advertises them with `mtlsSupported`, `pkceRequired` and `deviceCodeSupported`, so a registry can filter agents by how they authenticate. The flows themselves go in the standard A2A `securitySchemes` block; the SDK's `AuthorizationCodeOAuthFlowV1` and `DeviceCodeOAuthFlow` build the two A2A v1 flows the v0.3 card format has no fields for ([how](/docs/security#mtls-pkce-and-device-code)).
 
 ### Server-Sent Events (SSE)
 

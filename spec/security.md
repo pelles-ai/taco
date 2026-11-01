@@ -195,6 +195,11 @@ TACO adds a `security` sub-object to the top-level `x-construction` extension to
 | `projectScoped` | boolean | No | If `true`, the agent requires a `taco:project:{id}` scope in addition to task/trade scopes. Allows orchestrators to know in advance whether they need a project-specific token. |
 | `delegationSupported` | boolean | No | If `true`, the agent can participate in Token Exchange (RFC 8693) sub-delegation chains. |
 | `extendedCardUrl` | string | No | URL of the extended Agent Card (per A2A spec) that reveals additional capabilities after authentication. |
+| `mtlsSupported` | boolean | No | If `true`, the agent accepts mTLS client certificates. |
+| `pkceRequired` | boolean | No | If `true`, the agent requires PKCE ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)) on the OAuth Authorization Code flow. |
+| `deviceCodeSupported` | boolean | No | If `true`, the agent supports the OAuth Device Authorization Grant ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)), for clients without a browser. |
+
+> `mtlsSupported`, `pkceRequired` and `deviceCodeSupported` let a registry filter agents by how they authenticate. Like `scopesOffered` they are informational: the schemes and flows themselves are declared in `securitySchemes` (see [`agent-card-extensions.md`](agent-card-extensions.md#declaring-v1-oauth-flows-on-the-agent-card)).
 
 > `scopesOffered` is informational — it enables registry filtering by scope without a full OAuth flow. The authoritative scope declaration remains in the Agent Card's `securitySchemes`.
 

@@ -86,6 +86,8 @@ GROUPS: list[GroupSpec] = [
             SymbolSpec("AgentConstructionExt", "class"),
             SymbolSpec("SkillConstructionExt", "class"),
             SymbolSpec("SecurityExt", "class"),
+            SymbolSpec("AuthorizationCodeOAuthFlowV1", "class"),
+            SymbolSpec("DeviceCodeOAuthFlow", "class"),
             SymbolSpec("get_construction_ext", "function"),
             SymbolSpec("get_skill_construction_ext", "function"),
             SymbolSpec("apply_construction_extension_declaration", "function"),

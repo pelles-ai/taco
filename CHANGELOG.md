@@ -8,6 +8,15 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-11-01
+
+### Added
+- **Auth-modality flags on `SecurityExt`** — `mtlsSupported`, `pkceRequired` and `deviceCodeSupported` on `x-construction.security` let a registry filter agents by how they authenticate without reading `securitySchemes`. They default to unset, so existing cards serialize as before.
+- **A2A v1 OAuth flows** — `AuthorizationCodeOAuthFlowV1` (the Authorization Code flow plus `pkceRequired`, RFC 7636) and `DeviceCodeOAuthFlow` (RFC 8628) build the two v1 flows that the v0.3 card format has no fields for.
+- **Scheme and flow models on cards** — `ConstructionAgentCard(security_schemes=...)` and `AgentCard` accept these flow models and the A2A scheme models now re-exported from `taco` (`MutualTLSSecurityScheme`, `HTTPAuthSecurityScheme`, `APIKeySecurityScheme`, `OAuth2SecurityScheme`, `OpenIdConnectSecurityScheme`, `OAuthFlows` and the four v0.3 flow models) anywhere in the mapping, including inside a `flows` dict. Keep v1 flows in a plain `flows` dict: the v0.3 `OAuthFlows` model drops `deviceCode`.
+
+## [0.6.0] — 2026-11-01
+
 ### Changed
 - **Breaking: schema models reject numbers sent as text** — `number` and `integer` fields in the `taco.schemas` models (`EstimateV1`, `QuoteV1`, `ScheduleV1` and the rest) accepted `"850"` and `true` and stored them as `850.0` and `1`. The JSON Schemas reject both, so a payload the models accepted could still fail validation at the receiving agent. Both are now rejected. Integer fields still accept whole floats such as `5.0`, as JSON Schema does (A2A's protobuf layer sends every number as a float). Producers that send numbers as strings must send them unquoted.
 

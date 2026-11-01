@@ -188,6 +188,11 @@ The `security` sub-object of the top-level [`x-construction`](./agent-card-exten
 | `projectScoped` | boolean | No | If `true`, the agent requires a `taco:project:{id}` scope in addition to task/trade scopes, so orchestrators know in advance they need a project-specific token. |
 | `delegationSupported` | boolean | No | If `true`, the agent can take part in Token Exchange (RFC 8693) sub-delegation chains. |
 | `extendedCardUrl` | string | No | URL of the extended Agent Card (per the A2A spec) that reveals more capabilities after authentication. |
+| `mtlsSupported` | boolean | No | If `true`, the agent accepts mTLS client certificates. |
+| `pkceRequired` | boolean | No | If `true`, the agent requires PKCE ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)) on the OAuth Authorization Code flow. |
+| `deviceCodeSupported` | boolean | No | If `true`, the agent supports the OAuth Device Authorization Grant ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)), for clients without a browser. |
+
+`mtlsSupported`, `pkceRequired` and `deviceCodeSupported` let a registry filter agents by how they authenticate. Like `scopesOffered` they are informational: `securitySchemes` declares the schemes and flows themselves.
 
 ## Construction Authorization Concepts
 
@@ -260,6 +265,45 @@ card = ConstructionAgentCard(
 ```
 
 Leave `trust_tier` unset: the registry assigns it. The served card carries `securitySchemes` and `security`, and `taco inspect <url>` lists them.
+
+#### mTLS, PKCE and device code
+
+A2A v1 adds `pkceRequired` to the Authorization Code flow and a Device Code flow, which the v0.3 card format TACO serves has no fields for. Build them with `AuthorizationCodeOAuthFlowV1` and `DeviceCodeOAuthFlow`, and set the matching flags on `SecurityExt`. Scheme and flow models can go anywhere in `security_schemes`:
+
+```python
+from taco import (
+    AuthorizationCodeOAuthFlowV1,
+    DeviceCodeOAuthFlow,
+    MutualTLSSecurityScheme,
+    SecurityExt,
+)
+
+scopes = {"taco:task:estimate": "Submit estimate tasks"}
+security_schemes = {
+    "tacoOAuth": {
+        "type": "oauth2",
+        "flows": {
+            "authorizationCode": AuthorizationCodeOAuthFlowV1(
+                authorization_url="https://auth.buildright.io/oauth/authorize",
+                token_url="https://auth.buildright.io/oauth/token",
+                scopes=scopes,
+                pkce_required=True,
+            ),
+            "deviceCode": DeviceCodeOAuthFlow(
+                device_authorization_url="https://auth.buildright.io/oauth/device",
+                token_url="https://auth.buildright.io/oauth/token",
+                scopes=scopes,
+            ),
+        },
+    },
+    "mtls": MutualTLSSecurityScheme(),
+}
+construction_security = SecurityExt(
+    scopes_offered=list(scopes), pkce_required=True, device_code_supported=True, mtls_supported=True
+)
+```
+
+Pass both to `ConstructionAgentCard` as above. Keep the v1 flows in a plain `flows` dict: the A2A SDK's v0.3 `OAuthFlows` model drops fields it does not know, `deviceCode` included. Clients that don't understand the v1 fields ignore them.
 
 ### Validate tokens on every task request
 

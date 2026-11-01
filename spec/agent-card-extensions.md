@@ -130,6 +130,9 @@ The `security` sub-object carries TACO-specific security metadata. See [`securit
 | `projectScoped` | boolean | No | If `true`, incoming requests must include a `taco:project:{id}` scope. |
 | `delegationSupported` | boolean | No | If `true`, the agent supports downstream Token Exchange ([RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693)) sub-delegation. |
 | `extendedCardUrl` | string | No | URL of the extended Agent Card, revealed after initial authentication. |
+| `mtlsSupported` | boolean | No | If `true`, the agent accepts mTLS client certificates. Lets a registry/orchestrator filter on mTLS-capable agents without parsing the full `securitySchemes` block. |
+| `pkceRequired` | boolean | No | If `true`, the agent requires PKCE ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)) on OAuth Authorization Code flows. Mirrors the v1 `pkceRequired` field on the AuthorizationCode flow. |
+| `deviceCodeSupported` | boolean | No | If `true`, the agent supports the OAuth Device Authorization Grant flow ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)). Useful for headless / CI / TV-style clients. |
 
 ```json
 {
@@ -140,8 +143,59 @@ The `security` sub-object carries TACO-specific security metadata. See [`securit
       "trustTier": 1,
       "scopesOffered": ["taco:trade:mechanical", "taco:task:estimate"],
       "projectScoped": true,
-      "delegationSupported": false
+      "delegationSupported": false,
+      "mtlsSupported": true,
+      "pkceRequired": true,
+      "deviceCodeSupported": false
     }
   }
 }
 ```
+
+### Discovery filtering
+
+Registries MAY use the auth-modality flags to narrow agent search results:
+
+```
+GET /agents?mtlsSupported=true&trade=mechanical
+GET /agents?deviceCodeSupported=true
+```
+
+A consumer that does not understand these flags treats them as informational only — the canonical security configuration still lives in the top-level `securitySchemes` block.
+
+### Declaring v1 OAuth flows on the agent card
+
+A2A v1 added two OAuth features that the v0.3 wire format's `OAuthFlows` object did not carry:
+
+- **`pkceRequired`** on the AuthorizationCode flow ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636))
+- **DeviceCode flow** ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628))
+
+An agent declares them in its `securitySchemes` block with the v1 field names, next to the v0.3 fields:
+
+```json
+{
+  "securitySchemes": {
+    "tacoOAuth": {
+      "type": "oauth2",
+      "flows": {
+        "authorizationCode": {
+          "authorizationUrl": "https://auth.buildright.io/oauth/authorize",
+          "tokenUrl": "https://auth.buildright.io/oauth/token",
+          "scopes": {"taco:task:estimate": "Submit estimate tasks"},
+          "pkceRequired": true
+        },
+        "deviceCode": {
+          "deviceAuthorizationUrl": "https://auth.buildright.io/oauth/device",
+          "tokenUrl": "https://auth.buildright.io/oauth/token",
+          "scopes": {"taco:task:estimate": "Submit estimate tasks"}
+        }
+      }
+    },
+    "mtls": {"type": "mutualTLS"}
+  }
+}
+```
+
+Clients reading a card with a `deviceCode` flow or `pkceRequired` today MUST treat them as forward-compatible extensions and ignore them if their A2A SDK does not understand the fields.
+
+In the Python SDK, `taco.AuthorizationCodeOAuthFlowV1` and `taco.DeviceCodeOAuthFlow` build these two flows, and `taco.MutualTLSSecurityScheme`, `taco.OAuth2SecurityScheme` and the other A2A scheme models are re-exported. All of them can be passed to `ConstructionAgentCard(security_schemes=...)`, also inside a `flows` dict. Put the v1 flows in a plain `flows` dict as above: the v0.3 `OAuthFlows` model drops fields it does not know, `deviceCode` included. The two flow models become pass-throughs to `a2a.types` after the v1 wire-format cutover.

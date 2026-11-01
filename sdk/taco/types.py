@@ -11,6 +11,7 @@ Other TACO modules should import A2A types from ``taco.types``.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, Literal
 
 # A2A SDK v1.0+ moved the wire-format types to protobuf. The Pydantic
@@ -20,16 +21,26 @@ from a2a._base import A2ABaseModel
 from a2a.compat.v0_3.types import (  # noqa: F401 — re-exports
     AgentCapabilities,
     AgentExtension,
+    APIKeySecurityScheme,
     Artifact,
+    AuthorizationCodeOAuthFlow,
+    ClientCredentialsOAuthFlow,
     DataPart,
     FilePart,
+    HTTPAuthSecurityScheme,
+    ImplicitOAuthFlow,
     JSONRPCError,
     JSONRPCErrorResponse,
     JSONRPCRequest,
     JSONRPCResponse,
     JSONRPCSuccessResponse,
     Message,
+    MutualTLSSecurityScheme,
+    OAuth2SecurityScheme,
+    OAuthFlows,
+    OpenIdConnectSecurityScheme,
     Part,
+    PasswordOAuthFlow,
     PushNotificationAuthenticationInfo,
     PushNotificationConfig,
     Role,
@@ -42,7 +53,7 @@ from a2a.compat.v0_3.types import (  # noqa: F401 — re-exports
     TextPart,
 )
 from a2a.server.tasks import InMemoryTaskStore, TaskStore  # noqa: F401 — re-export
-from pydantic import ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ---------------------------------------------------------------------------
 # v1.0 migration: TACO is now on a2a-sdk >=1.0.2 via the v0_3 compat layer.
@@ -127,13 +138,65 @@ class SkillConstructionExt(A2ABaseModel):
 
 
 class SecurityExt(A2ABaseModel):
-    """x-construction.security sub-object for TACO security metadata."""
+    """x-construction.security sub-object for TACO security metadata.
+
+    Holds construction-specific security advertisements (trust tier, TACO
+    scopes, project scoping, delegation). Also surfaces three v1-aware
+    capability flags (``mtls_supported``, ``pkce_required``,
+    ``device_code_supported``) so a registry or orchestrator can quickly
+    filter agents on auth modality without parsing the full ``securitySchemes``
+    block on the agent card.
+    """
 
     trust_tier: int | None = Field(None, alias="trustTier")
     scopes_offered: list[str] = Field(default_factory=list, alias="scopesOffered")
     project_scoped: bool | None = Field(None, alias="projectScoped")
     delegation_supported: bool | None = Field(None, alias="delegationSupported")
     extended_card_url: str | None = Field(None, alias="extendedCardUrl")
+    mtls_supported: bool | None = Field(None, alias="mtlsSupported")
+    pkce_required: bool | None = Field(None, alias="pkceRequired")
+    device_code_supported: bool | None = Field(None, alias="deviceCodeSupported")
+
+
+# ---------------------------------------------------------------------------
+# v1 OAuth flow mirrors
+# ---------------------------------------------------------------------------
+# A2A v1 added two OAuth features that the v0_3 compat layer's
+# ``OAuthFlows`` model does not carry:
+#   1. ``pkceRequired`` on AuthorizationCode flow
+#   2. ``deviceCode`` flow (RFC 8628)
+# These mirrors let users declare them today on TACO agent cards. When
+# Phase 3 (epic #18) flips TACO to native v1 wire types, these models
+# become straight pass-throughs to ``a2a.types``.
+
+
+class AuthorizationCodeOAuthFlowV1(A2ABaseModel):
+    """v1-shaped AuthorizationCode OAuth flow with optional ``pkceRequired``.
+
+    Equivalent to ``a2a.compat.v0_3.types.AuthorizationCodeOAuthFlow`` plus
+    the v1 ``pkce_required`` field (RFC 7636).
+    """
+
+    authorization_url: str = Field(alias="authorizationUrl")
+    token_url: str = Field(alias="tokenUrl")
+    refresh_url: str | None = Field(None, alias="refreshUrl")
+    scopes: dict[str, str] = Field(default_factory=dict)
+    pkce_required: bool | None = Field(None, alias="pkceRequired")
+
+
+class DeviceCodeOAuthFlow(A2ABaseModel):
+    """OAuth 2.0 Device Authorization Grant flow (RFC 8628).
+
+    A2A v1 added this flow for headless / TV-style clients. The v0_3 compat
+    layer's ``OAuthFlows`` does not include it, so TACO ships a Pydantic
+    mirror that survives serialization round-trips and will become a direct
+    pass-through to ``a2a.types`` after the v1 wire cutover (epic #18).
+    """
+
+    device_authorization_url: str = Field(alias="deviceAuthorizationUrl")
+    token_url: str = Field(alias="tokenUrl")
+    refresh_url: str | None = Field(None, alias="refreshUrl")
+    scopes: dict[str, str] = Field(default_factory=dict)
 
 
 class AgentConstructionExt(A2ABaseModel):
@@ -177,6 +240,17 @@ class AgentSkill(A2ABaseModel):
         None,
         alias="x-construction",
     )
+
+
+def _models_to_json(value: Any) -> Any:
+    """Dump Pydantic models anywhere inside ``value`` to JSON-shaped dicts."""
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json", by_alias=True, exclude_none=True)
+    if isinstance(value, Mapping):
+        return {key: _models_to_json(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_models_to_json(item) for item in value]
+    return value
 
 
 class AgentCard(A2ABaseModel):
@@ -223,6 +297,13 @@ class AgentCard(A2ABaseModel):
         None,
         alias="x-construction",
     )
+
+    @field_validator("security_schemes", mode="before")
+    @classmethod
+    def _schemes_to_json(cls, value: Any) -> Any:
+        # Scheme and flow models (taco.OAuth2SecurityScheme,
+        # taco.DeviceCodeOAuthFlow, ...) may appear anywhere in the mapping.
+        return _models_to_json(value)
 
 
 # ---------------------------------------------------------------------------
