@@ -28,6 +28,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from taco.client import RpcError, TacoClient
 
+from common.admin_token import ENV_VAR as ADMIN_TOKEN_VAR
+from common.admin_token import admin_token
 from common.sample_data import SAMPLE_BOM
 
 logger = logging.getLogger("orchestrator")
@@ -422,11 +424,21 @@ async def add_skill_to_agent(request: Request) -> dict:
     skill = body.get("skill")
     if not isinstance(skill, dict):
         raise ApiError(400, "skill must be a JSON object")
+    token = admin_token()
+    if token is None:
+        raise ApiError(
+            503,
+            f"Skill admin is disabled: set {ADMIN_TOKEN_VAR} for the agents and the "
+            "orchestrator (make demo-env writes one to examples/.env)",
+        )
 
     method = "POST /admin/skills"
     try:
         resp = await app.state.task_client.post(
-            f"{agent_url}/admin/skills", json=skill, timeout=ADMIN_TIMEOUT
+            f"{agent_url}/admin/skills",
+            json=skill,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=ADMIN_TIMEOUT,
         )
     except httpx.TimeoutException:
         raise _agent_error(

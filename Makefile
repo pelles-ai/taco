@@ -37,6 +37,10 @@ demo-install:                       ## Install TACO SDK + demo dependencies
 
 demo-env:                           ## Create .env from template (won't overwrite existing)
 	@test -f examples/.env || cp examples/.env.example examples/.env
+	@grep -q '^TACO_ADMIN_TOKEN=.' examples/.env || { \
+		sed -i.bak '/^TACO_ADMIN_TOKEN=$$/d' examples/.env && rm -f examples/.env.bak; \
+		echo "TACO_ADMIN_TOKEN=$$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')" >> examples/.env; \
+	}
 	@echo "Edit examples/.env and set your API key."
 
 demo: demo-env                      ## Run the demo locally (agents + dashboard)

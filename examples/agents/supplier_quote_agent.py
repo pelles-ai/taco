@@ -10,6 +10,7 @@ import os
 
 import uvicorn
 
+from common.admin_token import admin_token
 from common.a2a_models import (
     AgentCard,
     AgentConstructionExt,
@@ -90,7 +91,14 @@ card = AgentCard(
 # Advertise x-construction in capabilities.extensions[] (as ConstructionAgentCard does).
 apply_construction_extension_declaration(card)
 
-server = A2AServer(card, enable_admin=True, enable_monitor=True)
+# /admin/skills is enabled only with a token (see common/admin_token.py).
+ADMIN_TOKEN = admin_token()
+server = A2AServer(
+    card,
+    enable_admin=ADMIN_TOKEN is not None,
+    admin_auth_token=ADMIN_TOKEN,
+    enable_monitor=True,
+)
 
 
 async def handle_procurement(task: Task, input_data: dict) -> Artifact:

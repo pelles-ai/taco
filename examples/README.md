@@ -125,10 +125,12 @@ This showcases how the A2A ecosystem adapts when agents add new capabilities:
 3. Click **"Discover Agents"** again — the Estimating Agent now shows a second skill marked **NEW**
 4. Click "Send Task" on the new "Value Engineering Analysis" skill
 
-You can also add skills via curl:
+You can also add skills via curl. The admin endpoints need the token from `examples/.env` (`make demo-env` creates it; `run_demo.py` prints one if it had to generate it):
 
 ```bash
+export TACO_ADMIN_TOKEN=...   # from examples/.env
 curl -X POST http://localhost:8001/admin/skills \
+  -H "Authorization: Bearer $TACO_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "id": "value-engineering",
@@ -142,7 +144,7 @@ curl -X POST http://localhost:8001/admin/skills \
   }'
 ```
 
-The demo agents leave these admin endpoints unauthenticated; that is one reason they listen on `127.0.0.1` only.
+The SDK only enables these admin endpoints with a token (`A2AServer(enable_admin=True, admin_auth_token=...)`), because they change the agent card every caller sees. If `TACO_ADMIN_TOKEN` is unset, the demo agents run without them.
 
 ## Demo: Full Pipeline
 

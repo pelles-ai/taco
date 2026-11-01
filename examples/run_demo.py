@@ -10,11 +10,14 @@ stopped too.
 from __future__ import annotations
 
 import os
+import secrets
 import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 EXAMPLES_DIR = Path(__file__).resolve().parent
 AGENT_BIND_HOST = os.getenv("AGENT_BIND_HOST", "127.0.0.1")
@@ -71,9 +74,20 @@ def _print_banner() -> None:
     print()
 
 
+def _ensure_admin_token() -> None:
+    """Give every service the same admin token (generated if .env has none)."""
+    load_dotenv(EXAMPLES_DIR / ".env")
+    if not os.getenv("TACO_ADMIN_TOKEN"):
+        os.environ["TACO_ADMIN_TOKEN"] = secrets.token_urlsafe(24)
+        print("  Generated TACO_ADMIN_TOKEN for this run (add it to examples/.env to keep it):")
+        print(f"    TACO_ADMIN_TOKEN={os.environ['TACO_ADMIN_TOKEN']}")
+        print()
+
+
 def main() -> int:
     processes: list[tuple[str, subprocess.Popen]] = []
     signal.signal(signal.SIGTERM, _raise_keyboard_interrupt)
+    _ensure_admin_token()
     try:
         for name, app, host, port in SERVICES:
             print(f"  Starting {name:<17} :{port}")
