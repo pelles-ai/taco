@@ -4,11 +4,18 @@ v1 OAuth flow Pydantic mirrors (``AuthorizationCodeOAuthFlowV1``,
 
 from __future__ import annotations
 
+import httpx
+
 from taco import (
+    A2AServer,
     AuthorizationCodeOAuthFlow,
     AuthorizationCodeOAuthFlowV1,
+    ConstructionAgentCard,
     DeviceCodeOAuthFlow,
+    HTTPAuthSecurityScheme,
     MutualTLSSecurityScheme,
+    OAuth2SecurityScheme,
+    OAuthFlows,
     SecurityExt,
 )
 
@@ -128,3 +135,115 @@ class TestMutualTLSSecuritySchemeReexport:
         assert scheme.description == "DoD CA pinned cert"
         # SDK fills the discriminator constant
         assert scheme.type == "mutualTLS"
+
+
+class TestSchemesOnTheAgentCard:
+    """The scheme and flow models plug into ``security_schemes``."""
+
+    EXPECTED = {
+        "oauth": {
+            "type": "oauth2",
+            "flows": {
+                "authorizationCode": {
+                    "authorizationUrl": "https://idp.example.com/authorize",
+                    "tokenUrl": "https://idp.example.com/token",
+                    "scopes": {"taco:task:estimate": "Request estimates"},
+                    "pkceRequired": True,
+                },
+                "deviceCode": {
+                    "deviceAuthorizationUrl": "https://idp.example.com/device",
+                    "tokenUrl": "https://idp.example.com/token",
+                    "scopes": {},
+                },
+            },
+        },
+        "mtls": {"type": "mutualTLS"},
+        "bearer": {"type": "http", "scheme": "bearer"},
+    }
+
+    def _card(self) -> ConstructionAgentCard:
+        return ConstructionAgentCard(
+            name="Secured Agent",
+            url="http://test",
+            trade="mechanical",
+            csi_divisions=["23"],
+            security_schemes={
+                # v1 flows go in a plain flows dict: the v0.3 OAuthFlows
+                # model has no deviceCode or pkceRequired and drops them.
+                "oauth": {
+                    "type": "oauth2",
+                    "flows": {
+                        "authorizationCode": AuthorizationCodeOAuthFlowV1(
+                            authorization_url="https://idp.example.com/authorize",
+                            token_url="https://idp.example.com/token",
+                            scopes={"taco:task:estimate": "Request estimates"},
+                            pkce_required=True,
+                        ),
+                        "deviceCode": DeviceCodeOAuthFlow(
+                            device_authorization_url="https://idp.example.com/device",
+                            token_url="https://idp.example.com/token",
+                        ),
+                    },
+                },
+                "mtls": MutualTLSSecurityScheme(),
+                "bearer": HTTPAuthSecurityScheme(scheme="bearer"),
+            },
+            security=[{"oauth": ["taco:task:estimate"]}],
+            construction_security=SecurityExt(
+                mtls_supported=True, pkce_required=True, device_code_supported=True
+            ),
+        )
+
+    def test_models_are_dumped_into_the_card(self):
+        card = self._card().to_a2a()
+        assert card.security_schemes == self.EXPECTED
+        dumped = card.model_dump(by_alias=True, exclude_none=True)
+        assert dumped["securitySchemes"] == self.EXPECTED
+        assert dumped["x-construction"]["security"] == {
+            "scopesOffered": [],
+            "mtlsSupported": True,
+            "pkceRequired": True,
+            "deviceCodeSupported": True,
+        }
+
+    def test_v03_scheme_model_is_accepted(self):
+        scheme = OAuth2SecurityScheme(
+            flows=OAuthFlows(
+                authorization_code=AuthorizationCodeOAuthFlow(
+                    authorization_url="https://idp.example.com/authorize",
+                    token_url="https://idp.example.com/token",
+                    scopes={},
+                )
+            )
+        )
+        card = ConstructionAgentCard(
+            name="Agent",
+            url="http://test",
+            trade="mechanical",
+            csi_divisions=["23"],
+            security_schemes={"oauth": scheme},
+        ).to_a2a()
+        assert card.security_schemes == {
+            "oauth": {
+                "type": "oauth2",
+                "flows": {
+                    "authorizationCode": {
+                        "authorizationUrl": "https://idp.example.com/authorize",
+                        "tokenUrl": "https://idp.example.com/token",
+                        "scopes": {},
+                    }
+                },
+            }
+        }
+
+    async def test_served_card_carries_the_schemes_and_flags(self):
+        server = A2AServer(self._card().to_a2a())
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+            served = (await http.get("/.well-known/agent-card.json")).json()
+        assert served["securitySchemes"] == self.EXPECTED
+        assert served["security"] == [{"oauth": ["taco:task:estimate"]}]
+        security = served["x-construction"]["security"]
+        assert security["mtlsSupported"] is True
+        assert security["pkceRequired"] is True
+        assert security["deviceCodeSupported"] is True

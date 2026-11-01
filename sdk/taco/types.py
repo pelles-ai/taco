@@ -11,6 +11,7 @@ Other TACO modules should import A2A types from ``taco.types``.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, Literal
 
 # A2A SDK v1.0+ moved the wire-format types to protobuf. The Pydantic
@@ -52,7 +53,7 @@ from a2a.compat.v0_3.types import (  # noqa: F401 — re-exports
     TextPart,
 )
 from a2a.server.tasks import InMemoryTaskStore, TaskStore  # noqa: F401 — re-export
-from pydantic import ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ---------------------------------------------------------------------------
 # v1.0 migration: TACO is now on a2a-sdk >=1.0.2 via the v0_3 compat layer.
@@ -241,6 +242,17 @@ class AgentSkill(A2ABaseModel):
     )
 
 
+def _models_to_json(value: Any) -> Any:
+    """Dump Pydantic models anywhere inside ``value`` to JSON-shaped dicts."""
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json", by_alias=True, exclude_none=True)
+    if isinstance(value, Mapping):
+        return {key: _models_to_json(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_models_to_json(item) for item in value]
+    return value
+
+
 class AgentCard(A2ABaseModel):
     """A2A AgentCard with TACO x-construction extension.
 
@@ -285,6 +297,13 @@ class AgentCard(A2ABaseModel):
         None,
         alias="x-construction",
     )
+
+    @field_validator("security_schemes", mode="before")
+    @classmethod
+    def _schemes_to_json(cls, value: Any) -> Any:
+        # Scheme and flow models (taco.OAuth2SecurityScheme,
+        # taco.DeviceCodeOAuthFlow, ...) may appear anywhere in the mapping.
+        return _models_to_json(value)
 
 
 # ---------------------------------------------------------------------------

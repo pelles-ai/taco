@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
+
+from pydantic import BaseModel
 
 from .types import (
     AgentCapabilities,
@@ -13,6 +16,7 @@ from .types import (
     SecurityExt,
     SkillConstructionExt,
     Trade,
+    _models_to_json,
     apply_construction_extension_declaration,
 )
 
@@ -96,7 +100,7 @@ class ConstructionAgentCard:
         integrations: list[str] | None = None,
         certifications: list[Certification] | None = None,
         skills: list[ConstructionSkill] | None = None,
-        security_schemes: dict[str, dict[str, Any]] | None = None,
+        security_schemes: Mapping[str, Mapping[str, Any] | BaseModel] | None = None,
         security: list[dict[str, list[str]]] | None = None,
         construction_security: SecurityExt | None = None,
     ) -> None:
@@ -105,9 +109,13 @@ class ConstructionAgentCard:
         ``security_schemes`` and ``security`` are the standard A2A fields
         that tell callers how to authenticate (``spec/security.md``), e.g.
         ``{"bearer": {"type": "http", "scheme": "bearer"}}`` and
-        ``[{"bearer": ["taco:task:estimate"]}]``. ``construction_security``
-        is the TACO ``x-construction.security`` block (trust tier, scopes
-        offered, project scoping).
+        ``[{"bearer": ["taco:task:estimate"]}]``. A scheme, or a flow
+        inside a scheme dict, can also be one of the models exported by
+        ``taco`` (``HTTPAuthSecurityScheme``, ``MutualTLSSecurityScheme``,
+        ``OAuth2SecurityScheme``, ``AuthorizationCodeOAuthFlowV1``,
+        ``DeviceCodeOAuthFlow``, ...). ``construction_security`` is the TACO
+        ``x-construction.security`` block (trust tier, scopes offered,
+        project scoping, auth-modality flags).
         """
         self.name = name
         self.description = description or f"TACO agent: {name}"
@@ -140,7 +148,7 @@ class ConstructionAgentCard:
             default_output_modes=["application/json"],
             capabilities=AgentCapabilities(streaming=False),
             skills=[s.to_a2a() for s in self.skills],
-            security_schemes=self.security_schemes,
+            security_schemes=_models_to_json(self.security_schemes),
             security=self.security,
             x_construction=AgentConstructionExt(
                 trade=self.trade,
