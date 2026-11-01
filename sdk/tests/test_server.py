@@ -665,7 +665,12 @@ class TestCardWarnings:
         assert self._warnings(caplog, card) == []
 
     def test_other_gaps_are_still_reported(self, caplog):
+        from a2a.utils import proto_utils
+
         from taco import ConstructionAgentCard
+
+        if not hasattr(proto_utils, "warn_on_missing_required_fields"):
+            pytest.skip("this a2a-sdk version does not warn about card fields")
 
         no_skills = ConstructionAgentCard(
             name="No skills", url="http://x", trade="electrical", csi_divisions=["26"]
