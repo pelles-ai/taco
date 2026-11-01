@@ -8,6 +8,8 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-11-01
+
 ### Security
 - **Admin endpoints require a token** — `A2AServer(enable_admin=True)` without `admin_auth_token` used to log a warning and serve unauthenticated endpoints that rewrite the public agent card. It now raises `ValueError`. (Binding to localhost is no substitute: behind a reverse proxy on the same host every request looks local.) The sandbox demo passes a `TACO_ADMIN_TOKEN`, which `make demo-env` writes to `examples/.env`.
 - **Webhooks to private addresses refused** — any caller that can register a webhook picks the URL the agent POSTs to. URLs that resolve to loopback, private, link-local or cloud-metadata addresses are now refused; `A2AServer(allow_private_push_urls=True)` allows them for local development.
