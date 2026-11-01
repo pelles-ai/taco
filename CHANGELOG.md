@@ -8,6 +8,9 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 
 ## [Unreleased]
 
+### Changed
+- **protobuf 6 and 7 supported** — `taco-agent` no longer pins `protobuf<6`. It now requires `a2a-sdk` 1.1.1 or later (was 1.0.2), the first release that works with protobuf 7, and leaves the protobuf range to `a2a-sdk`. Projects that need protobuf 6 or later, such as Google Cloud client libraries or OpenTelemetry, can now install `taco-agent` alongside them.
+
 ## [0.6.1] — 2026-11-01
 
 ### Added

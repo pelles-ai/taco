@@ -56,7 +56,7 @@ from a2a.server.tasks import InMemoryTaskStore, TaskStore  # noqa: F401 — re-e
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ---------------------------------------------------------------------------
-# v1.0 migration: TACO is now on a2a-sdk >=1.0.2 via the v0_3 compat layer.
+# v1.0 migration: TACO is on a2a-sdk >=1.1.1 via the v0_3 compat layer.
 # The next migration step (taco/V1_MIGRATION.md Phase 3) drops the compat
 # shim and adopts native protobuf types — at that point this re-export
 # block flips to ``from a2a.types import …``, the Part constructor
