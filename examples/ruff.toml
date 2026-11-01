@@ -1,0 +1,7 @@
+# Lint and format the demo with the same rules as the SDK (CI runs both).
+extend = "../sdk/pyproject.toml"
+
+[lint.extend-per-file-ignores]
+# The agents carry LLM prompts and skill descriptions; rewrapping them would
+# change what the model or the dashboard sees.
+"agents/*.py" = ["E501"]

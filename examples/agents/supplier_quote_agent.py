@@ -10,7 +10,6 @@ import os
 
 import uvicorn
 
-from common.admin_token import admin_token
 from common.a2a_models import (
     AgentCard,
     AgentConstructionExt,
@@ -23,6 +22,7 @@ from common.a2a_models import (
     make_data_part,
 )
 from common.a2a_server import A2AServer
+from common.admin_token import admin_token
 from common.llm_provider import LLMProvider
 from common.schemas import QuoteV1
 
@@ -102,9 +102,7 @@ server = A2AServer(
 
 
 async def handle_procurement(task: Task, input_data: dict) -> Artifact:
-    result = await llm.generate_json(
-        SYSTEM_PROMPT, json.dumps(input_data, indent=2), QuoteV1
-    )
+    result = await llm.generate_json(SYSTEM_PROMPT, json.dumps(input_data, indent=2), QuoteV1)
     return make_artifact(
         parts=[make_data_part(result)],
         name="supplier-quote",

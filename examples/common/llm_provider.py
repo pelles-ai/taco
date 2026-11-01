@@ -94,9 +94,7 @@ class LLMProvider:
         """
         try:
             if self.provider == "anthropic":
-                parsed = await self._generate_anthropic(
-                    system_prompt, user_prompt, output_model
-                )
+                parsed = await self._generate_anthropic(system_prompt, user_prompt, output_model)
             else:
                 raw = await self._generate_openai(system_prompt, user_prompt)
                 parsed = output_model.model_validate(raw)
@@ -111,9 +109,7 @@ class LLMProvider:
             )
             raise LLMError(_BAD_OUTPUT) from exc
         except Exception as exc:
-            logger.error(
-                "%s request failed: %s: %s", self.provider, type(exc).__name__, exc
-            )
+            logger.error("%s request failed: %s: %s", self.provider, type(exc).__name__, exc)
             raise LLMError(_REQUEST_FAILED) from exc
 
         return parsed.model_dump(mode="json", by_alias=True, exclude_none=True)
@@ -143,24 +139,17 @@ class LLMProvider:
             # parse() validates the text as soon as the response arrives, so a
             # reply cut off by max_tokens or a mid-output refusal fails here.
             logger.error(
-                "Anthropic output failed %s validation (truncated or declined "
-                "mid-output?): %s",
+                "Anthropic output failed %s validation (truncated or declined mid-output?): %s",
                 output_model.__name__,
                 exc,
             )
             raise LLMError(_BAD_OUTPUT) from exc
         except anthropic.AuthenticationError as exc:
-            logger.error(
-                "Anthropic rejected the credentials (ANTHROPIC_API_KEY): %s", exc
-            )
+            logger.error("Anthropic rejected the credentials (ANTHROPIC_API_KEY): %s", exc)
             raise LLMError(_REQUEST_FAILED) from exc
         except anthropic.RateLimitError as exc:
-            logger.error(
-                "Anthropic rate limit hit (request %s): %s", exc.request_id, exc
-            )
-            raise LLMError(
-                "LLM provider is rate limiting requests; try again later"
-            ) from exc
+            logger.error("Anthropic rate limit hit (request %s): %s", exc.request_id, exc)
+            raise LLMError("LLM provider is rate limiting requests; try again later") from exc
         except anthropic.APIStatusError as exc:
             logger.error(
                 "Anthropic API error HTTP %s (request %s): %s",
