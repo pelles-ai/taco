@@ -2,7 +2,7 @@
 """Two agents communicating via TACO — demonstrates peer discovery and messaging.
 
 Run:
-    pip install taco-agent[all]
+    pip install "taco-agent[all]"     # or, from this repo: pip install -e "../sdk[all]"
 
     # Terminal 1: Start the data agent
     python peer_communication.py data
@@ -17,7 +17,8 @@ Then:
       -d '{
         "jsonrpc": "2.0", "id": "1", "method": "message/send",
         "params": {
-          "message": {"role": "user", "parts": [{"type": "data", "data": {"question": "How many items?"}}]},
+          "message": {"role": "user", "messageId": "msg-1",
+                      "parts": [{"kind": "data", "data": {"question": "How many items?"}}]},
           "metadata": {"taskType": "analyze"}
         }
       }'
@@ -30,20 +31,19 @@ Then:
 import sys
 
 import uvicorn
-
 from taco import (
     Artifact,
     ConstructionAgentCard,
     ConstructionSkill,
-    Task,
     TacoAgent,
+    Task,
+    extract_structured_data,
     make_artifact,
     make_data_part,
-    extract_structured_data,
 )
 
-
 # ── Data Agent (port 9001) ──────────────────────────────────────────
+
 
 def run_data_agent():
     from taco import A2AServer
@@ -55,7 +55,9 @@ def run_data_agent():
         trade="electrical",
         csi_divisions=["26"],
         skills=[
-            ConstructionSkill(id="data-query", task_type="data-query", output_schema="query-result-v1"),
+            ConstructionSkill(
+                id="data-query", task_type="data-query", output_schema="query-result-v1"
+            ),
         ],
     )
 
@@ -65,11 +67,15 @@ def run_data_agent():
         question = input_data.get("question", "")
         # In a real agent, this would query a database or call an LLM
         return make_artifact(
-            parts=[make_data_part({
-                "question": question,
-                "answer": f"You asked: '{question}'. Here are 42 items.",
-                "count": 42,
-            })],
+            parts=[
+                make_data_part(
+                    {
+                        "question": question,
+                        "answer": f"You asked: '{question}'. Here are 42 items.",
+                        "count": 42,
+                    }
+                )
+            ],
             name="query-result",
         )
 
@@ -81,6 +87,7 @@ def run_data_agent():
 
 
 # ── Orchestrator Agent (port 9000) ──────────────────────────────────
+
 
 def run_orchestrator():
     card = ConstructionAgentCard(
@@ -114,10 +121,14 @@ def run_orchestrator():
         peer_data = extract_structured_data(peer_task.artifacts[0].parts[0])
 
         return make_artifact(
-            parts=[make_data_part({
-                "answer": f"Analysis complete. Data agent said: {peer_data.get('answer')}",
-                "data_source": peer_data,
-            })],
+            parts=[
+                make_data_part(
+                    {
+                        "answer": f"Analysis complete. Data agent said: {peer_data.get('answer')}",
+                        "data_source": peer_data,
+                    }
+                )
+            ],
             name="analysis-result",
         )
 

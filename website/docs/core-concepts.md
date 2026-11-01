@@ -1,11 +1,16 @@
 ---
 sidebar_position: 2
 title: Core Concepts
+description: The key abstractions in TACO — Agent Cards, Skills, Tasks, Messages, Parts, and Artifacts — and how they fit together.
 ---
 
 # Core Concepts
 
 This page explains the key abstractions in TACO and how they fit together. Understanding these concepts makes the rest of the documentation easier to follow.
+
+:::tip Visual deep dive
+For an interactive walkthrough of the protocol layers, agent interactions, and data flow, see the [Architecture Overview diagram](pathname:///taco-architecture-overview.html).
+:::
 
 ## Overview
 
@@ -13,7 +18,7 @@ This page explains the key abstractions in TACO and how they fit together. Under
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Agent Card                               │
 │  Who am I? What can I do? What trade do I serve?                │
-│  Served at /.well-known/agent.json                              │
+│  Served at /.well-known/agent-card.json                         │
 └──────────────────────────┬──────────────────────────────────────┘
                            │ advertises
                            ▼
@@ -40,7 +45,7 @@ This page explains the key abstractions in TACO and how they fit together. Under
 
 ## Agent Card
 
-An **Agent Card** is a JSON document that describes an agent's identity and capabilities. It's served at `/.well-known/agent.json` and is how other agents (and humans) discover what your agent can do.
+An **Agent Card** is a JSON document that describes an agent's identity and capabilities. It's served at `/.well-known/agent-card.json` (the SDK also serves it at the legacy `/.well-known/agent.json`) and is how other agents (and humans) discover what your agent can do.
 
 ```json
 {
@@ -120,7 +125,7 @@ submitted → working → completed
 | `failed` | Handler threw an exception or returned an error |
 | `canceled` | Task was canceled by the client |
 
-You don't manage task states directly — the server handles transitions automatically. Your handler just returns an `Artifact` (success) or raises an exception (failure).
+You don't manage task states directly — the server handles transitions automatically. Your handler just returns an `Artifact` (success) or raises an exception (failure). Raise `taco.TacoTaskError("...")` when the caller should see why; any other exception reaches the caller only as a generic message with an error id, and the details stay in your logs.
 
 ### Task structure
 
@@ -134,7 +139,7 @@ Task(
 )
 ```
 
-The `context_id` groups related tasks into a conversation. If you send multiple messages with the same `context_id`, they share context (useful for multi-turn interactions).
+The `context_id` groups related tasks into a conversation. If you send multiple messages with the same `context_id` (`client.send_message(..., context_id=task.context_id)`), they share context (useful for multi-turn interactions). Leave it out and the server starts a new conversation.
 
 ## Messages and Parts
 
@@ -204,7 +209,7 @@ Here's the complete flow when one agent calls another:
 ```
 Caller                                    Agent
   │                                         │
-  │  1. GET /.well-known/agent.json         │
+  │  1. GET /.well-known/agent-card.json    │
   │────────────────────────────────────────▶│
   │◀────────────────────────────────────────│
   │     Agent Card (skills, trade, etc.)    │

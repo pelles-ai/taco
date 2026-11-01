@@ -1,6 +1,7 @@
 ---
 sidebar_position: 0
 title: Why TACO?
+description: TACO is the superintendent's vocabulary, machine-readable. The shared language that lets construction agents discover, trust, and exchange typed data.
 ---
 
 # Why TACO?

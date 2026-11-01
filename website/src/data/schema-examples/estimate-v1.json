@@ -1,0 +1,51 @@
+{
+  "projectId": "PRJ-2026-OAKRIDGE-MEDICAL",
+  "trade": "mechanical",
+  "csiDivision": "23",
+  "lineItems": [
+    {
+      "bomItemId": "LI-001",
+      "description": "Rooftop Unit, 25-ton, high-efficiency",
+      "quantity": 2,
+      "unit": "EA",
+      "materialUnitCost": 38500,
+      "materialTotal": 77000,
+      "laborHours": 32,
+      "laborRate": 95,
+      "laborTotal": 3040,
+      "equipmentCost": 2800,
+      "subtotal": 82840
+    },
+    {
+      "bomItemId": "LI-002",
+      "description": "Copper pipe, Type L, 2 inch",
+      "quantity": 850,
+      "unit": "LF",
+      "materialUnitCost": 18.4,
+      "materialTotal": 15640,
+      "laborHours": 170,
+      "laborRate": 95,
+      "laborTotal": 16150,
+      "subtotal": 31790
+    }
+  ],
+  "summary": {
+    "totalMaterial": 92640,
+    "totalLabor": 19190,
+    "totalEquipment": 2800,
+    "subtotal": 114630,
+    "overheadPercentage": 12,
+    "overheadAmount": 13755.6,
+    "profitPercentage": 10,
+    "profitAmount": 11463,
+    "grandTotal": 139848.6
+  },
+  "metadata": {
+    "generatedBy": "mech-estimator-v2",
+    "generatedAt": "2026-09-14T15:20:00Z",
+    "confidence": 0.85,
+    "pricingRegion": "US-Midwest",
+    "pricingDate": "2026-09-01",
+    "notes": ["Crane rental included for rooftop unit set"]
+  }
+}

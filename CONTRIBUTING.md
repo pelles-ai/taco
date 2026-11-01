@@ -22,7 +22,8 @@ make test       # verify everything works
 | `make typecheck` | Run mypy type checker |
 | `make test` | Run tests |
 | `make test-verbose` | Run tests with verbose output |
-| `make check-all` | Run all checks (mirrors CI exactly) |
+| `make check-all` | Run the SDK checks and lint the examples |
+| `make demo-test` | Run the sandbox demo end to end, offline (needs `pip install -r examples/requirements.txt`) |
 | `make clean` | Remove caches and build artifacts |
 
 ## Testing

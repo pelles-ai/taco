@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime, timedelta, timezone
+
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from taco.schemas import (
     BOMV1,
     RFIV1,
+    SCHEMA_MODELS,
     BOMAlternate,
     BOMFlaggedItem,
     BOMLineItem,
@@ -18,6 +21,8 @@ from taco.schemas import (
     ChangeOrderMetadata,
     ChangeOrderSchema,
     ChangeOrderV1,
+    DateString,
+    DateTimeString,
     EstimateLineItem,
     EstimateMetadata,
     EstimateSummary,
@@ -37,6 +42,7 @@ from taco.schemas import (
     ScheduleMilestone,
     ScheduleSchema,
     ScheduleV1,
+    get_schema_model,
 )
 
 
@@ -83,19 +89,109 @@ class TestEstimateV1:
         assert data["projectId"] == "PRJ-001"
         assert len(data["lineItems"]) == 1
 
-    def test_negative_quantity_fails(self):
+    def test_negative_credit_line_is_valid(self):
+        """estimate-v1 sets no minimum on amounts: credit lines are negative."""
+        item = EstimateLineItem(
+            bom_item_id="LI-001",
+            description="Deduct alternate: omit insulation",
+            quantity=-5.0,
+            unit="EA",
+            material_unit_cost=100.0,
+            material_total=-500.0,
+            labor_hours=-2.0,
+            labor_rate=95.0,
+            labor_total=-190.0,
+            equipment_cost=-50.0,
+            subtotal=-740.0,
+        )
+        assert item.subtotal == -740.0
+
+    def test_negative_summary_is_valid(self):
+        summary = EstimateSummary(
+            total_material=-500.0,
+            total_labor=-190.0,
+            total_equipment=0.0,
+            subtotal=-690.0,
+            overhead_percentage=0.0,
+            overhead_amount=0.0,
+            profit_percentage=0.0,
+            profit_amount=0.0,
+            grand_total=-690.0,
+        )
+        assert summary.grand_total == -690.0
+
+    def test_metadata_requires_only_generated_by_and_at(self):
+        meta = EstimateMetadata(generated_by="test", generated_at="2026-01-01T00:00:00Z")
+        assert meta.confidence is None
+        assert meta.pricing_date is None
+        assert meta.pricing_region is None
+        assert meta.notes is None
+        assert meta.model_dump(exclude_none=True) == {
+            "generatedBy": "test",
+            "generatedAt": "2026-01-01T00:00:00Z",
+        }
+
+    def test_optional_equipment_cost_is_omitted(self):
+        item = EstimateLineItem(
+            bom_item_id="LI-001",
+            description="Test",
+            quantity=1,
+            unit="EA",
+            material_unit_cost=1.0,
+            material_total=1.0,
+            labor_hours=0.0,
+            labor_rate=0.0,
+            labor_total=0.0,
+            subtotal=1.0,
+        )
+        assert item.equipment_cost is None
+        assert "equipmentCost" not in item.model_dump(exclude_none=True)
+
+    def test_empty_line_items_is_valid(self):
+        est = EstimateV1.model_validate(
+            {
+                "projectId": "PRJ-001",
+                "trade": "general",
+                "csiDivision": "01",
+                "lineItems": [],
+                "summary": {
+                    "totalMaterial": 0,
+                    "totalLabor": 0,
+                    "totalEquipment": 0,
+                    "subtotal": 0,
+                    "overheadPercentage": 0,
+                    "overheadAmount": 0,
+                    "profitPercentage": 0,
+                    "profitAmount": 0,
+                    "grandTotal": 0,
+                },
+                "metadata": {"generatedBy": "test", "generatedAt": "2026-01-01T00:00:00Z"},
+            }
+        )
+        assert est.line_items == []
+
+    def test_invalid_trade_fails(self):
+        """estimate-v1 keeps trade as an enum."""
         with pytest.raises(ValidationError):
-            EstimateLineItem(
-                bom_item_id="LI-001",
-                description="Test",
-                quantity=-5.0,
-                unit="EA",
-                material_unit_cost=100.0,
-                material_total=1000.0,
-                labor_hours=8.0,
-                labor_rate=95.0,
-                labor_total=760.0,
-                subtotal=1760.0,
+            EstimateV1.model_validate(
+                {
+                    "projectId": "PRJ-001",
+                    "trade": "concrete",
+                    "csiDivision": "03",
+                    "lineItems": [],
+                    "summary": {
+                        "totalMaterial": 0,
+                        "totalLabor": 0,
+                        "totalEquipment": 0,
+                        "subtotal": 0,
+                        "overheadPercentage": 0,
+                        "overheadAmount": 0,
+                        "profitPercentage": 0,
+                        "profitAmount": 0,
+                        "grandTotal": 0,
+                    },
+                    "metadata": {"generatedBy": "test", "generatedAt": "2026-01-01T00:00:00Z"},
+                }
             )
 
     def test_confidence_above_1_fails(self):
@@ -160,6 +256,54 @@ class TestQuoteV1:
         data = quote.model_dump()
         assert data["supplierName"] == "ACME Supply"
         assert data["lineItems"][0]["leadTimeDays"] == 14
+
+    def test_metadata_confidence_is_optional(self):
+        meta = QuoteMetadata(generated_by="test", generated_at="2026-01-01T00:00:00Z")
+        assert meta.confidence is None
+        assert "confidence" not in meta.model_dump(exclude_none=True)
+
+    def test_credit_line_and_negative_summary_are_valid(self):
+        """quote-v1 sets no minimum on amounts: credits are negative."""
+        item = QuoteLineItem(
+            bom_item_id="LI-001",
+            description="Restocking credit",
+            quantity=-10.0,
+            unit="LF",
+            unit_price=45.0,
+            extended_price=-450.0,
+            manufacturer="Mueller",
+            part_number="MU-4L",
+            lead_time_days=0,
+            availability="in-stock",
+        )
+        summary = QuoteSummary(
+            subtotal=-450.0,
+            tax_rate=0.08,
+            tax_amount=-36.0,
+            freight=0.0,
+            total=-486.0,
+        )
+        assert item.extended_price == -450.0
+        assert summary.total == -486.0
+
+    def test_empty_line_items_is_valid(self):
+        """quote-v1 sets no minItems on lineItems."""
+        quote = QuoteV1(
+            project_id="PRJ-001",
+            supplier_name="ACME Supply",
+            quote_number="Q-0",
+            valid_until="2026-03-01",
+            line_items=[],
+            summary=QuoteSummary(subtotal=0, tax_rate=0, tax_amount=0, freight=0, total=0),
+            terms=QuoteTerms(
+                payment_terms="Net 30",
+                delivery_method="Pickup",
+                warranty="None",
+                return_policy="None",
+            ),
+            metadata=QuoteMetadata(generated_by="test", generated_at="2026-01-01T00:00:00Z"),
+        )
+        assert quote.line_items == []
 
 
 class TestBOMV1:
@@ -231,18 +375,37 @@ class TestBOMV1:
         assert len(bom.metadata.source_documents) == 1
         assert bom.metadata.flagged_items[0].severity == "warning"
 
-    def test_bom_empty_line_items_fails(self):
-        with pytest.raises(ValidationError):
-            BOMV1(
-                project_id="PRJ-004",
-                trade="mechanical",
-                csi_division="23",
-                line_items=[],
-                metadata=BOMMetadata(
-                    generated_by="test",
-                    generated_at="2026-01-01T00:00:00Z",
-                ),
-            )
+    def test_bom_empty_line_items_is_valid(self):
+        """bom-v1 sets no minItems on lineItems."""
+        bom = BOMV1(
+            project_id="PRJ-004",
+            trade="mechanical",
+            csi_division="23",
+            line_items=[],
+            metadata=BOMMetadata(
+                generated_by="test",
+                generated_at="2026-01-01T00:00:00Z",
+            ),
+        )
+        assert bom.line_items == []
+
+    def test_bom_negative_quantity_is_valid(self):
+        """bom-v1 sets no minimum on quantity."""
+        item = BOMLineItem(id="LI-001", description="Removed pipe", quantity=-10, unit="LF")
+        assert item.quantity == -10
+
+    def test_bom_unset_lists_are_omitted(self):
+        bom = BOMV1(
+            project_id="PRJ-005",
+            trade="plumbing",
+            csi_division="22",
+            line_items=[BOMLineItem(id="LI-001", description="Pipe", quantity=1, unit="LF")],
+            metadata=BOMMetadata(generated_by="test", generated_at="2026-01-01T00:00:00Z"),
+        )
+        data = bom.model_dump(exclude_none=True)
+        assert "alternates" not in data["lineItems"][0]
+        assert "sourceDocuments" not in data["metadata"]
+        assert "flaggedItems" not in data["metadata"]
 
     def test_bom_schema_alias(self):
         """BOMSchema should be the same class as BOMV1."""
@@ -354,19 +517,33 @@ class TestRFIV1:
         data = rfi.model_dump(exclude_none=True)
         assert data["assignedTo"]["role"] == "engineer"
 
-    def test_rfi_empty_references_fails(self):
+    def test_rfi_empty_references_is_valid(self):
+        """rfi-v1 requires references but sets no minItems."""
+        rfi = RFIV1(
+            project_id="PRJ-001",
+            subject="Test",
+            question="Test?",
+            category="clarification",
+            priority="low",
+            references=[],
+            metadata=RFIMetadata(
+                generated_by="test",
+                generated_at="2026-01-01T00:00:00Z",
+            ),
+        )
+        assert rfi.references == []
+
+    def test_rfi_missing_references_fails(self):
         with pytest.raises(ValidationError):
-            RFIV1(
-                project_id="PRJ-001",
-                subject="Test",
-                question="Test?",
-                category="clarification",
-                priority="low",
-                references=[],
-                metadata=RFIMetadata(
-                    generated_by="test",
-                    generated_at="2026-01-01T00:00:00Z",
-                ),
+            RFIV1.model_validate(
+                {
+                    "projectId": "PRJ-001",
+                    "subject": "Test",
+                    "question": "Test?",
+                    "category": "clarification",
+                    "priority": "low",
+                    "metadata": {"generatedBy": "test", "generatedAt": "2026-01-01T00:00:00Z"},
+                }
             )
 
     def test_rfi_schema_alias(self):
@@ -560,6 +737,30 @@ class TestScheduleV1:
         assert sched.activities[0].successors == ["ACT-002"]
         assert sched.activities[1].predecessors == ["ACT-001"]
         assert sched.activities[1].resources == ["Crew A", "Crane"]
+
+    def test_activity_trade_is_free_text(self):
+        """schedule-v1 types activity trade as a plain string, not the Trade enum."""
+        act = ScheduleActivity(id="ACT-001", name="Slab pour", trade="concrete", duration_days=2)
+        assert act.trade == "concrete"
+
+    def test_unset_optional_fields_are_omitted(self):
+        """No invented progress, criticality or milestone status."""
+        act = ScheduleActivity(id="ACT-001", name="Excavation", duration_days=10)
+        ms = ScheduleMilestone(id="MS-001", name="Dry-in", date="2026-06-01")
+        assert act.percent_complete is None
+        assert act.is_critical is None
+        assert act.predecessors is None
+        assert ms.is_met is None
+        assert act.model_dump(exclude_none=True) == {
+            "id": "ACT-001",
+            "name": "Excavation",
+            "durationDays": 10,
+        }
+        assert ms.model_dump(exclude_none=True) == {
+            "id": "MS-001",
+            "name": "Dry-in",
+            "date": "2026-06-01",
+        }
 
 
 class TestChangeOrderV1:
@@ -763,3 +964,245 @@ class TestChangeOrderV1:
             ),
         )
         assert co.total_cost_impact == -5000.00
+
+    def test_line_item_trade_is_free_text(self):
+        """change-order-v1 types line item trade as a plain string."""
+        item = ChangeOrderLineItem(
+            id="COL-001", description="Rebar", trade="concrete", cost_impact=100.0
+        )
+        assert item.trade == "concrete"
+
+    def test_unset_schedule_impact_is_omitted_not_zero(self):
+        """A TBD schedule impact must not serialize as "0 days"."""
+        co = ChangeOrderV1(
+            project_id="PRJ-007",
+            change_order_number="CO-007",
+            title="Owner-requested finish upgrade",
+            reason="owner-request",
+            status="draft",
+            line_items=[
+                ChangeOrderLineItem(id="COL-001", description="Upgrade", cost_impact=1.0),
+            ],
+            total_cost_impact=1.0,
+            metadata=ChangeOrderMetadata(generated_by="test", generated_at="2026-01-01T00:00:00Z"),
+        )
+        assert co.total_schedule_impact_days is None
+        assert co.line_items[0].schedule_impact_days is None
+        data = co.model_dump(exclude_none=True)
+        assert "totalScheduleImpactDays" not in data
+        assert "scheduleImpactDays" not in data["lineItems"][0]
+        assert "relatedRfis" not in data
+        assert "bomItemIds" not in data["lineItems"][0]
+
+
+class TestUnknownFields:
+    """Unknown properties survive a round trip (SPEC-003 §4.2 vendor extensions)."""
+
+    def test_metadata_vendor_extensions_round_trip(self, sample_bom: dict):
+        payload = {
+            **sample_bom,
+            "metadata": {
+                **sample_bom["metadata"],
+                "vendorExtensions": {"acme": {"takeoffRun": 42, "tags": ["a", "b"]}},
+            },
+        }
+        bom = BOMV1.model_validate(payload)
+        data = bom.model_dump(mode="json", by_alias=True, exclude_none=True)
+        assert data["metadata"]["vendorExtensions"] == {
+            "acme": {"takeoffRun": 42, "tags": ["a", "b"]}
+        }
+
+    def test_unknown_fields_kept_at_every_level(self):
+        payload = {
+            "projectId": "PRJ-001",
+            "changeOrderNumber": "CO-001",
+            "title": "T",
+            "reason": "design-change",
+            "status": "draft",
+            "lineItems": [
+                {"id": "COL-001", "description": "D", "costImpact": 1, "xAcmeCode": "Z9"},
+            ],
+            "totalCostImpact": 1,
+            "xAcmeTopLevel": True,
+            "metadata": {
+                "generatedBy": "test",
+                "generatedAt": "2026-01-01T00:00:00Z",
+                "vendorExtensions": {"acme": {"baseline": "EST-12"}},
+            },
+        }
+        co = ChangeOrderV1.model_validate(payload)
+        assert co.model_dump(mode="json", by_alias=True, exclude_none=True) == payload
+
+
+class TestDateFormats:
+    """format: date / date-time fields validate the spec format and stay strings."""
+
+    date_time = TypeAdapter(DateTimeString)
+    full_date = TypeAdapter(DateString)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T09:30:00.123456-05:00",
+            "2026-01-01t09:30:00z",
+            "2026-06-30T23:59:60Z",  # RFC 3339 leap second
+            "2024-02-29T12:00:00+14:00",
+        ],
+    )
+    def test_valid_date_time_is_kept_verbatim(self, value: str):
+        assert self.date_time.validate_python(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "2026-01-01T09:30:00",  # naive: no offset
+            "2026-01-01",  # date only
+            "2026-01-01 09:30:00Z",  # space separator
+            "2026-02-30T00:00:00Z",  # no such day
+            "2026-01-01T24:00:00Z",
+            "2026-01-01T09:60:00Z",
+            "2026-01-01T09:30:00+24:00",
+            "2026-01-01T09:30Z",  # seconds are mandatory
+            "2026-01-01T09:30:00Z\n",
+            "",
+        ],
+    )
+    def test_invalid_date_time_fails(self, value: str):
+        with pytest.raises(ValidationError):
+            self.date_time.validate_python(value)
+
+    def test_aware_datetime_is_serialized_as_rfc3339(self):
+        value = datetime(2026, 1, 1, 9, 30, tzinfo=timezone(timedelta(hours=-5)))
+        assert self.date_time.validate_python(value) == "2026-01-01T09:30:00-05:00"
+
+    def test_naive_datetime_fails(self):
+        with pytest.raises(ValidationError, match="timezone offset"):
+            self.date_time.validate_python(datetime(2026, 1, 1, 9, 30))
+
+    def test_date_object_for_date_time_fails(self):
+        with pytest.raises(ValidationError):
+            self.date_time.validate_python(date(2026, 1, 1))
+
+    @pytest.mark.parametrize("value", ["2026-01-01", "2024-02-29"])
+    def test_valid_date_is_kept_verbatim(self, value: str):
+        assert self.full_date.validate_python(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        ["2026-1-1", "20260101", "2026-13-01", "2026-02-29", "2026-01-01T00:00:00Z", ""],
+    )
+    def test_invalid_date_fails(self, value: str):
+        with pytest.raises(ValidationError):
+            self.full_date.validate_python(value)
+
+    def test_date_object_is_serialized_as_full_date(self):
+        assert self.full_date.validate_python(date(2026, 3, 15)) == "2026-03-15"
+
+    def test_datetime_object_for_date_fails(self):
+        with pytest.raises(ValidationError, match="date"):
+            self.full_date.validate_python(datetime(2026, 3, 15, tzinfo=timezone.utc))
+
+    @pytest.mark.parametrize("model", [BOMMetadata, EstimateMetadata, QuoteMetadata, RFIMetadata])
+    def test_metadata_generated_at_requires_offset(self, model):
+        with pytest.raises(ValidationError):
+            model(generated_by="test", generated_at="2026-01-01T00:00:00")
+        meta = model(generated_by="test", generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
+        assert meta.model_dump(mode="json")["generatedAt"] == "2026-01-01T00:00:00+00:00"
+
+    @pytest.mark.parametrize("model", [ScheduleMetadata, ChangeOrderMetadata])
+    def test_generated_at_without_spec_format_is_plain_string(self, model):
+        """schedule-v1 / change-order-v1 declare no format on generatedAt."""
+        meta = model(generated_by="test", generated_at="2026-01-01")
+        assert meta.generated_at == "2026-01-01"
+
+    def test_schedule_dates_without_spec_format_are_plain_strings(self):
+        act = ScheduleActivity(
+            id="ACT-001", name="Mobilize", duration_days=1, start_date="Week 1", end_date="Week 2"
+        )
+        ms = ScheduleMilestone(id="MS-001", name="NTP", date="TBD")
+        assert (act.start_date, act.end_date, ms.date) == ("Week 1", "Week 2", "TBD")
+
+    def test_model_date_fields(self):
+        meta = EstimateMetadata(
+            generated_by="test",
+            generated_at="2026-01-01T00:00:00Z",
+            pricing_date=date(2026, 1, 1),
+        )
+        assert meta.pricing_date == "2026-01-01"
+        with pytest.raises(ValidationError):
+            EstimateMetadata(
+                generated_by="test", generated_at="2026-01-01T00:00:00Z", pricing_date="Jan 2026"
+            )
+        with pytest.raises(ValidationError):
+            RFIV1(
+                project_id="PRJ-001",
+                subject="S",
+                question="Q?",
+                category="clarification",
+                priority="low",
+                references=[],
+                due_date="next week",
+                metadata=RFIMetadata(generated_by="test", generated_at="2026-01-01T00:00:00Z"),
+            )
+        with pytest.raises(ValidationError):
+            QuoteV1(
+                project_id="PRJ-001",
+                supplier_name="ACME",
+                quote_number="Q-1",
+                valid_until="2026-03-01T00:00:00Z",
+                line_items=[],
+                summary=QuoteSummary(subtotal=0, tax_rate=0, tax_amount=0, freight=0, total=0),
+                terms=QuoteTerms(
+                    payment_terms="Net 30",
+                    delivery_method="Pickup",
+                    warranty="None",
+                    return_policy="None",
+                ),
+                metadata=QuoteMetadata(generated_by="test", generated_at="2026-01-01T00:00:00Z"),
+            )
+
+
+class TestRFIAssigneeRole:
+    @pytest.mark.parametrize(
+        "role", ["architect", "engineer", "owner", "contractor", "subcontractor"]
+    )
+    def test_spec_roles_are_valid(self, role: str):
+        assert RFIAssignee(role=role).role == role
+
+    def test_unknown_role_fails(self):
+        with pytest.raises(ValidationError):
+            RFIAssignee(role="plumber")
+
+
+class TestSchemaRegistry:
+    def test_maps_every_canonical_schema(self):
+        assert dict(SCHEMA_MODELS) == {
+            "bom-v1": BOMV1,
+            "change-order-v1": ChangeOrderV1,
+            "estimate-v1": EstimateV1,
+            "quote-v1": QuoteV1,
+            "rfi-v1": RFIV1,
+            "schedule-v1": ScheduleV1,
+        }
+
+    @pytest.mark.parametrize("schema_id", sorted(SCHEMA_MODELS))
+    def test_get_schema_model(self, schema_id: str):
+        assert get_schema_model(schema_id) is SCHEMA_MODELS[schema_id]
+
+    @pytest.mark.parametrize("schema_id", ["bom-v2", "BOM-v1", "bom", "plan-sheets", ""])
+    def test_unknown_schema_id_raises_key_error(self, schema_id: str):
+        with pytest.raises(KeyError, match="Unknown TACO schema id") as excinfo:
+            get_schema_model(schema_id)
+        assert "bom-v1" in str(excinfo.value)
+
+    def test_registry_is_read_only(self):
+        with pytest.raises(TypeError):
+            SCHEMA_MODELS["bom-v1"] = RFIV1  # type: ignore[index]
+
+    def test_exported_from_package(self):
+        import taco
+
+        assert taco.SCHEMA_MODELS is SCHEMA_MODELS
+        assert taco.get_schema_model is get_schema_model
+        assert {"SCHEMA_MODELS", "get_schema_model"} <= set(taco.__all__)

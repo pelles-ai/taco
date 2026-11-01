@@ -7,13 +7,18 @@
 
 - [Introduction](https://taco-protocol.com/docs/intro): Overview of TACO — the problem it solves, what it adds to A2A, and a quick example.
 - [Why TACO?](https://taco-protocol.com/docs/why-taco): Ecosystem positioning, comparison with raw A2A and proprietary solutions, who benefits.
+- [Quick Start](https://taco-protocol.com/docs/getting-started/quick-start): Run a TACO agent in two minutes with `pip install "taco-agent[all]"`.
 - [Build Your First Agent](https://taco-protocol.com/docs/getting-started/build-agent): Step-by-step guide to building a TACO-compatible construction agent.
+- [Agent-to-Agent Communication](https://taco-protocol.com/docs/getting-started/multi-agent): Connect agents with `TacoAgent` peer discovery.
 - [Integrate an Existing Platform](https://taco-protocol.com/docs/getting-started/integrate-platform): How to add TACO support to an existing construction platform via an agent sidecar.
 - [Task Types](https://taco-protocol.com/docs/task-types): The typed vocabulary of construction workflows — takeoff, estimate, rfi-generation, and more.
 - [Agent Card Extensions](https://taco-protocol.com/docs/agent-card-extensions): Construction-specific extensions to A2A Agent Cards for discovery by trade, CSI division, and more.
 - [Data Schemas](https://taco-protocol.com/docs/schemas/): Typed JSON schemas for construction artifacts — BOM, RFI, Estimate, Schedule, Quote, Change Order.
 - [SDK Guide](https://taco-protocol.com/docs/sdk): Python SDK reference for building TACO agents with `taco-agent`.
-- [Security](https://taco-protocol.com/docs/security): Scope taxonomy, trust tiers, token delegation, and Agent Card security extensions.
+- [SDK Reference](https://taco-protocol.com/docs/sdk-reference/): Every public class and function in `taco-agent`, generated from the source.
+- [CLI Reference](https://taco-protocol.com/docs/cli): The `taco` command: discover, inspect, send, list-tasks, health.
+- [Security](https://taco-protocol.com/docs/security): Scope taxonomy, trust tiers, token delegation, Agent Card security extensions, and bearer-token auth with the Python SDK.
+- [Common Pitfalls](https://taco-protocol.com/docs/pitfalls): Symptoms, causes and fixes for the problems a first TACO agent usually hits.
 - [Examples](https://taco-protocol.com/docs/examples): Example agents — estimating, RFI generation, supplier quote — with Docker Compose setup.
 
 ## Links

@@ -312,3 +312,67 @@ class TestCLIErrorHandling:
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert "could not connect" in captured.err
+
+
+class TestSendExitCodeAndAuth:
+    def _run_send(self, result: dict, argv_extra: list[str] | None = None, stdin: str = ""):
+        mock_httpx = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"jsonrpc": "2.0", "id": "x", **result}
+        mock_httpx.post.return_value = mock_resp
+        with (
+            patch("taco.cli._get_http_client", return_value=mock_httpx),
+            patch("sys.stdin", StringIO(stdin)),
+        ):
+            try:
+                main([*(argv_extra or []), "send", "http://localhost:8001", "estimate"])
+                code = 0
+            except SystemExit as exc:
+                code = exc.code
+        return code, mock_httpx.post.call_args
+
+    def test_empty_non_tty_stdin_sends_empty_input(self):
+        code, call = self._run_send({"result": {"status": {"state": "completed"}}})
+        assert code == 0
+        assert call[1]["json"]["params"]["message"]["parts"][0]["data"] == {}
+
+    def test_failed_task_exits_non_zero(self, capsys):
+        code, _ = self._run_send({"result": {"status": {"state": "failed"}}})
+        assert code == 1
+        assert "failed" in capsys.readouterr().out
+
+    def test_rpc_error_exits_non_zero(self):
+        code, _ = self._run_send({"error": {"code": -32600, "message": "bad"}})
+        assert code == 1
+
+    def test_token_is_sent_as_bearer(self):
+        _, call = self._run_send(
+            {"result": {"status": {"state": "completed"}}}, ["--token", "abc123"]
+        )
+        assert call[1]["headers"]["Authorization"] == "Bearer abc123"
+
+    def test_message_ids_are_unique(self):
+        _, first = self._run_send({"result": {"status": {"state": "completed"}}})
+        _, second = self._run_send({"result": {"status": {"state": "completed"}}})
+        ids = {c[1]["json"]["params"]["message"]["messageId"] for c in (first, second)}
+        assert len(ids) == 2
+
+
+class TestInspectSecurity:
+    @patch("taco.cli._get_http_client")
+    def test_inspect_shows_security_schemes(self, mock_get_client, capsys):
+        mock_httpx = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "name": "Secured",
+            "securitySchemes": {"bearer": {"type": "http", "scheme": "bearer"}},
+            "security": [{"bearer": ["taco:task:estimate"]}],
+        }
+        mock_httpx.get.return_value = mock_resp
+        mock_get_client.return_value = mock_httpx
+
+        main(["inspect", "http://localhost:8001"])
+        out = capsys.readouterr().out
+        assert "Scheme bearer: http" in out
+        assert "Requires bearer: taco:task:estimate" in out
