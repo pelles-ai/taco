@@ -9,6 +9,20 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 ## [Unreleased]
 
 ### Security
+- **Admin endpoints require a token** — `A2AServer(enable_admin=True)` without `admin_auth_token` used to log a warning and serve unauthenticated endpoints that rewrite the public agent card. It now raises `ValueError`. (Binding to localhost is no substitute: behind a reverse proxy on the same host every request looks local.) The sandbox demo passes a `TACO_ADMIN_TOKEN`, which `make demo-env` writes to `examples/.env`.
+- **Webhooks to private addresses refused** — any caller that can register a webhook picks the URL the agent POSTs to. URLs that resolve to loopback, private, link-local or cloud-metadata addresses are now refused; `A2AServer(allow_private_push_urls=True)` allows them for local development.
+
+### Fixed
+- **Push notifications were never delivered** — the a2a-sdk only sends them when its request handler is given a sender, and `A2AServer` never passed one, so webhooks registered with `create_push_config` were stored and never called. `A2AServer` now delivers them, with whole numbers as JSON integers and the config's token in `X-A2A-Notification-Token`.
+- **The monitor mixed agents' traffic** — every monitored server in a process shared one event log. Each `A2AServer` now has its own (`server.monitor_event_bus`), and `TacoAgent` reports its peer calls into it.
+- **Startup warning for cards without a `url`** — the a2a-sdk warned that such cards are not spec-compliant, though `A2AServer` serves them with the address each request reached. The warning is dropped when the `url` is the only gap; other missing fields still warn.
+
+### CI
+- The sandbox demo is linted and run end to end on every pull request, offline against a fake Claude API, including every curl in its README and docstrings (`make demo-test`). Its Docker image is built and its compose file validated.
+
+## [0.4.0] — 2026-11-01
+
+### Security
 - **Agent Monitor stored XSS** — the monitor UI put the JSON-RPC `method` (copied from any caller's request) into the page unescaped. Every event field is now escaped and inline event handlers are gone.
 - **Agent Monitor readable from any website** — the monitor API sent `Access-Control-Allow-Origin: *` and had no auth, so any page a developer visited could read an agent's full traffic log from `localhost`. CORS is removed (the UI is same-origin), the WebSocket rejects cross-site origins, and a new `monitor_auth_token` (on `A2AServer`, `TacoAgent` and `enable_monitor(auth_token=)`) protects the API and WebSocket; open the UI as `/monitor/#token=<token>`.
 - **Handler errors leaked to callers** — exception text (connection strings, upstream API errors) was returned verbatim in the failed task's status. Callers now get `Task handler failed for type '<t>' (error id <id>)`; the details are logged under that id. Raise the new `taco.TacoTaskError` for messages the caller should see.

@@ -125,10 +125,12 @@ This showcases how the A2A ecosystem adapts when agents add new capabilities:
 3. Click **"Discover Agents"** again — the Estimating Agent now shows a second skill marked **NEW**
 4. Click "Send Task" on the new "Value Engineering Analysis" skill
 
-You can also add skills via curl:
+You can also add skills via curl. The admin endpoints need the token from `examples/.env` (`make demo-env` creates it; `run_demo.py` prints one if it had to generate it):
 
 ```bash
+export TACO_ADMIN_TOKEN=...   # from examples/.env
 curl -X POST http://localhost:8001/admin/skills \
+  -H "Authorization: Bearer $TACO_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "id": "value-engineering",
@@ -142,7 +144,7 @@ curl -X POST http://localhost:8001/admin/skills \
   }'
 ```
 
-The demo agents leave these admin endpoints unauthenticated; that is one reason they listen on `127.0.0.1` only.
+The SDK only enables these admin endpoints with a token (`A2AServer(enable_admin=True, admin_auth_token=...)`), because they change the agent card every caller sees. If `TACO_ADMIN_TOKEN` is unset, the demo agents run without them.
 
 ## Demo: Full Pipeline
 
@@ -222,6 +224,10 @@ curl -X POST http://localhost:8001/ \
   }'
 ```
 
+### Automated smoke tests
+
+`make demo-test` (or `pytest examples/tests`) runs all of the above offline. A fake Claude API (`examples/tests/fake_anthropic.py`) stands in for the real one, so no key is needed. The tests start the sandbox, the quick start and the peer example, then check discovery, the pipeline, supplier pricing, failure handling and the admin token, and run every curl command in this README and the example docstrings. CI runs them on every pull request, along with a Docker image build.
+
 ## File Structure
 
 ```
@@ -234,9 +240,11 @@ examples/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── run_demo.py
+├── ruff.toml                    # Lint with the SDK's rules
 ├── common/
 │   ├── a2a_models.py          # Re-exports A2A types and helpers from the TACO SDK
 │   ├── a2a_server.py          # Re-exports the SDK's A2AServer
+│   ├── admin_token.py         # TACO_ADMIN_TOKEN for the /admin/skills endpoints
 │   ├── llm_provider.py        # Anthropic/OpenAI wrapper returning schema-validated JSON
 │   ├── schemas.py             # Re-exports the SDK's bom/rfi/estimate/quote Pydantic models
 │   └── sample_data.py         # Sample mechanical HVAC BOM
@@ -244,9 +252,13 @@ examples/
 │   ├── estimating_agent.py    # Port 8001 — estimate + value-engineering
 │   ├── supplier_quote_agent.py # Port 8002 — material-procurement
 │   └── rfi_generation_agent.py # Port 8003 — rfi-generation
-└── orchestrator/
-    ├── app.py                 # Orchestrator backend
-    └── dashboard.html         # Web UI
+├── orchestrator/
+│   ├── app.py                 # Orchestrator backend
+│   └── dashboard.html         # Web UI
+└── tests/                     # Offline smoke tests (make demo-test)
+    ├── fake_anthropic.py      # Fake Claude API
+    ├── test_demo.py
+    └── test_doc_curls.py      # Runs every curl in this README
 ```
 
 ## Configuration

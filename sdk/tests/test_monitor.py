@@ -19,7 +19,7 @@ TOKEN = "s3cret-monitor-token"
 
 @pytest.fixture(autouse=True)
 def _clear_event_bus():
-    """The monitor's event bus is process-wide; start each test empty."""
+    """Start each test with an empty process-wide bus (used without a server)."""
     get_event_bus().clear()
     yield
     get_event_bus().clear()
@@ -231,3 +231,45 @@ class TestFailureMessages:
             result = (await client.post("/", json=_send())).json()["result"]
         text = result["status"]["message"]["parts"][0]["text"]
         assert "sk-live" not in text and "error id" in text
+
+
+class TestPerServerEventLog:
+    async def test_two_servers_in_one_process_keep_separate_logs(self):
+        first, second = _server(), _server()
+
+        async def ok(task: Task, input_data: dict) -> Artifact:
+            return make_artifact(parts=[make_data_part({"ok": True})])
+
+        first.register_handler("estimate", ok)
+        second.register_handler("estimate", ok)
+        assert first.monitor_event_bus is not second.monitor_event_bus
+
+        async with _client(first) as client:
+            await client.post("/", json=_send())
+            first_events = (await client.get("/monitor/api/events")).json()
+        async with _client(second) as client:
+            second_events = (await client.get("/monitor/api/events")).json()
+
+        assert any(e["kind"] == "incoming_request" for e in first_events)
+        assert second_events == []
+        assert get_event_bus().event_count == 0
+
+    async def test_taco_agent_peer_discovery_lands_in_its_own_log(self, live_server):
+        from taco import TacoAgent
+
+        peer = _server()
+        async with live_server(peer.app) as peer_url:
+            agent = TacoAgent(
+                ConstructionAgentCard(
+                    name="Caller", url="http://test", trade="electrical", csi_divisions=["26"]
+                ),
+                peers=[peer_url],
+                enable_monitor=True,
+            )
+            async with live_server(agent.app):
+                pass  # startup runs peer discovery
+
+        kinds = [e["kind"] for e in agent.server.monitor_event_bus.get_history()]
+        assert "discovery" in kinds
+        assert not any(e["kind"] == "discovery" for e in peer.monitor_event_bus.get_history())
+        assert get_event_bus().event_count == 0

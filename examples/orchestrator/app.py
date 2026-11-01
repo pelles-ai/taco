@@ -28,6 +28,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from taco.client import RpcError, TacoClient
 
+from common.admin_token import ENV_VAR as ADMIN_TOKEN_VAR
+from common.admin_token import admin_token
 from common.sample_data import SAMPLE_BOM
 
 logger = logging.getLogger("orchestrator")
@@ -216,9 +218,7 @@ def _find_agent_by_task_type(task_type: str) -> str | None:
     return None
 
 
-def _agent_error(
-    agent_url: str, method: str, status_code: int, message: str
-) -> ApiError:
+def _agent_error(agent_url: str, method: str, status_code: int, message: str) -> ApiError:
     """Log a failed agent call and build the error returned to the dashboard."""
     logger.warning("%s %s failed: %s", agent_url, method, message)
     _log("outbound", agent_url, method, {}, {"error": message})
@@ -254,23 +254,17 @@ async def _send_task_to_agent(
     try:
         task = await client.send_message(task_type, input_data)
     except httpx.TimeoutException:
-        raise _agent_error(
-            agent_url, method, 504, "Agent did not respond in time"
-        ) from None
+        raise _agent_error(agent_url, method, 504, "Agent did not respond in time") from None
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code
-        raise _agent_error(
-            agent_url, method, 502, f"Agent returned HTTP {status}"
-        ) from None
+        raise _agent_error(agent_url, method, 502, f"Agent returned HTTP {status}") from None
     except httpx.RequestError:
         raise _agent_error(agent_url, method, 502, "Agent is unreachable") from None
     except RpcError as exc:
         message = f"Agent returned JSON-RPC error {exc.code}: {exc.rpc_message}"[:300]
         raise _agent_error(agent_url, method, 502, message) from None
     except ValueError:  # body was not JSON, or not a Task
-        raise _agent_error(
-            agent_url, method, 502, "Agent returned an invalid response"
-        ) from None
+        raise _agent_error(agent_url, method, 502, "Agent returned an invalid response") from None
     return task.model_dump(mode="json", by_alias=True, exclude_none=True)
 
 
@@ -346,9 +340,7 @@ async def run_pipeline(request: Request) -> dict:
 
     if not discovered_agents:
         await discover_agents()
-    agent_map = {
-        tt: url for tt in PIPELINE_TASK_TYPES if (url := _find_agent_by_task_type(tt))
-    }
+    agent_map = {tt: url for tt in PIPELINE_TASK_TYPES if (url := _find_agent_by_task_type(tt))}
     if not agent_map:
         raise ApiError(400, "No agents found. Run discovery first.")
 
@@ -422,16 +414,24 @@ async def add_skill_to_agent(request: Request) -> dict:
     skill = body.get("skill")
     if not isinstance(skill, dict):
         raise ApiError(400, "skill must be a JSON object")
+    token = admin_token()
+    if token is None:
+        raise ApiError(
+            503,
+            f"Skill admin is disabled: set {ADMIN_TOKEN_VAR} for the agents and the "
+            "orchestrator (make demo-env writes one to examples/.env)",
+        )
 
     method = "POST /admin/skills"
     try:
         resp = await app.state.task_client.post(
-            f"{agent_url}/admin/skills", json=skill, timeout=ADMIN_TIMEOUT
+            f"{agent_url}/admin/skills",
+            json=skill,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=ADMIN_TIMEOUT,
         )
     except httpx.TimeoutException:
-        raise _agent_error(
-            agent_url, method, 504, "Agent did not respond in time"
-        ) from None
+        raise _agent_error(agent_url, method, 504, "Agent did not respond in time") from None
     except httpx.RequestError:
         raise _agent_error(agent_url, method, 502, "Agent is unreachable") from None
     if resp.is_error:

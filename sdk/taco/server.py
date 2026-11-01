@@ -8,7 +8,7 @@ async handlers for TACO task types. The server provides:
 - POST /                            — JSON-RPC 2.0 dispatch
 - GET  /health                      — Health check endpoint
 
-When ``enable_admin=True``:
+When ``enable_admin=True`` (requires ``admin_auth_token``):
 
 - POST /admin/skills              — dynamic skill registration
 - DELETE /admin/skills/{skill_id} — remove a skill
@@ -26,6 +26,7 @@ import asyncio
 import hmac
 import json
 import logging
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator, Callable, Coroutine
@@ -55,6 +56,7 @@ from ._compat import (
 from .agent_card import ConstructionAgentCard
 from .auth import BearerAuthMiddleware, TokenVerifier, _set_current_auth, auth_from_call_context
 from .errors import TacoTaskError
+from .push import TacoPushNotificationSender
 from .types import (
     AgentCapabilities,
     AgentCard,
@@ -160,6 +162,19 @@ class _WireIntegerMiddleware:
                 await send(message)
 
         await self.app(scope, receive, rewriting_send)
+
+
+class _HandledMissingUrlFilter(logging.Filter):
+    """Drop a2a-sdk's card warning when the card's only gap is its ``url``.
+
+    A2AServer serves a card without ``url`` with the address each request
+    reached, so that gap is handled. Any other missing field still warns.
+    """
+
+    _ONLY_URL = re.compile(r"missing or empty: supported_interfaces\[0\]\.url\. ")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not self._ONLY_URL.search(record.getMessage())
 
 
 def _restore_json_integers(raw: bytes) -> bytes:
@@ -479,8 +494,14 @@ class A2AServer:
         token_verifier: TokenVerifier | None = None,
         require_task_scope: bool = True,
         require_project_scope: bool | None = None,
+        allow_private_push_urls: bool = False,
     ) -> None:
         """Create the server.
+
+        Push notifications are delivered to the webhooks callers register
+        (see :mod:`taco.push`). Webhook URLs that resolve to non-public
+        addresses are refused unless ``allow_private_push_urls`` is set,
+        which local development needs.
 
         ``token_verifier`` turns on bearer-token auth for the JSON-RPC
         endpoint (see :mod:`taco.auth`): requests without a valid token get
@@ -497,6 +518,8 @@ class A2AServer:
         if isinstance(agent_card, ConstructionAgentCard):
             agent_card = agent_card.to_a2a()
         self.agent_card = agent_card
+        # Set by enable_monitor(): this server's own monitor event log.
+        self.monitor_event_bus: Any = None
         if not agent_card.url:
             logger.info(
                 "Agent card %r has no url; the served card will use the address "
@@ -518,12 +541,27 @@ class A2AServer:
         ):
             push_config_store = InMemoryPushNotificationConfigStore()
         self._push_config_store = push_config_store
-        self._request_handler = LegacyRequestHandler(
-            agent_executor=self._executor,
-            task_store=self._task_store,
-            agent_card=self._a2a_card_pb,
-            push_config_store=push_config_store,
+        # The a2a-sdk only delivers push notifications when given a sender.
+        push_sender = (
+            TacoPushNotificationSender(
+                push_config_store, allow_private_urls=allow_private_push_urls
+            )
+            if push_config_store is not None
+            else None
         )
+        card_logger = logging.getLogger("a2a.utils.proto_utils")
+        url_filter = _HandledMissingUrlFilter()
+        card_logger.addFilter(url_filter)
+        try:
+            self._request_handler = LegacyRequestHandler(
+                agent_executor=self._executor,
+                task_store=self._task_store,
+                agent_card=self._a2a_card_pb,
+                push_config_store=push_config_store,
+                push_sender=push_sender,
+            )
+        finally:
+            card_logger.removeFilter(url_filter)
 
         # Build the FastAPI app and mount the v1 JSON-RPC routes (with v0.3
         # compat enabled so legacy method names like ``message/send`` still
@@ -545,8 +583,12 @@ class A2AServer:
 
         if enable_admin:
             if not admin_auth_token:
-                logger.warning(
-                    "Admin endpoints enabled without admin_auth_token — endpoints are unprotected"
+                # The admin endpoints rewrite the public agent card. Binding
+                # to localhost is no substitute for a token: behind a reverse
+                # proxy on the same host every request looks local.
+                raise ValueError(
+                    "enable_admin=True requires admin_auth_token; the admin endpoints "
+                    "change the agent card every caller sees"
                 )
             self.app.post("/admin/skills")(self._add_skill)
             self.app.delete("/admin/skills/{skill_id}")(self._remove_skill)
@@ -705,9 +747,9 @@ class A2AServer:
     # ------------------------------------------------------------------
 
     def _check_admin_auth(self, request: Request) -> JSONResponse | None:
-        """Return a 401 JSONResponse if admin auth is required and fails, else None."""
-        if not self._admin_auth_token:
-            return None
+        """Return a 401 JSONResponse unless the request carries the admin token."""
+        if not self._admin_auth_token:  # fail closed; __init__ requires a token
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
         auth_header = request.headers.get("authorization", "")
         expected = f"Bearer {self._admin_auth_token}"
         if hmac.compare_digest(auth_header, expected):

@@ -36,6 +36,7 @@ from common.a2a_models import (
     make_data_part,
 )
 from common.a2a_server import A2AServer
+from common.admin_token import admin_token
 from common.llm_provider import LLMProvider
 from common.schemas import EstimateV1, QuoteV1
 
@@ -150,7 +151,14 @@ card = AgentCard(
 # Advertise x-construction in capabilities.extensions[] (as ConstructionAgentCard does).
 apply_construction_extension_declaration(card)
 
-server = A2AServer(card, enable_admin=True, enable_monitor=True)
+# /admin/skills is enabled only with a token (see common/admin_token.py).
+ADMIN_TOKEN = admin_token()
+server = A2AServer(
+    card,
+    enable_admin=ADMIN_TOKEN is not None,
+    admin_auth_token=ADMIN_TOKEN,
+    enable_monitor=True,
+)
 
 
 # ── ve-suggestions-v1 (demo-only schema, not part of the TACO spec) ─────────
@@ -297,9 +305,7 @@ async def handle_estimate(task: Task, input_data: dict) -> Artifact:
 
 
 async def handle_value_engineering(task: Task, input_data: dict) -> Artifact:
-    result = await llm.generate_json(
-        VE_SYSTEM_PROMPT, _tagged("bom", input_data), VESuggestionsV1
-    )
+    result = await llm.generate_json(VE_SYSTEM_PROMPT, _tagged("bom", input_data), VESuggestionsV1)
     return make_artifact(
         parts=[make_data_part(result)],
         name="ve-suggestions",

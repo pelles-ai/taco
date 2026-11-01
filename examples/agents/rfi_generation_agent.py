@@ -23,6 +23,7 @@ from common.a2a_models import (
     make_data_part,
 )
 from common.a2a_server import A2AServer
+from common.admin_token import admin_token
 from common.llm_provider import LLMProvider
 from common.schemas import RFIV1
 
@@ -97,7 +98,14 @@ card = AgentCard(
 # Advertise x-construction in capabilities.extensions[] (as ConstructionAgentCard does).
 apply_construction_extension_declaration(card)
 
-server = A2AServer(card, enable_admin=True, enable_monitor=True)
+# /admin/skills is enabled only with a token (see common/admin_token.py).
+ADMIN_TOKEN = admin_token()
+server = A2AServer(
+    card,
+    enable_admin=ADMIN_TOKEN is not None,
+    admin_auth_token=ADMIN_TOKEN,
+    enable_monitor=True,
+)
 
 
 class RFISet(BaseModel):
@@ -107,9 +115,7 @@ class RFISet(BaseModel):
 
 
 async def handle_rfi_generation(task: Task, input_data: dict) -> Artifact:
-    result = await llm.generate_json(
-        SYSTEM_PROMPT, json.dumps(input_data, indent=2), RFISet
-    )
+    result = await llm.generate_json(SYSTEM_PROMPT, json.dumps(input_data, indent=2), RFISet)
     return make_artifact(
         parts=[make_data_part(result)],
         name="rfi-set",

@@ -32,7 +32,6 @@ from taco import (
     make_data_part,
 )
 
-
 # 1. Define your agent card
 card = ConstructionAgentCard(
     name="My First TACO Agent",

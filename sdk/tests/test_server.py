@@ -327,11 +327,17 @@ class TestCORSBehavior:
             assert resp.headers.get("access-control-allow-origin") == "*"
 
 
+ADMIN_TOKEN = "admin-test-token"
+ADMIN_HEADERS = {"Authorization": f"Bearer {ADMIN_TOKEN}"}
+
+
 class TestAdminEndpoints:
     async def test_add_skill(self, sample_agent_card: AgentCard):
-        server = A2AServer(sample_agent_card, enable_admin=True)
+        server = A2AServer(sample_agent_card, enable_admin=True, admin_auth_token=ADMIN_TOKEN)
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test", headers=ADMIN_HEADERS
+        ) as c:
             resp = await c.post(
                 "/admin/skills",
                 json={
@@ -347,24 +353,30 @@ class TestAdminEndpoints:
             assert len(server.agent_card.skills) == 2
 
     async def test_remove_skill(self, sample_agent_card: AgentCard):
-        server = A2AServer(sample_agent_card, enable_admin=True)
+        server = A2AServer(sample_agent_card, enable_admin=True, admin_auth_token=ADMIN_TOKEN)
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test", headers=ADMIN_HEADERS
+        ) as c:
             resp = await c.delete("/admin/skills/test-skill")
             assert resp.status_code == 200
             assert len(server.agent_card.skills) == 0
 
     async def test_remove_nonexistent_skill(self, sample_agent_card: AgentCard):
-        server = A2AServer(sample_agent_card, enable_admin=True)
+        server = A2AServer(sample_agent_card, enable_admin=True, admin_auth_token=ADMIN_TOKEN)
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test", headers=ADMIN_HEADERS
+        ) as c:
             resp = await c.delete("/admin/skills/nonexistent")
             assert resp.status_code == 404
 
     async def test_list_skills(self, sample_agent_card: AgentCard):
-        server = A2AServer(sample_agent_card, enable_admin=True)
+        server = A2AServer(sample_agent_card, enable_admin=True, admin_auth_token=ADMIN_TOKEN)
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test", headers=ADMIN_HEADERS
+        ) as c:
             resp = await c.get("/admin/skills")
             assert resp.status_code == 200
             skills = resp.json()
@@ -434,19 +446,25 @@ class TestAdminAuth:
             )
             assert resp.status_code == 200
 
-    async def test_no_auth_when_no_token_set(self, sample_agent_card: AgentCard):
-        """Admin endpoints should work without auth when no token is configured."""
-        server = A2AServer(sample_agent_card, enable_admin=True)
+    def test_admin_requires_a_token(self, sample_agent_card: AgentCard):
+        """Admin endpoints mutate the public card, so they never run unprotected."""
+        with pytest.raises(ValueError, match="admin_auth_token"):
+            A2AServer(sample_agent_card, enable_admin=True)
+
+    async def test_admin_routes_absent_when_disabled(self, sample_agent_card: AgentCard):
+        server = A2AServer(sample_agent_card)
         transport = httpx.ASGITransport(app=server.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-            resp = await c.get("/admin/skills")
-            assert resp.status_code == 200
+            resp = await c.get("/admin/skills", headers=ADMIN_HEADERS)
+            assert resp.status_code in (404, 405)
 
     async def test_add_skill_invalid_data_returns_400(self, sample_agent_card: AgentCard):
         """POST /admin/skills with invalid data should return 400."""
-        server = A2AServer(sample_agent_card, enable_admin=True)
+        server = A2AServer(sample_agent_card, enable_admin=True, admin_auth_token=ADMIN_TOKEN)
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test", headers=ADMIN_HEADERS
+        ) as c:
             resp = await c.post(
                 "/admin/skills",
                 json={"not_a_valid_field": True},
@@ -456,9 +474,11 @@ class TestAdminAuth:
 
     async def test_add_skill_syncs_a2a_card(self, sample_agent_card: AgentCard):
         """Adding a skill should update the A2A SDK card at /.well-known/agent.json."""
-        server = A2AServer(sample_agent_card, enable_admin=True)
+        server = A2AServer(sample_agent_card, enable_admin=True, admin_auth_token=ADMIN_TOKEN)
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test", headers=ADMIN_HEADERS
+        ) as c:
             # Initial card has 1 skill
             resp = await c.get("/.well-known/agent.json")
             initial_skills = resp.json()["skills"]
@@ -477,9 +497,11 @@ class TestAdminAuth:
 
     async def test_remove_skill_syncs_a2a_card(self, sample_agent_card: AgentCard):
         """Removing a skill should update the A2A SDK card at /.well-known/agent.json."""
-        server = A2AServer(sample_agent_card, enable_admin=True)
+        server = A2AServer(sample_agent_card, enable_admin=True, admin_auth_token=ADMIN_TOKEN)
         transport = httpx.ASGITransport(app=server.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test", headers=ADMIN_HEADERS
+        ) as c:
             # Remove the existing skill
             await c.delete("/admin/skills/test-skill")
 
@@ -620,3 +642,39 @@ class TestStreamingHandlerViaSend:
         assert result["status"]["state"] == "completed"
         assert [a["name"] for a in result["artifacts"]] == ["stream-task-stream-result"]
         assert [p["text"] for p in result["artifacts"][0]["parts"]] == ["a", "b"]
+
+
+class TestCardWarnings:
+    """a2a-sdk warns about cards missing spec-required fields at startup."""
+
+    def _warnings(self, caplog, card) -> list[str]:
+        caplog.clear()
+        with caplog.at_level("WARNING", logger="a2a.utils.proto_utils"):
+            A2AServer(card)
+        return [r.getMessage() for r in caplog.records if "not spec-compliant" in r.getMessage()]
+
+    def test_missing_url_alone_is_not_reported(self, caplog):
+        from taco import ConstructionAgentCard, ConstructionSkill
+
+        card = ConstructionAgentCard(
+            name="No URL",
+            trade="electrical",
+            csi_divisions=["26"],
+            skills=[ConstructionSkill(id="e", task_type="estimate", output_schema="estimate-v1")],
+        )
+        assert self._warnings(caplog, card) == []
+
+    def test_other_gaps_are_still_reported(self, caplog):
+        from a2a.utils import proto_utils
+
+        from taco import ConstructionAgentCard
+
+        if not hasattr(proto_utils, "warn_on_missing_required_fields"):
+            pytest.skip("this a2a-sdk version does not warn about card fields")
+
+        no_skills = ConstructionAgentCard(
+            name="No skills", url="http://x", trade="electrical", csi_divisions=["26"]
+        )
+        both = ConstructionAgentCard(name="Neither", trade="electrical", csi_divisions=["26"])
+        assert any("skills" in w for w in self._warnings(caplog, no_skills))
+        assert any("skills" in w for w in self._warnings(caplog, both))

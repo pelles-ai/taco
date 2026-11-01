@@ -5,13 +5,14 @@ definitions live in ``taco.schemas``.
 """
 
 from taco.schemas import (  # noqa: F401
+    BOMV1,
+    RFIV1,
     BOMAlternate,
     BOMFlaggedItem,
     BOMLineItem,
     BOMMetadata,
     BOMSchema,
     BOMSourceDocument,
-    BOMV1,
     ChangeOrderSchema,
     EstimateLineItem,
     EstimateMetadata,
@@ -27,6 +28,5 @@ from taco.schemas import (  # noqa: F401
     RFIMetadata,
     RFIReference,
     RFISchema,
-    RFIV1,
     ScheduleSchema,
 )

@@ -64,12 +64,13 @@ server = A2AServer(
     push_config_store=None,         # Push config store (default: in-memory when the card enables push)
     cors_origins=None,              # CORS allowed origins (default: None = no CORS)
     enable_admin=False,             # Enable /admin/skills endpoints
-    admin_auth_token=None,          # Protect admin endpoints with a Bearer token
+    admin_auth_token=None,          # Bearer token the admin endpoints require (needed with enable_admin)
     enable_monitor=False,           # Enable /monitor live tracing UI
     monitor_auth_token=None,        # Token the monitor requires (set it before exposing the port)
     token_verifier=None,            # async (token) -> AuthContext | None; turns on bearer auth
     require_task_scope=True,        # With token_verifier: require taco:task:<taskType>
     require_project_scope=None,     # Require taco:project:<projectId>:write (default: card's projectScoped)
+    allow_private_push_urls=False,  # Deliver push notifications to private/loopback URLs (local dev)
 )
 ```
 
@@ -197,13 +198,15 @@ Declare the scheme on the card so callers know to send a token. See [Security: i
 
 ### Admin API
 
-Enable dynamic skill registration at runtime with `enable_admin=True`:
+Enable dynamic skill registration at runtime with `enable_admin=True`. The admin endpoints change the agent card every caller sees, so they need a token; `A2AServer` raises `ValueError` without one:
 
 ```python
+import os
+
 server = A2AServer(
     card.to_a2a(),
     enable_admin=True,
-    admin_auth_token="my-secret-token",  # Optional but recommended
+    admin_auth_token=os.environ["TACO_ADMIN_TOKEN"],  # required
 )
 ```
 
@@ -213,7 +216,7 @@ server = A2AServer(
 | `DELETE` | `/admin/skills/{skill_id}` | Remove a skill by ID |
 | `GET` | `/admin/skills` | List current skills |
 
-If `admin_auth_token` is set, requests must include `Authorization: Bearer <token>`.
+Requests must include `Authorization: Bearer <token>`; anything else gets HTTP 401.
 
 ```bash
 curl -X POST http://localhost:8001/admin/skills \
@@ -230,6 +233,12 @@ curl -X POST http://localhost:8001/admin/skills \
     }
   }'
 ```
+
+### Push notifications
+
+When the card advertises push notifications (`card.capabilities.push_notifications = True`) or you pass a `push_config_store`, callers can register webhooks for a task with `TacoClient.create_push_config(task_id, url, token=...)`, and the server POSTs every task event to each of them. The `token` comes back in the `X-A2A-Notification-Token` header so the receiver can check the call is genuine, and whole numbers arrive as JSON integers. (Before the release after 0.4.0, TACO servers accepted webhook registrations but never delivered.)
+
+Any caller that can register a webhook chooses where the agent sends requests, so URLs that resolve to loopback, private, link-local or cloud-metadata addresses are refused and logged. For local development, where the receiver runs on `localhost`, pass `allow_private_push_urls=True`.
 
 ### Task persistence
 

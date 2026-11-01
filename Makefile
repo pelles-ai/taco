@@ -1,15 +1,17 @@
 .PHONY: install lint format typecheck test test-verbose check-all clean
-.PHONY: demo demo-docker demo-stop demo-install demo-env help
+.PHONY: demo demo-docker demo-stop demo-install demo-env demo-test help
 
 # ── Development ──────────────────────────────────────────────
 install:                            ## Install SDK with dev dependencies
 	pip install -e sdk[dev]
 
-lint:                               ## Run ruff linter
+lint:                               ## Run ruff linter (SDK and examples)
 	cd sdk && ruff check taco/ tests/
+	ruff check examples/
 
-format:                             ## Run ruff formatter
+format:                             ## Run ruff formatter (SDK and examples)
 	cd sdk && ruff format taco/ tests/
+	ruff format examples/
 
 typecheck:                          ## Run mypy type checker
 	cd sdk && mypy taco/
@@ -20,8 +22,9 @@ test:                               ## Run tests
 test-verbose:                       ## Run tests with verbose output
 	cd sdk && pytest -v
 
-check-all: lint                     ## Run all checks (mirrors CI)
+check-all: lint                     ## Run all SDK checks plus examples lint (CI also runs demo-test)
 	cd sdk && ruff format --check taco/ tests/
+	ruff format --check examples/
 	cd sdk && mypy taco/
 	cd sdk && pytest -v
 
@@ -37,6 +40,10 @@ demo-install:                       ## Install TACO SDK + demo dependencies
 
 demo-env:                           ## Create .env from template (won't overwrite existing)
 	@test -f examples/.env || cp examples/.env.example examples/.env
+	@grep -q '^TACO_ADMIN_TOKEN=.' examples/.env || { \
+		sed -i.bak '/^TACO_ADMIN_TOKEN=$$/d' examples/.env && rm -f examples/.env.bak; \
+		echo "TACO_ADMIN_TOKEN=$$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')" >> examples/.env; \
+	}
 	@echo "Edit examples/.env and set your API key."
 
 demo: demo-env                      ## Run the demo locally (agents + dashboard)
@@ -45,6 +52,9 @@ demo: demo-env                      ## Run the demo locally (agents + dashboard)
 # ── Demo (Docker) ────────────────────────────────────────────
 demo-docker: demo-env               ## Run the demo via Docker Compose
 	docker compose -f examples/docker-compose.yml --env-file examples/.env up --build
+
+demo-test:                          ## Run the demo smoke tests offline (fake Claude API)
+	pytest examples/tests -v
 
 demo-stop:                          ## Stop Docker Compose services
 	docker compose -f examples/docker-compose.yml down

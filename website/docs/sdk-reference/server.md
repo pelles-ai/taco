@@ -17,7 +17,7 @@ Run a TACO-compatible A2A server. Register typed handlers per task type, fail ta
 ## `A2AServer`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/server.py#L460)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/server.py#L461)
 
 Reusable FastAPI application implementing the A2A protocol.
 
@@ -28,7 +28,7 @@ format unchanged.
 #### Constructor
 
 ```python
-A2AServer(agent_card: 'AgentCard | ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, push_config_store: 'PushNotificationConfigStore | None' = None, cors_origins: 'list[str] | None' = None, enable_admin: 'bool' = False, admin_auth_token: 'str | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None, token_verifier: 'TokenVerifier | None' = None, require_task_scope: 'bool' = True, require_project_scope: 'bool | None' = None) -> 'None'
+A2AServer(agent_card: 'AgentCard | ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, push_config_store: 'PushNotificationConfigStore | None' = None, cors_origins: 'list[str] | None' = None, enable_admin: 'bool' = False, admin_auth_token: 'str | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None, token_verifier: 'TokenVerifier | None' = None, require_task_scope: 'bool' = True, require_project_scope: 'bool | None' = None, allow_private_push_urls: 'bool' = False) -> 'None'
 ```
 
 #### Methods
@@ -85,7 +85,7 @@ TacoTaskError(*args)
 
 ## `enable_monitor()`
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/monitor/__init__.py#L59)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/monitor/__init__.py#L64)
 
 ```python
 enable_monitor(*, server: 'A2AServer | None' = None, client: 'TacoClient | None' = None, registry: 'AgentRegistry | None' = None, agent_name: 'str | None' = None, max_events: 'int' = 2000, auth_token: 'str | None' = None) -> 'None'
@@ -100,6 +100,11 @@ monitor UI, and mounts the monitor routes onto the server's app at
 The monitor shows every request and response payload. Set
 ``auth_token`` before exposing the agent's port beyond your machine;
 the UI is then opened as ``/monitor/#token=<token>``.
+
+With a ``server``, events go to that server's own bus
+(``server.monitor_event_bus``), and a ``client`` or ``registry`` passed
+alongside reports into it too. Without one they use the process-wide bus
+from :func:`get_event_bus`.
 
 ## See also
 
