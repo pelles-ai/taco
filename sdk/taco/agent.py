@@ -136,9 +136,10 @@ class TacoAgent:
 
             # Instrument registry for the monitor
             if self._has_monitor:
-                from .monitor import _instrument_registry, get_event_bus
+                from .monitor import _instrument_registry
 
-                _instrument_registry(self._registry, get_event_bus())
+                # Report into this agent's own monitor log, not a shared one.
+                _instrument_registry(self._registry, self._server.monitor_event_bus)
 
             # Attach lifespan for peer discovery and cleanup
             existing_lifespan = self._server.app.router.lifespan_context
@@ -378,9 +379,9 @@ class TacoAgent:
         if agent_url not in self._client_pool:
             client = self._client_cls(agent_url=agent_url)
             if self._has_monitor:
-                from .monitor import _instrument_client, get_event_bus
+                from .monitor import _instrument_client
 
-                _instrument_client(client, get_event_bus())
+                _instrument_client(client, self._server.monitor_event_bus)
             self._client_pool[agent_url] = client
         return self._client_pool[agent_url]
 

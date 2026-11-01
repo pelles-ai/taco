@@ -497,6 +497,8 @@ class A2AServer:
         if isinstance(agent_card, ConstructionAgentCard):
             agent_card = agent_card.to_a2a()
         self.agent_card = agent_card
+        # Set by enable_monitor(): this server's own monitor event log.
+        self.monitor_event_bus: Any = None
         if not agent_card.url:
             logger.info(
                 "Agent card %r has no url; the served card will use the address "

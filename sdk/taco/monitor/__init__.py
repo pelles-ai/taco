@@ -38,7 +38,12 @@ _default_bus: EventBus | None = None
 
 
 def get_event_bus(max_events: int = 2000) -> EventBus:
-    """Get or create the default (singleton) EventBus."""
+    """Get or create the process-wide EventBus.
+
+    Used only for clients and registries instrumented without a server.
+    Each monitored :class:`A2AServer` has its own bus (``server.monitor_event_bus``),
+    so two agents in one process never show each other's traffic.
+    """
     global _default_bus
     if _default_bus is None:
         _default_bus = EventBus(max_events=max_events)
@@ -74,8 +79,17 @@ def enable_monitor(
     The monitor shows every request and response payload. Set
     ``auth_token`` before exposing the agent's port beyond your machine;
     the UI is then opened as ``/monitor/#token=<token>``.
+
+    With a ``server``, events go to that server's own bus
+    (``server.monitor_event_bus``), and a ``client`` or ``registry`` passed
+    alongside reports into it too. Without one they use the process-wide bus
+    from :func:`get_event_bus`.
     """
-    bus = get_event_bus(max_events)
+    if server is not None:
+        bus = getattr(server, "monitor_event_bus", None) or EventBus(max_events=max_events)
+        server.monitor_event_bus = bus
+    else:
+        bus = get_event_bus(max_events)
 
     if server is not None:
         _instrument_server(server, bus)
