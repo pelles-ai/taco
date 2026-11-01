@@ -8,7 +8,7 @@ async handlers for TACO task types. The server provides:
 - POST /                            — JSON-RPC 2.0 dispatch
 - GET  /health                      — Health check endpoint
 
-When ``enable_admin=True``:
+When ``enable_admin=True`` (requires ``admin_auth_token``):
 
 - POST /admin/skills              — dynamic skill registration
 - DELETE /admin/skills/{skill_id} — remove a skill
@@ -545,8 +545,12 @@ class A2AServer:
 
         if enable_admin:
             if not admin_auth_token:
-                logger.warning(
-                    "Admin endpoints enabled without admin_auth_token — endpoints are unprotected"
+                # The admin endpoints rewrite the public agent card. Binding
+                # to localhost is no substitute for a token: behind a reverse
+                # proxy on the same host every request looks local.
+                raise ValueError(
+                    "enable_admin=True requires admin_auth_token; the admin endpoints "
+                    "change the agent card every caller sees"
                 )
             self.app.post("/admin/skills")(self._add_skill)
             self.app.delete("/admin/skills/{skill_id}")(self._remove_skill)
@@ -705,9 +709,9 @@ class A2AServer:
     # ------------------------------------------------------------------
 
     def _check_admin_auth(self, request: Request) -> JSONResponse | None:
-        """Return a 401 JSONResponse if admin auth is required and fails, else None."""
-        if not self._admin_auth_token:
-            return None
+        """Return a 401 JSONResponse unless the request carries the admin token."""
+        if not self._admin_auth_token:  # fail closed; __init__ requires a token
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
         auth_header = request.headers.get("authorization", "")
         expected = f"Bearer {self._admin_auth_token}"
         if hmac.compare_digest(auth_header, expected):
