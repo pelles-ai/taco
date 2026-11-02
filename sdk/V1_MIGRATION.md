@@ -14,7 +14,7 @@
 | 3. Pin `a2a-sdk<1` | Superseded by step 5 |
 | 4. `A2A-Version` / `A2A-Extensions` headers | `A2A-Version` shipped in 0.3.6; `A2A-Extensions` (and the v0.3 `X-A2A-Extensions`) in 0.6.3 |
 | 5. `a2a-sdk` 1.0 compat-layer port | Shipped in 0.3.7; floor raised to 1.1.1 in 0.6.2 so protobuf 6 and 7 work |
-| 6–10. v1 wire format | Not started. [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format) (proposed) replaces steps 6–10 with version negotiation |
+| 6–10. v1 wire format | In progress. [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format) (proposed) replaces steps 6–10 with version negotiation. The server answers both versions (since 0.3.7), a parity suite runs every scenario on both, and the card advertises both, with `x-construction` in the extension's `params` (unreleased). Next: `TacoClient(protocol=...)` |
 | 11. `ListTasks` | Shipped in 0.3.8 |
 | 12. JWS-signed Agent Cards | Not started |
 | 13. `x-construction` extension URI | Shipped in 0.3.9 |

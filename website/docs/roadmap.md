@@ -57,7 +57,7 @@ Dates come from the release tags in the repository. See the [CHANGELOG](https://
 ### A2A v1 wire cutover (Phase 3 of the SDK migration)
 The TACO SDK is on `a2a-sdk>=1.1.1`, but the on-the-wire JSON is still v0.3. Phase 3 flips the wire format to v1 one concern at a time: flattened `Part` constructors, v1 enum literals, `supportedInterfaces[]` on the Agent Card, new JSON-RPC method names (`SendMessage`, `GetTask`, and so on), and the wrapper-keyed stream event shape.
 
-See [`sdk/V1_MIGRATION.md`](https://github.com/pelles-ai/taco/blob/main/sdk/V1_MIGRATION.md) for the full plan and [ADR-0007](/docs/decisions/v1-wire-cutover) for the reasoning. [ADR-0010](/docs/decisions/negotiate-v1-wire-format) (proposed) replaces the per-concern flip with negotiation: servers advertise both versions, clients pick one per agent, and the Python API does not change.
+See [`sdk/V1_MIGRATION.md`](https://github.com/pelles-ai/taco/blob/main/sdk/V1_MIGRATION.md) for the full plan and [ADR-0007](/docs/decisions/v1-wire-cutover) for the reasoning. [ADR-0010](/docs/decisions/negotiate-v1-wire-format) (proposed) replaces the per-concern flip with negotiation: servers advertise both versions, clients pick one per agent, and the Python API does not change. A parity test suite runs every scenario on both versions, and servers now advertise both on their card, with `x-construction` in the extension's `params` for v1 readers (unreleased). `TacoClient(protocol=...)` is next.
 
 ### Remaining v1 features
 Still open in the migration plan:
