@@ -10,6 +10,8 @@ been dated yet) as that version's GitHub release notes.
 
 ## [Unreleased]
 
+## [0.6.3] — 2026-11-02
+
 ### Added
 - **`A2A-Extensions` header** — `TacoClient` (and so `TacoAgent` peer calls) and `taco send` ask the agent to activate TACO's `x-construction` extension on every request, with `A2A-Extensions` and its v0.3 name `X-A2A-Extensions`. Extension URIs passed in `headers` are added to it rather than replacing it.
 - **Python 3.14** is tested in CI and listed in the package classifiers.
