@@ -10,6 +10,9 @@ been dated yet) as that version's GitHub release notes.
 
 ## [Unreleased]
 
+### CI
+- The release workflow can be run by hand as a dry run (`dry_run: true`), which reports the next version without tagging, releasing or publishing. The release and PyPI steps are skipped when no new version is calculated, and the release branch and default patch bump are set explicitly, ahead of the tag action's v7.
+
 ## [0.6.3] — 2026-11-02
 
 ### Added

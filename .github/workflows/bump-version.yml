@@ -12,6 +12,11 @@ on:
     paths:
       - "sdk/**"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only calculate the next version: no tag, release or PyPI upload"
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -35,15 +40,41 @@ jobs:
       new_version: ${{ steps.tag_version.outputs.new_version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # lets the tag action fall back to local history
+      # The bump comes from the commit messages since the last tag: feat →
+      # minor, anything else → patch (default_bump). With no commits since
+      # the last tag, newer versions of the action create no tag at all, so
+      # every later step checks new_tag.
       - name: Bump version and push tag
         id: tag_version
         uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          release_branches: main
+          default_bump: patch
+          dry_run: ${{ inputs.dry_run == true }}
+      - name: Summarize
+        env:
+          DRY_RUN: ${{ inputs.dry_run == true }}
+          PREVIOUS_TAG: ${{ steps.tag_version.outputs.previous_tag }}
+          NEW_TAG: ${{ steps.tag_version.outputs.new_tag }}
+          RELEASE_TYPE: ${{ steps.tag_version.outputs.release_type }}
+        run: |
+          {
+            if [ -z "$NEW_TAG" ]; then
+              echo "No new version: no commits to release since ${PREVIOUS_TAG:-the last tag}."
+            elif [ "$DRY_RUN" = "true" ]; then
+              echo "Dry run: would release $NEW_TAG ($RELEASE_TYPE after $PREVIOUS_TAG). Nothing was tagged or published."
+            else
+              echo "Releasing $NEW_TAG ($RELEASE_TYPE after $PREVIOUS_TAG)."
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
       # Release notes come from CHANGELOG.md: the version's own section, or
       # [Unreleased] if it has not been dated yet. The commit list is the
       # fallback when the changelog has nothing for this release.
       - name: Write release notes
+        if: steps.tag_version.outputs.new_tag != '' && inputs.dry_run != true
         env:
           NEW_VERSION: ${{ steps.tag_version.outputs.new_version }}
           COMMITS: ${{ steps.tag_version.outputs.changelog }}
@@ -51,6 +82,7 @@ jobs:
           python3 .github/scripts/changelog_section.py "$NEW_VERSION" > release-notes.md \
             || printf '%s\n' "$COMMITS" > release-notes.md
       - name: Create a GitHub release
+        if: steps.tag_version.outputs.new_tag != '' && inputs.dry_run != true
         uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         with:
           tag: ${{ steps.tag_version.outputs.new_tag }}
@@ -59,6 +91,7 @@ jobs:
 
   publish:
     needs: bump
+    if: needs.bump.outputs.new_tag != '' && inputs.dry_run != true
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
