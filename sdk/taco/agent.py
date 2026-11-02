@@ -67,6 +67,9 @@ class TacoAgent:
             round before the agent starts serving (default 2.0). Discovery
             carries on in the background, so agents that list each other
             as peers find each other once both are up.
+        peer_protocol: A2A version for calls to peers: ``"0.3"`` (the
+            default), ``"1.0"``, or ``"auto"`` to use v1 with peers whose
+            card lists it. See :class:`TacoClient`.
         cors_origins: CORS origins for the server. ``None`` (the default)
             disables CORS middleware entirely.
         enable_monitor: Whether to enable the Agent Monitor UI at
@@ -95,6 +98,7 @@ class TacoAgent:
         peer_retry_attempts: int = 5,
         peer_retry_delay: float = 2.0,
         peer_startup_wait: float = 2.0,
+        peer_protocol: str = "0.3",
         cors_origins: list[str] | None = None,
         enable_monitor: bool = False,
         monitor_auth_token: str | None = None,
@@ -102,6 +106,9 @@ class TacoAgent:
         require_task_scope: bool = True,
         require_project_scope: bool | None = None,
     ) -> None:
+        if peer_protocol not in ("auto", "1.0", "0.3"):
+            raise ValueError(f"peer_protocol must be one of auto, 1.0, 0.3, not {peer_protocol!r}")
+        self._peer_protocol = peer_protocol
         self._card = agent_card
         self._server = A2AServer(
             agent_card.to_a2a(),
@@ -377,7 +384,7 @@ class TacoAgent:
     def _get_or_create_client(self, agent_url: str) -> TacoClient:
         """Return a pooled TacoClient, creating and instrumenting if needed."""
         if agent_url not in self._client_pool:
-            client = self._client_cls(agent_url=agent_url)
+            client = self._client_cls(agent_url=agent_url, protocol=self._peer_protocol)
             if self._has_monitor:
                 from .monitor import _instrument_client
 

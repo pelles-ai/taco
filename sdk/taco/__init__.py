@@ -261,6 +261,7 @@ __all__ = [
     "TacoClient",
     "TacoClientError",
     "RpcError",
+    "ProtocolVersionError",
     "MessageReplyError",
     "AgentRegistry",
     # Adapters (lazy — requires taco[langgraph])
@@ -276,6 +277,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TacoClient": (".client", "taco-agent[client]"),
     "TacoClientError": (".client", "taco-agent[client]"),
     "RpcError": (".client", "taco-agent[client]"),
+    "ProtocolVersionError": (".client", "taco-agent[client]"),
     "MessageReplyError": (".client", "taco-agent[client]"),
     "AgentRegistry": (".registry", "taco-agent[client]"),
     "JsonFileTaskStore": (".task_store", "taco-agent"),
