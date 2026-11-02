@@ -12,6 +12,9 @@ A new version is published to PyPI when a change under `sdk/` is merged to
 - **`A2A-Extensions` header** — `TacoClient` (and so `TacoAgent` peer calls) and `taco send` ask the agent to activate TACO's `x-construction` extension on every request, with `A2A-Extensions` and its v0.3 name `X-A2A-Extensions`. Extension URIs passed in `headers` are added to it rather than replacing it.
 - **Python 3.14** is tested in CI and listed in the package classifiers.
 
+### Examples (sandbox demo)
+- **Revised RFI sets** — `POST /api/send-task` accepts `referenceTaskIds`. Re-running RFI generation with the earlier task's id links the two, and the new RFI set's artifact metadata lists the task it supersedes (`"supersedes": [...]`).
+
 ## [0.6.2] — 2026-11-01
 
 ### Changed

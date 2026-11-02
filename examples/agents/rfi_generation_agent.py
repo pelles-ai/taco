@@ -114,13 +114,27 @@ class RFISet(BaseModel):
     rfis: list[RFIV1]
 
 
+def _revised_task_ids(task: Task) -> list[str]:
+    """Earlier rfi-generation tasks this request revises.
+
+    A caller re-running RFI generation on a revised BOM links the new task to
+    the earlier ones with A2A ``referenceTaskIds``.
+    """
+    message = task.history[-1] if task.history else None
+    return list(message.reference_task_ids or []) if message is not None else []
+
+
 async def handle_rfi_generation(task: Task, input_data: dict) -> Artifact:
     result = await llm.generate_json(SYSTEM_PROMPT, json.dumps(input_data, indent=2), RFISet)
+    metadata: dict = {"schema": "rfi-v1"}
+    if revised := _revised_task_ids(task):
+        # This RFI set replaces the ones the referenced tasks raised.
+        metadata["supersedes"] = revised
     return make_artifact(
         parts=[make_data_part(result)],
         name="rfi-set",
         description="AI-generated RFIs from BOM analysis",
-        metadata={"schema": "rfi-v1"},
+        metadata=metadata,
     )
 
 

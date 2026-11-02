@@ -208,6 +208,20 @@ def _input_data(body: dict[str, Any]) -> dict[str, Any]:
     return input_data
 
 
+def _reference_task_ids(body: dict[str, Any]) -> list[str] | None:
+    """Optional ``referenceTaskIds``: earlier tasks this one follows up on."""
+    value = body.get("referenceTaskIds")
+    if value is None:
+        return None
+    if (
+        not isinstance(value, list)
+        or not 1 <= len(value) <= 20
+        or not all(isinstance(v, str) and 0 < len(v) <= 200 for v in value)
+    ):
+        raise ApiError(400, "referenceTaskIds must be a list of 1 to 20 task ids")
+    return value
+
+
 def _find_agent_by_task_type(task_type: str) -> str | None:
     """Find the URL of a discovered agent that handles the given task type."""
     for url, card in discovered_agents.items():
@@ -246,13 +260,18 @@ async def _discover(url: str) -> tuple[str, dict | None, str | None]:
 
 
 async def _send_task_to_agent(
-    agent_url: str, task_type: str, input_data: dict[str, Any]
+    agent_url: str,
+    task_type: str,
+    input_data: dict[str, Any],
+    reference_task_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     """Send a TACO task with ``message/send`` and return the resulting Task."""
     method = f"message/send ({task_type})"
     client = TacoClient(agent_url=agent_url, http_client=app.state.task_client)
     try:
-        task = await client.send_message(task_type, input_data)
+        task = await client.send_message(
+            task_type, input_data, reference_task_ids=reference_task_ids
+        )
     except httpx.TimeoutException:
         raise _agent_error(agent_url, method, 504, "Agent did not respond in time") from None
     except httpx.HTTPStatusError as exc:
@@ -328,7 +347,9 @@ async def send_task(request: Request) -> dict:
     task_type = body.get("taskType")
     if not isinstance(task_type, str) or not task_type:
         raise ApiError(400, "taskType must be a non-empty string")
-    task = await _send_task_to_agent(agent_url, task_type, _input_data(body))
+    task = await _send_task_to_agent(
+        agent_url, task_type, _input_data(body), _reference_task_ids(body)
+    )
     return {"result": task}
 
 
