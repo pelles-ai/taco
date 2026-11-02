@@ -14,7 +14,7 @@
 | 3. Pin `a2a-sdk<1` | Superseded by step 5 |
 | 4. `A2A-Version` / `A2A-Extensions` headers | `A2A-Version` shipped in 0.3.6; `A2A-Extensions` (and the v0.3 `X-A2A-Extensions`) in 0.6.3 |
 | 5. `a2a-sdk` 1.0 compat-layer port | Shipped in 0.3.7; floor raised to 1.1.1 in 0.6.2 so protobuf 6 and 7 work |
-| 6–10. v1 wire format | Not started |
+| 6–10. v1 wire format | Not started. [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format) (proposed) replaces steps 6–10 with version negotiation |
 | 11. `ListTasks` | Shipped in 0.3.8 |
 | 12. JWS-signed Agent Cards | Not started |
 | 13. `x-construction` extension URI | Shipped in 0.3.9 |
@@ -135,6 +135,12 @@ has shipped.
 
 Each of these flips one wire-level concern from v0.3 to v1. Phase 2 has
 landed, so nothing blocks them.
+
+> **Proposed replacement:** [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format)
+> found that a TACO server already answers every v1 method, so it proposes
+> negotiating the wire version instead of flipping TACO's own types: servers
+> advertise both versions in the card, `TacoClient` picks one per agent, and
+> the Python API stays as it is.
 
 6. **`feat/v1-native-part-constructors`** — Flatten `Part(root=TextPart(...))`
    to `Part(text=...)` in `_compat.py`; update `extract_*` accessors.
