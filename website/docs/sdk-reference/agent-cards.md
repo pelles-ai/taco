@@ -269,7 +269,7 @@ DeviceCodeOAuthFlow(*, deviceAuthorizationUrl: str, tokenUrl: str, refreshUrl: s
 
 ## `get_construction_ext()`
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L314)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L319)
 
 ```python
 get_construction_ext(card: 'AgentCard') -> 'AgentConstructionExt | None'
@@ -279,7 +279,7 @@ Extract x-construction extension from a TACO AgentCard.
 
 ## `get_skill_construction_ext()`
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L319)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L324)
 
 ```python
 get_skill_construction_ext(skill: 'AgentSkill') -> 'SkillConstructionExt | None'
@@ -289,7 +289,7 @@ Extract x-construction extension from a TACO AgentSkill.
 
 ## `apply_construction_extension_declaration()`
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L342)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/types.py#L431)
 
 ```python
 apply_construction_extension_declaration(card: 'AgentCard') -> 'AgentCard'

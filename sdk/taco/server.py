@@ -58,6 +58,8 @@ from .auth import BearerAuthMiddleware, TokenVerifier, _set_current_auth, auth_f
 from .errors import TacoTaskError
 from .push import TacoPushNotificationSender
 from .types import (
+    SERVED_PROTOCOL_VERSIONS,
+    X_CONSTRUCTION_EXTENSION_URI,
     AgentCapabilities,
     AgentCard,
     AgentSkill,
@@ -70,6 +72,8 @@ from .types import (
     TaskState,
     TaskStatus,
     TaskStatusUpdateEvent,
+    apply_construction_extension_declaration,
+    construction_extension_params,
 )
 
 logger = logging.getLogger("taco.server")
@@ -472,6 +476,36 @@ class _TacoAgentExecutor(AgentExecutor):
         )
 
 
+def _advertised_card(card: AgentCard, base_url: str) -> dict[str, Any]:
+    """The agent card as served: v0.3 fields plus the A2A v1 ones (ADR-0010).
+
+    v0.3 readers use ``url`` and the inline ``x-construction`` fields. v1
+    readers use ``supportedInterfaces`` (both versions on the same JSON-RPC
+    endpoint, since the server answers both) and the ``x-construction``
+    extension's ``params``, which are generated from the inline fields so the
+    two never disagree. ``protocolVersion`` and ``supportedInterfaces`` set on
+    the card itself are kept.
+    """
+    card = apply_construction_extension_declaration(card.model_copy(deep=True))
+    data = card.model_dump(mode="json", by_alias=True, exclude_none=True)
+    url = data.get("url") or base_url
+    data["url"] = url
+    data.setdefault("protocolVersion", "0.3.0")
+    data.setdefault(
+        "supportedInterfaces",
+        [
+            {"url": url, "protocolBinding": "JSONRPC", "protocolVersion": version}
+            for version in SERVED_PROTOCOL_VERSIONS
+        ],
+    )
+    params = construction_extension_params(card)
+    if params is not None:
+        for extension in data.get("capabilities", {}).get("extensions", []):
+            if extension.get("uri") == X_CONSTRUCTION_EXTENSION_URI:
+                extension["params"] = params
+    return data
+
+
 class A2AServer:
     """Reusable FastAPI application implementing the A2A protocol.
 
@@ -723,13 +757,10 @@ class A2AServer:
     # ------------------------------------------------------------------
 
     async def _serve_agent_card(self, request: Request) -> JSONResponse:
-        card = self.agent_card.model_dump(mode="json", by_alias=True, exclude_none=True)
-        if not card.get("url"):
-            # A2A clients connect to the card's url; an empty one makes the
-            # agent unreachable through standard clients. Fall back to the
-            # address this request reached.
-            card["url"] = str(request.base_url).rstrip("/")
-        return JSONResponse(card)
+        # A2A clients connect to the card's url; an empty one makes the agent
+        # unreachable through standard clients. Fall back to the address this
+        # request reached.
+        return JSONResponse(_advertised_card(self.agent_card, str(request.base_url).rstrip("/")))
 
     # ------------------------------------------------------------------
     # A2A SDK card sync

@@ -11,6 +11,13 @@ been dated yet) as that version's GitHub release notes.
 
 ## [Unreleased]
 
+### Added
+- **The agent card advertises A2A v1.** `A2AServer` serves its card with `supportedInterfaces` listing A2A `1.0` and `0.3` at the card's URL, and `protocolVersion: "0.3.0"`. The server has answered both versions on the same endpoint since 0.3.7; now clients can tell. a2a-sdk's own client switches to v1 (`SendMessage` with `A2A-Version: 1.0`) when it reads the card, and v0.3 clients, `TacoClient` included, keep using `url` and `message/send`. A card that sets `supportedInterfaces` or `protocolVersion` itself keeps its own values. This is step 2 of [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format).
+- **`x-construction` for v1 readers.** A v1 card parser drops the inline `x-construction` fields, so the extension declaration in `capabilities.extensions[]` now carries them in its `params`, with each skill's block under `params.skills` by skill id. The server builds `params` from the inline fields each time it serves the card, so the two always match. The declaration is now added to every served card that has `x-construction`, not only to cards built with `ConstructionAgentCard`.
+
+### Changed
+- **TACO reads cards written for A2A v1 alone.** `AgentCard` (and so `TacoClient.discover`, `AgentRegistry` and `TacoAgent` peer discovery) takes a missing `url` from the first JSON-RPC entry in `supportedInterfaces`, and missing inline `x-construction` fields from the extension's `params`. Inline fields win when both are present. `taco inspect` does the same and shows the A2A versions a card advertises.
+
 ### CI
 - A wire-parity suite (`sdk/tests/test_wire_parity.py`) runs every end-to-end scenario over both A2A v0.3 and v1: send, stream, get, cancel, push configs and delivery, bearer auth with task and project scopes, monitor tracing, error messages and whole-number handling. It also checks that a2a-sdk's own client completes a TACO task in either version. This is the first step of [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format).
 - A release is cut only when the package itself changes (`sdk/taco/`, `sdk/pyproject.toml`, `sdk/README.md`), no longer on test- or docs-only changes under `sdk/`.
