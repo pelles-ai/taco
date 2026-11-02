@@ -8,7 +8,7 @@ import pytest
 from taco._compat import extract_structured_data
 from taco.client import RpcError, TacoClient, TacoClientError
 from taco.server import A2AServer
-from taco.types import AgentCard
+from taco.types import X_CONSTRUCTION_EXTENSION_URI, AgentCard
 
 
 @pytest.fixture()
@@ -299,6 +299,26 @@ class TestReferenceTaskIds:
         sent_msg = captured[0]["params"]["message"]
         assert sent_msg["referenceTaskIds"] == ["t-orig"]
 
+    async def test_handler_sees_the_referenced_task_ids(self):
+        from taco._compat import make_artifact, make_data_part
+
+        server = A2AServer(AgentCard(name="Ref", description="x", url="http://test", skills=[]))
+        seen: list[list[str] | None] = []
+
+        async def handler(task, input_data):
+            seen.append(task.history[-1].reference_task_ids)
+            return make_artifact(parts=[make_data_part({"ok": True})])
+
+        server.register_handler("rfi-generation", handler)
+        http_client = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=server.app), base_url="http://test"
+        )
+        async with TacoClient(agent_url="http://test", http_client=http_client) as client:
+            await client.send_message("rfi-generation", {}, reference_task_ids=["t-1", "t-2"])
+            await client.send_message("rfi-generation", {})
+        assert seen[0] == ["t-1", "t-2"]
+        assert not seen[1]
+
 
 class TestCancelTask:
     async def test_cancel_completed_task_raises(self, test_client: TacoClient):
@@ -478,3 +498,47 @@ class TestProtocolHeaders:
             )
 
         assert captured[0].headers.get("a2a-version") == "0.4-experimental"
+
+
+class TestExtensionHeaders:
+    """Every request asks the peer to activate the x-construction extension."""
+
+    async def _capture(self, **kwargs) -> httpx.Headers:
+        captured: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured.append(request)
+            return httpx.Response(200, json={"jsonrpc": "2.0", "id": "1", "result": {}})
+
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        async with TacoClient(agent_url="http://test", http_client=http_client, **kwargs) as c:
+            await c._rpc_call("message/send", {})
+        return captured[0].headers
+
+    async def test_both_header_names_carry_the_extension_uri(self):
+        headers = await self._capture()
+        assert headers["a2a-extensions"] == X_CONSTRUCTION_EXTENSION_URI
+        assert headers["x-a2a-extensions"] == X_CONSTRUCTION_EXTENSION_URI
+
+    async def test_caller_extensions_are_added_not_substituted(self):
+        headers = await self._capture(headers={"a2a-extensions": "urn:acme:ext, urn:acme:two"})
+        expected = f"{X_CONSTRUCTION_EXTENSION_URI}, urn:acme:ext, urn:acme:two"
+        assert headers.get_list("a2a-extensions") == [expected]
+        assert headers.get_list("x-a2a-extensions") == [expected]
+
+    async def test_server_sees_the_requested_extension(self):
+        server = A2AServer(AgentCard(name="Ext", description="x", url="http://test", skills=[]))
+        seen: list[set[str]] = []
+        execute = server._executor.execute
+
+        async def spy(context, event_queue):
+            seen.append(set(context.requested_extensions))
+            await execute(context, event_queue)
+
+        server._executor.execute = spy  # type: ignore[method-assign]
+        http_client = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=server.app), base_url="http://test"
+        )
+        async with TacoClient(agent_url="http://test", http_client=http_client) as client:
+            await client.send_message("estimate", {"x": 1})
+        assert seen == [{X_CONSTRUCTION_EXTENSION_URI}]
