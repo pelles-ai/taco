@@ -1,8 +1,9 @@
 name: Bump version and publish
 
-# A release is cut only when something under sdk/ changes on main, and only
-# after the full test suite passes on that commit. Website-, docs- and
-# example-only merges no longer publish a new PyPI version.
+# A release is cut only when something that ships in the package changes on
+# main (the code, its metadata, or the README that becomes the PyPI page), and
+# only after the full test suite passes on that commit. Test-, docs-, website-
+# and example-only merges do not publish a new version.
 #
 # The publish job must stay in this file: PyPI trusted publishing is bound
 # to this workflow's filename and the `pypi` environment.
@@ -10,7 +11,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "sdk/**"
+      - "sdk/taco/**"
+      - "sdk/pyproject.toml"
+      - "sdk/README.md"
   workflow_dispatch:
     inputs:
       dry_run:
