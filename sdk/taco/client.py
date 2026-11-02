@@ -16,7 +16,14 @@ except ImportError:
     ) from None
 
 from ._compat import make_data_part, make_message, restore_integers
-from .types import AgentCard, DataPart, Message, PushNotificationConfig, Task
+from .types import (
+    X_CONSTRUCTION_EXTENSION_URI,
+    AgentCard,
+    DataPart,
+    Message,
+    PushNotificationConfig,
+    Task,
+)
 
 _log = logging.getLogger("taco.client")
 
@@ -25,12 +32,33 @@ _log = logging.getLogger("taco.client")
 # this header explicitly; v0.3 servers ignore it harmlessly).
 A2A_PROTOCOL_VERSION = "0.3"
 
+# Every request asks the peer to activate TACO's x-construction extension.
+# A2A v1 names the header ``A2A-Extensions``; v0.3 named it
+# ``X-A2A-Extensions``. This client speaks v0.3, so it sends both, as the
+# a2a-sdk client does.
+EXTENSION_HEADERS = ("A2A-Extensions", "X-A2A-Extensions")
+
+
+def _extension_uris(value: str) -> list[str]:
+    return [uri.strip() for uri in value.split(",") if uri.strip()]
+
 
 def _merge_protocol_headers(headers: dict[str, str] | None) -> dict[str, str]:
-    """Add A2A-Version to caller headers without clobbering an explicit override."""
+    """Add the protocol headers to caller headers.
+
+    A caller's ``A2A-Version`` wins. Extension URIs a caller lists in
+    either extensions header are added to ``x-construction``, not
+    substituted for it.
+    """
     merged: dict[str, str] = {"A2A-Version": A2A_PROTOCOL_VERSION}
-    if headers:
-        merged.update(headers)
+    uris = [X_CONSTRUCTION_EXTENSION_URI]
+    for name, value in (headers or {}).items():
+        if name.lower() in {h.lower() for h in EXTENSION_HEADERS}:
+            uris += [uri for uri in _extension_uris(value) if uri not in uris]
+        else:
+            merged[name] = value
+    for name in EXTENSION_HEADERS:
+        merged[name] = ", ".join(uris)
     return merged
 
 

@@ -17,7 +17,7 @@ Call another TACO agent over A2A. Async HTTP, JSON-RPC and streaming, push notif
 ## `TacoClient`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L74)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L102)
 
 Async client for sending tasks to a TACO-compatible agent.
 
@@ -165,7 +165,7 @@ Each yielded dict has ``event`` (str) and ``data`` (parsed JSON).
 ## `TacoClientError`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L37)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L65)
 
 Base exception for TACO client errors.
 
@@ -179,7 +179,7 @@ TacoClientError(*args)
 ## `RpcError`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L41)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L69)
 
 *Extends:* `TacoClientError`
 
@@ -195,7 +195,7 @@ RpcError(code: 'int', message: 'str', data: 'Any' = None) -> 'None'
 ## `MessageReplyError`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L51)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L79)
 
 *Extends:* `TacoClientError`
 

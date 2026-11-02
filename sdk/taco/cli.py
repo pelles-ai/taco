@@ -17,13 +17,14 @@ import sys
 import uuid
 
 from . import __version__
-from .client import A2A_PROTOCOL_VERSION
+from .client import A2A_PROTOCOL_VERSION, _merge_protocol_headers
 
 _PROTOCOL_HEADERS = {"A2A-Version": A2A_PROTOCOL_VERSION}
 
 
 def _auth_headers(args: argparse.Namespace, version: str = A2A_PROTOCOL_VERSION) -> dict:
-    headers = {"A2A-Version": version}
+    """Headers for a JSON-RPC call: protocol version, extensions, token."""
+    headers = _merge_protocol_headers({"A2A-Version": version})
     if getattr(args, "token", None):
         headers["Authorization"] = f"Bearer {args.token}"
     return headers

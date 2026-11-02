@@ -351,6 +351,15 @@ class TestSendExitCodeAndAuth:
         )
         assert call[1]["headers"]["Authorization"] == "Bearer abc123"
 
+    def test_send_asks_for_the_x_construction_extension(self):
+        from taco import X_CONSTRUCTION_EXTENSION_URI
+
+        _, call = self._run_send({"result": {"status": {"state": "completed"}}})
+        headers = call[1]["headers"]
+        assert headers["A2A-Version"] == "0.3"
+        assert headers["A2A-Extensions"] == X_CONSTRUCTION_EXTENSION_URI
+        assert headers["X-A2A-Extensions"] == X_CONSTRUCTION_EXTENSION_URI
+
     def test_message_ids_are_unique(self):
         _, first = self._run_send({"result": {"status": {"state": "completed"}}})
         _, second = self._run_send({"result": {"status": {"state": "completed"}}})

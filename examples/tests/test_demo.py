@@ -98,6 +98,26 @@ def test_llm_failures_fail_the_task_with_a_safe_message(demo, http, mode, expect
     assert "SECRET-BODY-DETAIL" not in resp.text
 
 
+def test_rfi_revision_references_the_earlier_task(demo, http):
+    first = send(http, demo, RFI_AGENT, "rfi-generation", bom("PRJ-RFI-REV")).json()["result"]
+    assert first["status"]["state"] == "completed"
+    assert "supersedes" not in first["artifacts"][0]["metadata"]
+
+    body = {
+        "agentUrl": RFI_AGENT,
+        "taskType": "rfi-generation",
+        "inputData": bom("PRJ-RFI-REV"),
+        "referenceTaskIds": [first["id"]],
+    }
+    revised = http.post(f"{demo}/api/send-task", json=body).json()["result"]
+    assert revised["status"]["state"] == "completed"
+    assert revised["artifacts"][0]["metadata"]["supersedes"] == [first["id"]]
+
+    for bad in ("not-a-list", [], [""], [1]):
+        resp = http.post(f"{demo}/api/send-task", json={**body, "referenceTaskIds": bad})
+        assert resp.status_code == 400
+
+
 def test_pipeline_reports_real_task_states(demo, http):
     ok = http.post(f"{demo}/api/run-pipeline", json={"inputData": bom("PRJ-PIPE")}).json()
     assert [s["status"] for s in ok["pipeline"]] == ["completed"] * 3

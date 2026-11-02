@@ -1,0 +1,42 @@
+name: Changelog
+
+# A pull request that changes what ships in the SDK (sdk/taco/ or
+# sdk/pyproject.toml) must add a CHANGELOG.md entry: it becomes the release
+# notes for the version that change publishes. Dependabot's pull requests
+# are exempt; label a pull request `skip-changelog` when an entry would say
+# nothing useful.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    if: >-
+      github.event.pull_request.user.login != 'dependabot[bot]'
+      && !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: SDK changes need a CHANGELOG.md entry
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          if ! grep -qE '^(sdk/taco/|sdk/pyproject\.toml$)' <<< "$changed"; then
+            echo "No SDK changes; no changelog entry needed."
+            exit 0
+          fi
+          if grep -qx 'CHANGELOG.md' <<< "$changed"; then
+            echo "CHANGELOG.md is updated."
+            exit 0
+          fi
+          echo "::error file=CHANGELOG.md::This pull request changes the SDK but not CHANGELOG.md. Add an entry under [Unreleased], or label the pull request skip-changelog."
+          exit 1

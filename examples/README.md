@@ -158,6 +158,21 @@ curl -X POST http://localhost:8000/api/run-pipeline \
   -d '{}'
 ```
 
+## Demo: Revising RFIs
+
+When the BOM changes, run RFI generation again and link the new task to the earlier one with A2A `referenceTaskIds`. `POST /api/send-task` passes them through:
+
+```json
+{
+  "agentUrl": "http://localhost:8003",
+  "taskType": "rfi-generation",
+  "inputData": {"projectId": "...", "lineItems": []},
+  "referenceTaskIds": ["<id of the earlier rfi-generation task>"]
+}
+```
+
+The RFI agent reads the ids from the incoming message (`task.history[-1].reference_task_ids` in a TACO handler) and marks its new RFI set as replacing the earlier one: the artifact's metadata carries `"supersedes": ["<earlier task id>"]`.
+
 ## Demo: Agent-to-Agent Communication
 
 The estimating agent can fetch real supplier pricing from the supplier quote agent before generating its estimate. Set the `SUPPLIER_AGENT_URL` environment variable:

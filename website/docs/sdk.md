@@ -312,6 +312,8 @@ async with TacoClient(agent_url="http://localhost:8001") as client:
 
 The client is an async context manager. If you create it without `async with`, call `await client.close()` when done.
 
+Every request carries `A2A-Version: 0.3` and asks the agent to activate TACO's `x-construction` extension with `A2A-Extensions` (and its v0.3 name, `X-A2A-Extensions`). Extension URIs you list in `headers` are added to it rather than replacing it.
+
 ### Methods
 
 #### `discover() → AgentCard`
