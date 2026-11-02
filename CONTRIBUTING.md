@@ -63,7 +63,7 @@ Examples:
 - [ ] `make check-all` passes
 - [ ] Tests added for new functionality
 - [ ] All imports use `taco.types` / `taco._compat`
-- [ ] CHANGELOG.md updated if user-facing
+- [ ] CHANGELOG.md updated if user-facing. CI requires an entry under **[Unreleased]** when `sdk/taco/` or `sdk/pyproject.toml` changes, because that section becomes the GitHub release notes for the version the merge publishes. Label the pull request `skip-changelog` if an entry would say nothing useful.
 
 ---
 
