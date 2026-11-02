@@ -29,6 +29,16 @@ updates:
     commit-message:
       prefix: sdk
 
+  # The sandbox demo's base image (examples/Dockerfile).
+  - package-ecosystem: docker
+    directory: /examples
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: examples
+
   - package-ecosystem: npm
     directory: /website
     schedule:
