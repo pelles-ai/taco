@@ -53,7 +53,7 @@ from a2a.compat.v0_3.types import (  # noqa: F401 — re-exports
     TextPart,
 )
 from a2a.server.tasks import InMemoryTaskStore, TaskStore  # noqa: F401 — re-export
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # v1.0 migration: TACO is on a2a-sdk >=1.1.1 via the v0_3 compat layer.
@@ -305,6 +305,11 @@ class AgentCard(A2ABaseModel):
         # taco.DeviceCodeOAuthFlow, ...) may appear anywhere in the mapping.
         return _models_to_json(value)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _read_v1_card(cls, data: Any) -> Any:
+        return with_v03_card_fields(data) if isinstance(data, dict) else data
+
 
 # ---------------------------------------------------------------------------
 # Helper functions for extracting x-construction from cards/skills
@@ -337,6 +342,90 @@ _X_CONSTRUCTION_EXTENSION_DESCRIPTION = (
     "TACO construction-domain agent metadata: trade, CSI divisions, project "
     "types, certifications, data formats, integrations, security."
 )
+
+
+#: A2A protocol versions a TACO server answers on its JSON-RPC endpoint, in
+#: the order its card lists them (clients pick the first they support).
+SERVED_PROTOCOL_VERSIONS = ("1.0", "0.3")
+
+
+def construction_extension_params(card: AgentCard) -> dict[str, Any] | None:
+    """``x-construction`` as A2A v1 readers see it (ADR-0010).
+
+    A v1 card parser keeps the ``x-construction`` extension declaration in
+    ``capabilities.extensions[]`` but drops the inline ``x-construction``
+    fields. Its ``params`` therefore carry the same object as the card's
+    inline field, plus ``skills``: each skill's ``x-construction`` by skill
+    id. ``None`` when the card has no ``x-construction``.
+    """
+    if card.x_construction is None:
+        return None
+    params: dict[str, Any] = card.x_construction.model_dump(
+        mode="json", by_alias=True, exclude_none=True
+    )
+    skills = {
+        skill.id: skill.x_construction.model_dump(mode="json", by_alias=True, exclude_none=True)
+        for skill in card.skills
+        if skill.x_construction is not None
+    }
+    if skills:
+        params["skills"] = skills
+    return params
+
+
+def _extension_params(data: dict[str, Any]) -> dict[str, Any] | None:
+    capabilities = data.get("capabilities")
+    extensions = (
+        capabilities.get("extensions")
+        if isinstance(capabilities, dict)
+        else getattr(capabilities, "extensions", None)
+    )
+    for extension in extensions or []:
+        uri = extension.get("uri") if isinstance(extension, dict) else extension.uri
+        if uri == X_CONSTRUCTION_EXTENSION_URI:
+            params = extension.get("params") if isinstance(extension, dict) else extension.params
+            return params if isinstance(params, dict) else None
+    return None
+
+
+def with_v03_card_fields(data: dict[str, Any]) -> dict[str, Any]:
+    """Fill a card's v0.3 fields from its A2A v1 ones, when they are missing.
+
+    A card written for A2A v1 alone has no top-level ``url`` (only
+    ``supportedInterfaces``) and no inline ``x-construction`` (only the
+    extension declaration's ``params``). This copies the first JSON-RPC
+    interface's URL to ``url`` and the ``params`` to the inline
+    ``x-construction`` fields of the card and its skills, so TACO's readers
+    treat v1-only and dual cards alike. Fields already present win.
+    """
+    data = dict(data)
+    if not data.get("url"):
+        for interface in data.get("supportedInterfaces") or []:
+            if (
+                isinstance(interface, dict)
+                and interface.get("url")
+                and interface.get("protocolBinding", "JSONRPC") == "JSONRPC"
+            ):
+                data["url"] = interface["url"]
+                break
+
+    params = _extension_params(data)
+    if not params:
+        return data
+    if data.get("x-construction") is None and data.get("x_construction") is None:
+        data["x-construction"] = {k: v for k, v in params.items() if k != "skills"}
+    skill_params = params.get("skills")
+    if isinstance(skill_params, dict) and isinstance(data.get("skills"), list):
+        data["skills"] = [
+            {**skill, "x-construction": skill_params[skill["id"]]}
+            if isinstance(skill, dict)
+            and skill.get("id") in skill_params
+            and skill.get("x-construction") is None
+            and skill.get("x_construction") is None
+            else skill
+            for skill in data["skills"]
+        ]
+    return data
 
 
 def apply_construction_extension_declaration(card: AgentCard) -> AgentCard:

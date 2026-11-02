@@ -1,9 +1,9 @@
 """Wire parity: every scenario runs once over A2A v0.3 and once over v1.
 
 ADR-0010 moves TACO to the v1 wire format by negotiation: a TACO server
-answers both dialects on the same endpoint, and the handler-facing API does
-not change. These tests pin that down before anything advertises v1, so the
-two dialects are known to behave the same.
+answers both dialects on the same endpoint, advertises both on its card, and
+the handler-facing API does not change. These tests pin down that the two
+dialects behave the same.
 """
 
 from __future__ import annotations
@@ -360,12 +360,12 @@ class TestDialectMismatch:
 class TestStockA2AClient:
     """a2a-sdk's own client completes a TACO task in either dialect.
 
-    With the card TACO serves today it falls back to v0.3. Given a card that
-    also lists a v1 interface, it switches to v1, which is what TACO servers
-    will advertise under ADR-0010.
+    The card a TACO server serves lists a v1 interface, so the client speaks
+    v1. Given a card without one (as served before ADR-0010), it falls back to
+    v0.3.
     """
 
-    async def _run(self, add_v1_interface: bool) -> tuple[list[tuple[str | None, str]], dict]:
+    async def _run(self, legacy_card: bool) -> tuple[list[tuple[str | None, str]], dict]:
         import json
 
         from a2a.client import ClientConfig, ClientFactory
@@ -388,11 +388,8 @@ class TestStockA2AClient:
             event_hooks={"request": [record]},
         ) as http:
             card = (await http.get("/.well-known/agent-card.json")).json()
-            if add_v1_interface:
-                card["supportedInterfaces"] = [
-                    {"url": card["url"], "protocolBinding": "JSONRPC", "protocolVersion": v}
-                    for v in ("1.0", "0.3")
-                ]
+            if legacy_card:
+                del card["supportedInterfaces"], card["protocolVersion"]
             client = ClientFactory(ClientConfig(httpx_client=http, streaming=False)).create(
                 parse_agent_card(card)
             )
@@ -410,14 +407,14 @@ class TestStockA2AClient:
         result = MessageToDict(first)
         return sent, result.get("task", result)
 
-    async def test_card_as_served_uses_v03(self):
-        sent, task = await self._run(add_v1_interface=False)
-        assert sent == [("0.3", "message/send")]
+    async def test_card_as_served_uses_v1(self):
+        sent, task = await self._run(legacy_card=False)
+        assert sent == [("1.0", "SendMessage")]
         assert task["status"]["state"] == "TASK_STATE_COMPLETED"
         assert task["artifacts"][0]["parts"][0]["data"]["total"] == 120
 
-    async def test_card_listing_v1_uses_v1(self):
-        sent, task = await self._run(add_v1_interface=True)
-        assert sent == [("1.0", "SendMessage")]
+    async def test_legacy_card_uses_v03(self):
+        sent, task = await self._run(legacy_card=True)
+        assert sent == [("0.3", "message/send")]
         assert task["status"]["state"] == "TASK_STATE_COMPLETED"
         assert task["artifacts"][0]["parts"][0]["data"]["total"] == 120

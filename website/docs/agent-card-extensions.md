@@ -98,6 +98,40 @@ card = ConstructionAgentCard(
 )
 ```
 
+## A2A v1 readers
+
+A card served by `A2AServer` advertises both A2A versions its endpoint answers, and repeats `x-construction` in the extension declaration's `params`, with each skill's block under `skills`:
+
+```json
+{
+  "url": "https://api.buildright.io/a2a",
+  "protocolVersion": "0.3.0",
+  "supportedInterfaces": [
+    {"url": "https://api.buildright.io/a2a", "protocolBinding": "JSONRPC", "protocolVersion": "1.0"},
+    {"url": "https://api.buildright.io/a2a", "protocolBinding": "JSONRPC", "protocolVersion": "0.3"}
+  ],
+  "capabilities": {
+    "extensions": [
+      {
+        "uri": "https://taco.construction/extensions/x-construction/v1",
+        "required": false,
+        "params": {
+          "trade": "mechanical",
+          "csiDivisions": ["22", "23"],
+          "skills": {
+            "generate-estimate": {"taskType": "estimate", "inputSchema": "bom-v1", "outputSchema": "estimate-v1"}
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+A2A v0.3 clients use `url` and the inline `x-construction` fields. A2A v1 clients pick the `1.0` interface and read `params`, because a v1 card parser drops the inline fields. The server builds `params` from the inline fields each time it serves the card, so you set the fields once, as above, and the two never disagree.
+
+TACO's readers (`TacoClient.discover`, `AgentRegistry`, `taco inspect`) use the inline fields first and fall back to `params`, so they also understand cards written for A2A v1 alone. See [SPEC-001 §2.3 and §4.2](./spec/SPEC-001-agent-cards) and [ADR-0010](./decisions/negotiate-v1-wire-format).
+
 ## Discovery Queries
 
 Orchestrators find agents by these extension fields. In the reference SDK, discovery is the in-process [`AgentRegistry`](/docs/sdk-reference/registry): you register the agents you know about, then filter them with `find()`:

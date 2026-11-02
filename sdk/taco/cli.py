@@ -18,6 +18,7 @@ import uuid
 
 from . import __version__
 from .client import A2A_PROTOCOL_VERSION, _merge_protocol_headers
+from .types import with_v03_card_fields
 
 _PROTOCOL_HEADERS = {"A2A-Version": A2A_PROTOCOL_VERSION}
 
@@ -68,16 +69,32 @@ def _cmd_discover(args: argparse.Namespace) -> None:
     print(json.dumps(resp.json(), indent=2))
 
 
+def _protocol_versions(card: dict) -> str:
+    """The A2A versions a card advertises, e.g. ``1.0, 0.3``."""
+    versions = [
+        str(interface["protocolVersion"])
+        for interface in card.get("supportedInterfaces") or []
+        if isinstance(interface, dict) and interface.get("protocolVersion")
+    ]
+    if versions:
+        return ", ".join(dict.fromkeys(versions))
+    # A card without supportedInterfaces is a v0.3 card.
+    return str(card.get("protocolVersion") or "0.3")
+
+
 def _cmd_inspect(args: argparse.Namespace) -> None:
     httpx = _get_http_client()
     url = args.url.rstrip("/")
     resp = _fetch_agent_card(httpx, url, args.timeout)
-    card = resp.json()
+    # Cards written for A2A v1 alone carry x-construction only in the
+    # extension's params; read them like v0.3 cards.
+    card = with_v03_card_fields(resp.json())
 
     print(f"Agent: {card.get('name', 'Unknown')}")
     print(f"Description: {card.get('description', 'N/A')}")
     print(f"URL: {card.get('url', 'N/A')}")
     print(f"Version: {card.get('version', 'N/A')}")
+    print(f"A2A versions: {_protocol_versions(card)}")
 
     xc = card.get("x-construction")
     if xc:

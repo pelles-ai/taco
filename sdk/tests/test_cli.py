@@ -99,6 +99,50 @@ class TestInspectCommand:
         assert "Test Agent" in captured.out
         assert "mechanical" in captured.out
         assert "Estimate" in captured.out
+        assert "A2A versions: 0.3" in captured.out
+
+    @patch("taco.cli._get_http_client")
+    def test_inspect_reads_a_v1_only_card(self, mock_get_client, capsys):
+        """x-construction in the extension's params, no url or inline fields."""
+        mock_httpx = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "name": "V1 Agent",
+            "description": "Speaks A2A v1 only",
+            "version": "2.0.0",
+            "supportedInterfaces": [
+                {
+                    "url": "https://v1.example/rpc",
+                    "protocolBinding": "JSONRPC",
+                    "protocolVersion": "1.0",
+                }
+            ],
+            "capabilities": {
+                "extensions": [
+                    {
+                        "uri": "https://taco.construction/extensions/x-construction/v1",
+                        "params": {
+                            "trade": "electrical",
+                            "csiDivisions": ["26"],
+                            "skills": {
+                                "est": {"taskType": "estimate", "outputSchema": "estimate-v1"}
+                            },
+                        },
+                    }
+                ]
+            },
+            "skills": [{"id": "est", "name": "Estimate", "description": "Estimate"}],
+        }
+        mock_httpx.get.return_value = mock_resp
+        mock_get_client.return_value = mock_httpx
+
+        main(["inspect", "http://localhost:8001"])
+        out = capsys.readouterr().out
+        assert "URL: https://v1.example/rpc" in out
+        assert "A2A versions: 1.0" in out
+        assert "Trade: electrical" in out
+        assert "CSI Divisions: 26" in out
+        assert "Task Type: estimate" in out
 
 
 class TestHealthCommand:

@@ -8,7 +8,7 @@ sidebar_position: 1
 
 **Status:** Provisional
 **Version:** 0.3
-**Date:** 2026-05-25
+**Date:** 2026-11-02
 
 ## 1. Introduction
 
@@ -36,6 +36,25 @@ The response **SHALL**:
 
 The well-known path **SHALL** be reachable without authentication. Agent identity discovery is intentionally public.
 
+### 2.3 Protocol versions
+
+An Agent Card **SHOULD** list each A2A protocol version its endpoint answers in `supportedInterfaces`, so clients can pick one ([ADR-0010](../decisions/negotiate-v1-wire-format)). A card that lists A2A v1 **SHALL** keep the v0.3 `url` field, so v0.3 clients can still reach the agent. A card without `supportedInterfaces` is read as an A2A v0.3 card.
+
+The reference SDK's `A2AServer` answers both versions on one JSON-RPC endpoint and serves:
+
+```json
+{
+  "url": "https://api.buildright.io/a2a",
+  "protocolVersion": "0.3.0",
+  "supportedInterfaces": [
+    {"url": "https://api.buildright.io/a2a", "protocolBinding": "JSONRPC", "protocolVersion": "1.0"},
+    {"url": "https://api.buildright.io/a2a", "protocolBinding": "JSONRPC", "protocolVersion": "0.3"}
+  ]
+}
+```
+
+A card that sets `supportedInterfaces` or `protocolVersion` itself is served with its own value. The reference SDK's readers accept a card written for A2A v1 alone, which has no top-level `url`, by taking the URL of its first JSON-RPC interface.
+
 ### 2.2 CORS
 
 The well-known path **SHOULD** permit cross-origin requests via an appropriate `Access-Control-Allow-Origin` header when the card is meant to be read from browser contexts. The reference SDK adds no CORS headers unless `cors_origins` is passed to `A2AServer` / `TacoAgent`. The browser-based [conformance check](/conformance) ([SPEC-005 §5](./SPEC-005-conformance)) depends on this to check a card from its URL.
@@ -57,6 +76,7 @@ A TACO-compliant Agent Card **SHOULD** contain:
 | Field | Type | Notes |
 |------|------|-------|
 | `capabilities` | object | A2A capabilities object including extension declarations (see §4.2) |
+| `supportedInterfaces` | array | The A2A protocol versions and bindings the agent serves (see §2.3) |
 
 ## 4. The `x-construction` extension
 
@@ -81,11 +101,23 @@ The Agent Card **SHALL** include a top-level `x-construction` object containing 
 
 The Agent Card **SHOULD** also declare the construction extension in `capabilities.extensions[]`, so A2A v1 clients can detect support without parsing the inline field. The reference SDK's `ConstructionAgentCard.to_a2a()` adds this declaration automatically; `taco.apply_construction_extension_declaration(card)` adds it to a card built another way:
 
+The declaration **SHOULD** carry `params`: the inline `x-construction` object (§5), plus `skills`, an object mapping each skill's `id` to that skill's `x-construction` object (§7). A2A v1 card parsers drop the inline fields, so `params` is how v1 readers learn the agent's trade, CSI divisions and task types:
+
 ```json
 {
   "capabilities": {
     "extensions": [
-      {"uri": "https://taco.construction/extensions/x-construction/v1"}
+      {
+        "uri": "https://taco.construction/extensions/x-construction/v1",
+        "required": false,
+        "params": {
+          "trade": "mechanical",
+          "csiDivisions": ["22", "23"],
+          "skills": {
+            "generate-estimate": {"taskType": "estimate", "inputSchema": "bom-v1", "outputSchema": "estimate-v1"}
+          }
+        }
+      }
     ]
   }
 }
@@ -93,7 +125,9 @@ The Agent Card **SHOULD** also declare the construction extension in `capabiliti
 
 The canonical URI is `https://taco.construction/extensions/x-construction/v1` (see [ADR-0009](../decisions/extension-uri-naming)).
 
-An Agent Card that declares this URI **SHALL** also carry the inline `x-construction` field.
+An Agent Card that declares this URI **SHALL** also carry the inline `x-construction` field. When `params` are present, they **SHALL** match the inline fields. The reference SDK's `A2AServer` generates `params` from the inline fields each time it serves the card.
+
+A reader **SHOULD** use the inline fields when present and fall back to `params`, so it also understands cards written for A2A v1 alone. The reference SDK's client, registry and CLI do this.
 
 ## 5. The `x-construction` field schema
 

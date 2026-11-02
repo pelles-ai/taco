@@ -10,7 +10,7 @@ A2A v1 added `AgentCapabilities.extensions[]` — a formal way for agents to adv
 https://taco.construction/extensions/x-construction/v1
 ```
 
-A TACO agent card carrying the inline `x-construction` field **also** lists this URI under `capabilities.extensions[]`, so A2A v1 clients can discover support via capability negotiation without parsing the inline field:
+A TACO agent card carrying the inline `x-construction` field **also** lists this URI under `capabilities.extensions[]`, so A2A v1 clients can discover support via capability negotiation without parsing the inline field. The declaration's `params` carry the same object as the inline field, plus `skills`: each skill's `x-construction` object, keyed by skill id.
 
 ```json
 {
@@ -20,17 +20,46 @@ A TACO agent card carrying the inline `x-construction` field **also** lists this
       {
         "uri": "https://taco.construction/extensions/x-construction/v1",
         "description": "TACO construction-domain agent metadata: trade, CSI divisions, project types, certifications, data formats, integrations, security.",
-        "required": false
+        "required": false,
+        "params": {
+          "trade": "mechanical",
+          "csiDivisions": ["22", "23"],
+          "skills": {
+            "generate-estimate": {"taskType": "estimate", "inputSchema": "bom-v1", "outputSchema": "estimate-v1"}
+          }
+        }
       }
     ]
   },
-  "x-construction": { "...": "..." }
+  "x-construction": {"trade": "mechanical", "csiDivisions": ["22", "23"]},
+  "skills": [
+    {"id": "generate-estimate", "x-construction": {"taskType": "estimate", "inputSchema": "bom-v1", "outputSchema": "estimate-v1"}}
+  ]
 }
 ```
 
-In Python the constant is exposed as `taco.X_CONSTRUCTION_EXTENSION_URI`, and `taco.apply_construction_extension_declaration(card)` mutates a card so it carries the declaration (idempotent — `ConstructionAgentCard.to_a2a()` calls it automatically).
+A2A v1 card parsers keep the extension declaration but drop the inline `x-construction` fields, so for v1 readers `params` is where the metadata lives. The inline fields stay, with identical content, for v0.3 readers and for readers that ignore `extensions[]`. Readers **SHOULD** use the inline fields when present and fall back to `params`, so cards written for A2A v1 alone are understood too.
 
-The inline `x-construction` field is preserved for back-compatibility with readers that ignore the `extensions[]` array.
+In Python the constant is exposed as `taco.X_CONSTRUCTION_EXTENSION_URI`, and `taco.apply_construction_extension_declaration(card)` mutates a card so it carries the declaration (idempotent — `ConstructionAgentCard.to_a2a()` calls it automatically). `A2AServer` fills `params` from the inline fields each time it serves the card, so they cannot drift apart; set the fields once, on the card model.
+
+## Protocol Versions
+
+A TACO server answers A2A v0.3 and A2A v1 requests on the same JSON-RPC endpoint ([ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format)). Its card lists both in `supportedInterfaces`, `1.0` first, and keeps the v0.3 `url` and `protocolVersion` fields:
+
+```json
+{
+  "url": "https://api.buildright.io/a2a",
+  "protocolVersion": "0.3.0",
+  "supportedInterfaces": [
+    {"url": "https://api.buildright.io/a2a", "protocolBinding": "JSONRPC", "protocolVersion": "1.0"},
+    {"url": "https://api.buildright.io/a2a", "protocolBinding": "JSONRPC", "protocolVersion": "0.3"}
+  ]
+}
+```
+
+A2A v1 clients pick the `1.0` interface and send v1 requests (`SendMessage`, `A2A-Version: 1.0`); v0.3 clients read `url` and send `message/send` as before. A card without `supportedInterfaces` is a v0.3 card. A card written for A2A v1 alone may have no top-level `url`; TACO's readers then use the first JSON-RPC interface's URL.
+
+`A2AServer` adds `supportedInterfaces` and `protocolVersion` when it serves the card, using the card's `url` (or the address the request reached, if `url` is empty). A card that sets either field itself is served with its own value.
 
 ## Top-Level Extension: `x-construction`
 
