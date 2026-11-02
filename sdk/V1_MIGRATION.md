@@ -1,6 +1,6 @@
 # TACO SDK — A2A Protocol v1.0 Migration Guide
 
-> **Status (2026-11-01, taco-agent 0.6.x):** Phases 1 and 2 are done: TACO
+> **Status (2026-11-02, taco-agent 0.6.x):** Phases 1 and 2 are done: TACO
 > runs on `a2a-sdk>=1.1.1,<2` through the v0.3 compat layer. Phase 4 has
 > shipped except JWS-signed Agent Cards. Phase 3 has not started, so the
 > on-the-wire JSON is still v0.3.
@@ -12,13 +12,13 @@
 | 1. Well-known agent card path | Shipped (#25) |
 | 2. This guide | Done |
 | 3. Pin `a2a-sdk<1` | Superseded by step 5 |
-| 4. `A2A-Version` / `A2A-Extensions` headers | `A2A-Version` shipped in 0.3.6; `A2A-Extensions` is not sent |
+| 4. `A2A-Version` / `A2A-Extensions` headers | `A2A-Version` shipped in 0.3.6; `A2A-Extensions` (and the v0.3 `X-A2A-Extensions`) in 0.6.3 |
 | 5. `a2a-sdk` 1.0 compat-layer port | Shipped in 0.3.7; floor raised to 1.1.1 in 0.6.2 so protobuf 6 and 7 work |
 | 6–10. v1 wire format | Not started |
 | 11. `ListTasks` | Shipped in 0.3.8 |
 | 12. JWS-signed Agent Cards | Not started |
 | 13. `x-construction` extension URI | Shipped in 0.3.9 |
-| 14. `referenceTaskIds` | Shipped in 0.3.10 (`send_message`, `send_to_peer`); the sandbox demo's RFI flows don't use it yet |
+| 14. `referenceTaskIds` | Shipped in 0.3.10 (`send_message`, `send_to_peer`); the sandbox demo's RFI agent uses it for revised RFI sets |
 | 15. Multiple push-notification configs | Shipped in 0.3.13; notifications are delivered since 0.5.0 |
 | 16. mTLS, PKCE, device code | Shipped in 0.6.1 |
 | 17. `returnImmediately` | Shipped in 0.3.11 |
@@ -102,7 +102,7 @@ has shipped.
    draft with the accurate post-1.0 migration shape.
 3. **`chore/pin-a2a-sdk-upper-bound`** *(superseded by step 5)* — Pin
    `a2a-sdk>=0.3.25,<1` to block accidental v1 installs before we are ready.
-4. **`feat/send-a2a-version-headers`** *(`A2A-Version` shipped in 0.3.6)* —
+4. **`feat/send-a2a-version-headers`** *(shipped: `A2A-Version` in 0.3.6, `A2A-Extensions` in 0.6.3)* —
    Emit `A2A-Version` (and optional `A2A-Extensions`) request headers from
    `TacoClient` and the CLI.
 
