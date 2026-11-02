@@ -162,6 +162,7 @@ GROUPS: list[GroupSpec] = [
             SymbolSpec("TacoClient", "class"),
             SymbolSpec("TacoClientError", "class"),
             SymbolSpec("RpcError", "class"),
+            SymbolSpec("ProtocolVersionError", "class"),
             SymbolSpec("MessageReplyError", "class"),
         ],
         see_also=[

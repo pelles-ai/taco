@@ -19,7 +19,7 @@ Every public class, function, and constant in `taco-agent`, introspected directl
 | [Agent Cards](./agent-cards) | `ConstructionAgentCard`, `ConstructionSkill`, `AgentCard` + 12 more |
 | [Server](./server) | `A2AServer`, `TacoTaskError`, `enable_monitor` |
 | [Auth](./auth) | `AuthContext`, `TokenVerifier`, `current_auth` + 2 more |
-| [Client](./client) | `TacoClient`, `TacoClientError`, `RpcError` + 1 more |
+| [Client](./client) | `TacoClient`, `TacoClientError`, `RpcError` + 2 more |
 | [Agent (server + client pool)](./agent) | `TacoAgent` |
 | [Registry](./registry) | `AgentRegistry` |
 | [Tasks & Messages](./tasks-and-messages) | `Task`, `TaskStatus`, `TaskState` + 7 more |
