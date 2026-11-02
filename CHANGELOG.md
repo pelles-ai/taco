@@ -2,8 +2,9 @@
 
 All notable changes to the TACO SDK are documented in this file.
 
-A new version is published to PyPI when a change under `sdk/` is merged to
-`main` and the full test suite passes on that commit. New entries go under
+A new version is published to PyPI when a change to the package (`sdk/taco/`,
+`sdk/pyproject.toml` or `sdk/README.md`) is merged to `main` and the full test
+suite passes on that commit. New entries go under
 **[Unreleased]**; each version section lists what first shipped in it. The
 release workflow publishes a version's section (or [Unreleased], if it has not
 been dated yet) as that version's GitHub release notes.
@@ -11,6 +12,7 @@ been dated yet) as that version's GitHub release notes.
 ## [Unreleased]
 
 ### CI
+- A wire-parity suite (`sdk/tests/test_wire_parity.py`) runs every end-to-end scenario over both A2A v0.3 and v1: send, stream, get, cancel, push configs and delivery, bearer auth with task and project scopes, monitor tracing, error messages and whole-number handling. It also checks that a2a-sdk's own client completes a TACO task in either version. This is the first step of [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format).
 - The release workflow can be run by hand as a dry run (`dry_run: true`), which reports the next version without tagging, releasing or publishing. A run from any branch other than `main` is always a dry run. The release and PyPI steps are skipped when no new version is calculated, and the release branch and default patch bump are set explicitly, ahead of the tag action's v7.
 
 ## [0.6.3] — 2026-11-02
