@@ -11,6 +11,8 @@ been dated yet) as that version's GitHub release notes.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-11-02
+
 ### Added
 - **The agent card advertises A2A v1.** `A2AServer` serves its card with `supportedInterfaces` listing A2A `1.0` and `0.3` at the card's URL, and `protocolVersion: "0.3.0"`. The server has answered both versions on the same endpoint since 0.3.7; now clients can tell. a2a-sdk's own client switches to v1 (`SendMessage` with `A2A-Version: 1.0`) when it reads the card, and v0.3 clients, `TacoClient` included, keep using `url` and `message/send`. A card that sets `supportedInterfaces` or `protocolVersion` itself keeps its own values. This is step 2 of [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format).
 - **`x-construction` for v1 readers.** A v1 card parser drops the inline `x-construction` fields, so the extension declaration in `capabilities.extensions[]` now carries them in its `params`, with each skill's block under `params.skills` by skill id. The server builds `params` from the inline fields each time it serves the card, so the two always match. The declaration is now added to every served card that has `x-construction`, not only to cards built with `ConstructionAgentCard`.
