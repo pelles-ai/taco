@@ -104,7 +104,7 @@ Each entry follows the same shape: **what it is**, **how TACO uses it**, **what 
 
 **What it is.** A one-way HTTP streaming format. The W3C standard for server-pushed updates over a single long-lived connection.
 
-**How TACO uses it.** SSE is the transport for `message/stream`. A TACO agent that handles long-running work (a 30-minute takeoff, an iterative bid-leveling pass) streams partial results to its caller as it makes progress: the handler yields `Part`s and the SDK sends each one as a `TaskArtifactUpdateEvent`, followed by a final status update when the task completes.
+**How TACO uses it.** SSE is the transport for `message/stream` (`SendStreamingMessage` in A2A v1). A TACO agent that handles long-running work (a 30-minute takeoff, an iterative bid-leveling pass) streams partial results to its caller as it makes progress: the handler yields `Part`s and the SDK sends each one as a `TaskArtifactUpdateEvent`, followed by a final status update when the task completes.
 
 ---
 

@@ -383,7 +383,7 @@ export const TERMS = [
     audience: 'protocol',
     short:
       'A simple remote-procedure-call protocol over JSON, used as A2A\'s primary message format.',
-    long: 'TACO agents built with the reference SDK speak JSON-RPC at `/` (for example the `message/send` method). You rarely need to construct JSON-RPC by hand if you use `TacoClient`.',
+    long: 'TACO agents built with the reference SDK speak JSON-RPC at `/` (for example the `message/send` method, or `SendMessage` in A2A v1). You rarely need to construct JSON-RPC by hand if you use `TacoClient`.',
   },
   {
     id: 'sse',
@@ -391,7 +391,7 @@ export const TERMS = [
     full: 'Server-Sent Events',
     audience: 'protocol',
     short:
-      'A one-way HTTP streaming format. A2A uses SSE for `message/stream` so callers can watch a task\'s progress as it works.',
+      'A one-way HTTP streaming format. A2A uses SSE for `message/stream` (`SendStreamingMessage` in v1) so callers can watch a task\'s progress as it works.',
     aliases: ['Server-Sent Events'],
   },
   {

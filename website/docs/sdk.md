@@ -82,7 +82,7 @@ server = A2AServer(
 |--------|------|-------------|
 | `GET` | `/.well-known/agent-card.json` | Agent Card (with `x-construction`) |
 | `GET` | `/.well-known/agent.json` | The same card on the legacy path, for older A2A clients |
-| `POST` | `/` | JSON-RPC 2.0 dispatch (`message/send`, `message/stream`, `tasks/get`, `tasks/cancel`, `ListTasks`, `tasks/pushNotificationConfig/*`) |
+| `POST` | `/` | JSON-RPC 2.0 dispatch in A2A v0.3 (`message/send`, `message/stream`, `tasks/get`, `tasks/cancel`, `tasks/pushNotificationConfig/*`) and v1 (`SendMessage`, `SendStreamingMessage`, `GetTask`, `CancelTask`, `ListTasks`, the `*TaskPushNotificationConfig*` methods) |
 | `GET` | `/health` | Health check (status, version, uptime, registered handlers) |
 | `GET` | `/monitor/` | Live tracing UI, when `enable_monitor=True` |
 | `GET`, `POST`, `DELETE` | `/admin/skills` | Skill administration, when `enable_admin=True` |
@@ -156,7 +156,7 @@ async def stream_estimate(task: Task, input_data: dict) -> AsyncIterator[Part]:
 server.register_streaming_handler("estimate", stream_estimate)
 ```
 
-Register streaming handlers after constructing the server, as above; registering one sets `capabilities.streaming` on the served card. Clients receive a `working` task event, then an artifact-update event for each part as it is yielded, via `message/stream`. When the handler finishes, the server sends one more artifact-update, an artifact named `<taskType>-stream-result` that holds all the parts, then a `completed` status update.
+Register streaming handlers after constructing the server, as above; registering one sets `capabilities.streaming` on the served card. Clients receive a `working` task event, then an artifact-update event for each part as it is yielded, via `message/stream` (`SendStreamingMessage` in A2A v1). When the handler finishes, the server sends one more artifact-update, an artifact named `<taskType>-stream-result` that holds all the parts, then a `completed` status update.
 
 When a task type has both a regular and a streaming handler, `message/stream` requests use the streaming handler and `message/send` requests use the regular one. With only a streaming handler, `message/send` runs it and returns the finished task; read the parts from its `<taskType>-stream-result` artifact.
 
@@ -824,7 +824,7 @@ enable_monitor(server=server, client=client, registry=registry, auth_token=os.en
 
 The SDK is in early development. The API surface is subject to change. Current capabilities:
 
-- Full A2A protocol support (message/send, message/stream, tasks/get, tasks/cancel, ListTasks)
+- Full A2A protocol support in v0.3 and v1 on the same endpoint (`message/send` / `SendMessage`, streaming, get, cancel, `ListTasks`, push configs); `TacoClient` speaks either
 - Agent Card discovery at `/.well-known/agent-card.json` (and the legacy `/.well-known/agent.json`)
 - Bearer-token authentication with per-task-type scopes and per-caller task isolation
 - Multi-turn conversations via context IDs

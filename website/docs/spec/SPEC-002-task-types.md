@@ -4,6 +4,9 @@ description: Normative requirements for declaring, dispatching, and naming TACO 
 sidebar_position: 2
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # SPEC-002 — Task Types
 
 **Status:** Provisional
@@ -69,7 +72,10 @@ Task type identifiers **SHOULD**:
 
 ## 4. Dispatch
 
-When a client sends a `message/send` or `message/stream` request, it **SHALL** communicate the task type in the request-level `params.metadata.taskType` field:
+When a client sends a message, in A2A v0.3 (`message/send`, `message/stream`) or v1 (`SendMessage`, `SendStreamingMessage`), it **SHALL** communicate the task type in the request-level `params.metadata.taskType` field. The field is the same in both versions:
+
+<Tabs groupId="a2a-version" queryString>
+<TabItem value="0.3" label="A2A v0.3" default>
 
 ```json
 {
@@ -82,6 +88,26 @@ When a client sends a `message/send` or `message/stream` request, it **SHALL** c
   }
 }
 ```
+
+</TabItem>
+<TabItem value="1.0" label="A2A v1">
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "1",
+  "method": "SendMessage",
+  "params": {
+    "message": { "role": "ROLE_USER", "parts": [ ... ], "messageId": "..." },
+    "metadata": { "taskType": "estimate" }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+An A2A v1 request also carries the `A2A-Version: 1.0` HTTP header.
 
 The reference SDK's `TacoClient` always sets this field. The reference server reads only the request-level field; a `taskType` placed in the inbound message's own `metadata` is not used for dispatch.
 

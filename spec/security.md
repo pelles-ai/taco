@@ -230,7 +230,7 @@ For production deployments:
 1. Choose the auth scheme appropriate for the deployment scenario (see table above).
 2. Declare `securitySchemes` and `security` in the Agent Card using A2A field conventions.
 3. Define TACO scopes for each task type and trade the agent supports; add them to `x-construction.security.scopesOffered`.
-4. Validate incoming bearer tokens on every `message/send` request. Reject with HTTP 401 if no token; HTTP 403 if the token lacks a required scope.
+4. Validate incoming bearer tokens on every task request (`message/send`, or `SendMessage` in A2A v1). Reject with HTTP 401 if no token; HTTP 403 if the token lacks a required scope.
 5. Do not pass received tokens downstream — perform Token Exchange for each agent hop.
 6. If the agent is project-scoped, extract `projectId` from the incoming data payload and verify the token carries a matching `taco:project:{id}` scope.
 7. Submit to the TACO Registry for trust tier elevation after achieving SOC2, ISO27001, or equivalent certification.

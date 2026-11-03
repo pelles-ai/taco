@@ -4,6 +4,9 @@ title: Agent-to-Agent Communication
 description: Connect multiple agents — orchestrators, data agents, estimating agents — using peer discovery and the TACO registry.
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Agent-to-Agent Communication
 
 So far you've built a single agent that accepts tasks from external clients. In real construction workflows, agents need to talk to each other — an orchestrator calls a data agent, an estimating agent fetches supplier quotes, a scheduler checks RFI status.
@@ -194,6 +197,9 @@ The monitor shows every request and response to anyone who can reach the port. B
 
 Send a question to the orchestrator:
 
+<Tabs groupId="a2a-version" queryString>
+<TabItem value="0.3" label="A2A v0.3" default>
+
 ```bash
 curl -X POST http://localhost:9000/ \
   -H "Content-Type: application/json" \
@@ -211,6 +217,31 @@ curl -X POST http://localhost:9000/ \
     }
   }'
 ```
+
+</TabItem>
+<TabItem value="1.0" label="A2A v1">
+
+```bash
+curl -X POST http://localhost:9000/ \
+  -H "Content-Type: application/json" \
+  -H "A2A-Version: 1.0" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": "1",
+    "method": "SendMessage",
+    "params": {
+      "message": {
+        "role": "ROLE_USER",
+        "messageId": "msg-1",
+        "parts": [{"data": {"question": "How many items?"}}]
+      },
+      "metadata": {"taskType": "analyze"}
+    }
+  }'
+```
+
+</TabItem>
+</Tabs>
 
 The orchestrator forwards the question to the data agent and returns a combined result.
 

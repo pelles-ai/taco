@@ -37,7 +37,7 @@ The radio (A2A) and the toolbox (MCP) work whether you are talking about plumbin
 It defines:
 
 - **Agent Cards** — a `/.well-known/agent-card.json` document each agent serves to advertise its name, capabilities, and how to reach it.
-- **JSON-RPC messaging** — `message/send` and `message/stream` for sending tasks.
+- **JSON-RPC messaging** — `message/send` and `message/stream` for sending tasks, or `SendMessage` and `SendStreamingMessage` in A2A v1. TACO agents answer both versions on one endpoint and list both on their card.
 - **Task lifecycle** — `submitted` → `working` → `completed` / `failed` / `canceled` / `rejected`, with `input-required` and `auth-required` as interrupted states where the task waits on the caller.
 - **Streaming** — Server-Sent Events for incremental responses.
 - **Authentication** — five scheme types: `apiKey`, `http`, `oauth2`, `openIdConnect`, `mutualTLS`.

@@ -580,7 +580,7 @@
       <div class="step-tag" style="background:var(--green-dim);color:var(--green)">A2A + TACO</div>
     </div>
     <div class="step-body">
-      The orchestrator sends a <code class="steel">message/send</code> JSON-RPC call with the Bearer token in the HTTP header. The estimating agent validates the token before processing.
+      The orchestrator sends a <code class="steel">message/send</code> JSON-RPC call (<code class="steel">SendMessage</code> in A2A v1) with the Bearer token in the HTTP header. The estimating agent validates the token before processing.
     </div>
     <ul class="check-list">
       <li class="pass">Signature valid (JWKS verification)</li>
