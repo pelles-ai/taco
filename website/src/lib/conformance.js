@@ -27,6 +27,18 @@ function skillLabel(skill, i) {
 }
 
 /** A JSON value that can be an Agent Card: a plain object, not null or a list. */
+/** JSON equality, ignoring object key order. */
+function sameJson(a, b) {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameJson(v, b[i]));
+  }
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((k) => k in b && sameJson(a[k], b[k]));
+  }
+  return a === b;
+}
+
 export function isCardObject(card) {
   return Boolean(card) && typeof card === 'object' && !Array.isArray(card);
 }
@@ -228,6 +240,39 @@ export function checkCard(card, spec) {
     );
   }
 
+  // 3.10 Construction extension parameters
+  const declaration = Array.isArray(extensions)
+    ? extensions.find((e) => e && e.uri === spec.extensionUri)
+    : undefined;
+  if (!declaration || !ext || typeof ext !== 'object') {
+    out.push(result('params', '3.10', 'Extension parameters match', 'required', 'skip',
+      'The card does not both declare the extension and carry inline x-construction, so there is nothing to compare.'));
+  } else if (!isCardObject(declaration.params)) {
+    out.push(
+      result('params', '3.10', 'Extension parameters match', 'required', 'warn',
+        'The extension declaration has no params, so A2A v1 clients, which drop the inline x-construction fields, cannot see the trade, CSI divisions or task types.',
+        'Serve the card with A2AServer from taco-agent 0.7 or later, which fills params from the inline fields.'),
+    );
+  } else {
+    const {skills: paramSkills, ...paramFields} = declaration.params;
+    const mismatched = [];
+    if (!sameJson(paramFields, ext)) mismatched.push('x-construction');
+    const inlineSkills = Object.fromEntries(
+      skills.filter((s) => s && s['x-construction']).map((s) => [s.id, s['x-construction']]),
+    );
+    const listed = isCardObject(paramSkills) ? paramSkills : {};
+    for (const id of new Set([...Object.keys(inlineSkills), ...Object.keys(listed)])) {
+      if (!sameJson(listed[id], inlineSkills[id])) mismatched.push(`skill ${id}`);
+    }
+    out.push(
+      result('params', '3.10', 'Extension parameters match', 'required', mismatched.length ? 'fail' : 'pass',
+        mismatched.length
+          ? `The extension's params disagree with the inline fields for: ${mismatched.join(', ')}. A2A v1 and v0.3 clients would see different metadata.`
+          : 'The extension\'s params match the inline x-construction fields and every skill\'s.',
+        mismatched.length ? 'Generate params from the inline fields rather than writing them by hand; A2AServer does this when it serves the card.' : undefined),
+    );
+  }
+
   // 4.2 / 4.3 Streaming and push notifications (recommended; declared or not)
   const caps = card.capabilities || {};
   out.push(
@@ -239,6 +284,22 @@ export function checkCard(card, spec) {
     result('push', '4.3', 'Push notifications declared', 'recommended', caps.pushNotifications ? 'pass' : 'warn',
       caps.pushNotifications ? 'capabilities.pushNotifications is true.' : 'capabilities.pushNotifications is not true.',
       caps.pushNotifications ? undefined : 'Recommended for long-running tasks: set card.capabilities.push_notifications = True; A2AServer then accepts push subscribers.'),
+  );
+
+  // 4.7 Protocol versions advertised
+  const interfaces = Array.isArray(card.supportedInterfaces) ? card.supportedInterfaces : [];
+  const versions = [...new Set(interfaces.map((i) => i && i.protocolVersion).filter(nonEmptyString))];
+  const v1 = interfaces.some(
+    (i) => i && String(i.protocolVersion || '').split('.')[0] === '1' && (i.protocolBinding || 'JSONRPC') === 'JSONRPC',
+  );
+  out.push(
+    result('protocols', '4.7', 'Protocol versions advertised', 'recommended', v1 ? 'pass' : 'warn',
+      v1
+        ? `supportedInterfaces lists A2A ${versions.join(', ')}.`
+        : interfaces.length
+          ? `supportedInterfaces lists no A2A v1 JSON-RPC interface (${versions.join(', ') || 'no versions'}), so clients speak v0.3.`
+          : 'The card has no supportedInterfaces, so clients read it as A2A v0.3 only.',
+      v1 ? undefined : 'Serve the card with A2AServer from taco-agent 0.7 or later, which lists A2A 1.0 and 0.3 at the card\'s url.'),
   );
 
   return out;

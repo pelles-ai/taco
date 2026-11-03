@@ -171,6 +171,21 @@ jobs:
       - name: Build the SDK wheel
         run: pip wheel --no-deps ./sdk -w dist
 
+      # The conformance page's sample is the card A2AServer serves, so it
+      # shows what a real agent publishes and must pass every required check.
+      - name: Check the sample card is what A2AServer serves
+        working-directory: website
+        run: |
+          pip install "$(ls ../dist/taco_agent-*.whl)[server,client]"
+          python scripts/served-card.py | diff -u src/data/sample-agent-card.json - || {
+            echo "::error file=website/src/data/sample-agent-card.json::Stale. Run: python scripts/served-card.py > src/data/sample-agent-card.json"
+            exit 1
+          }
+
+      - name: Check the conformance checks
+        working-directory: website
+        run: node scripts/check-conformance.mjs
+
       - name: Run the playground examples in Pyodide
         working-directory: website
         run: |

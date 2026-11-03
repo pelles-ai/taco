@@ -14,7 +14,28 @@
       {
         "description": "TACO construction-domain agent metadata: trade, CSI divisions, project types, certifications, data formats, integrations, security.",
         "required": false,
-        "uri": "https://taco.construction/extensions/x-construction/v1"
+        "uri": "https://taco.construction/extensions/x-construction/v1",
+        "params": {
+          "trade": "mechanical",
+          "csiDivisions": [
+            "22",
+            "23"
+          ],
+          "projectTypes": [
+            "healthcare",
+            "commercial"
+          ],
+          "certifications": [],
+          "dataFormats": {},
+          "integrations": [],
+          "skills": {
+            "estimate-mech": {
+              "taskType": "estimate",
+              "inputSchema": "bom-v1",
+              "outputSchema": "estimate-v1"
+            }
+          }
+        }
       }
     ],
     "streaming": false
@@ -47,5 +68,18 @@
     "certifications": [],
     "dataFormats": {},
     "integrations": []
-  }
+  },
+  "protocolVersion": "0.3.0",
+  "supportedInterfaces": [
+    {
+      "url": "https://estimator.example.com",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "https://estimator.example.com",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "0.3"
+    }
+  ]
 }

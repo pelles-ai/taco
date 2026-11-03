@@ -8,7 +8,7 @@ sidebar_position: 5
 
 **Status:** Provisional
 **Version:** 0.3
-**Date:** 2026-05-25
+**Date:** 2026-11-03
 
 ## 1. Introduction
 
@@ -31,7 +31,7 @@ Future revisions of this spec **MAY** add behavioral conformance categories. Thi
 
 ## 3. Required conformance checks
 
-A TACO-compliant agent **SHALL** pass all of the following checks. The [conformance check](/conformance) on the TACO site runs them, and the recommended checks in §4.1–§4.3, against a pasted card or a live URL (see §5). From a terminal, `taco inspect <url>` shows the card fields the checks examine (name, version, URL, `x-construction`, and each skill's task type and schemas), and `taco discover <url>` prints the full card JSON, including `capabilities` and any security declarations.
+A TACO-compliant agent **SHALL** pass all of the following checks. The [conformance check](/conformance) on the TACO site runs them, and the recommended checks in §4.1–§4.3 and §4.7, against a pasted card or a live URL (see §5). From a terminal, `taco inspect <url>` shows the card fields the checks examine (name, version, URL, `x-construction`, and each skill's task type and schemas), and `taco discover <url>` prints the full card JSON, including `capabilities` and any security declarations.
 
 ### 3.1 Agent card reachable
 
@@ -78,6 +78,10 @@ Other bare names **SHALL** be flagged as warnings, per [SPEC-003 §3.2](./SPEC-0
 
 When `security[]` is present, every named scheme **SHALL** have a matching key in `securitySchemes` per [SPEC-004 §2.2](./SPEC-004-security).
 
+### 3.10 Extension parameters match
+
+When the `x-construction` extension declaration carries `params`, they **SHALL** match the inline fields per [SPEC-001 §4.2](./SPEC-001-agent-cards): the declaration's `params`, without `skills`, equal the inline `x-construction` object, and `params.skills` maps exactly the skills that carry `x-construction` to those objects. Key order is not significant. A mismatch **SHALL** be flagged as a failure, since A2A v1 and v0.3 clients would see different metadata. A declaration without `params` **SHALL** be flagged as a warning: A2A v1 clients, which drop the inline fields, cannot see the agent's trade, CSI divisions or task types.
+
 ## 4. Recommended conformance checks
 
 A TACO-compliant agent **SHOULD** pass the following additional checks. Failure of a recommended check is not a conformance failure but is captured in the report.
@@ -88,7 +92,7 @@ A TACO-compliant agent **SHOULD** pass the following additional checks. Failure 
 
 ### 4.2 Streaming support
 
-For skills whose typical response time exceeds 10 seconds, the agent **SHOULD** implement A2A `message/stream` (Server-Sent Events).
+For skills whose typical response time exceeds 10 seconds, the agent **SHOULD** implement A2A streaming (Server-Sent Events): `message/stream` in A2A v0.3, `SendStreamingMessage` in v1.
 
 ### 4.3 Push notification subscribers
 
@@ -106,9 +110,13 @@ The agent **SHOULD** emit OpenTelemetry spans for the request lifecycle, tagged 
 
 The agent **SHOULD** have a publicly accessible documentation page or README describing supported task types, schemas, and authentication model.
 
+### 4.7 Protocol versions advertised
+
+The Agent Card **SHOULD** list the A2A protocol versions its endpoint serves in `supportedInterfaces`, per [SPEC-001 §2.3](./SPEC-001-agent-cards), including an A2A v1 JSON-RPC interface. A card without one is read as an A2A v0.3 card, so v1 clients fall back to v0.3; this **SHALL** be flagged as a warning.
+
 ## 5. The conformance runner
 
-The reference runner is the [conformance check](/conformance) page on the TACO site. It automates the checks in §3 and the recommended checks in §4.1–§4.3; §4.4–§4.6 describe operational behavior that a card cannot show and are not automated. The runner:
+The reference runner is the [conformance check](/conformance) page on the TACO site. It automates the checks in §3 and the recommended checks in §4.1–§4.3 and §4.7; §4.4–§4.6 describe operational behavior that a card cannot show and are not automated. The runner:
 
 - Operates entirely in the visitor's browser (no central service tracks tests)
 - Makes cross-origin fetches to the agent's well-known path and `/health`, or checks a pasted card when the agent is not reachable from a browser
