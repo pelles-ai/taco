@@ -30,7 +30,7 @@ The format follows the [Michael Nygard ADR template](https://github.com/joelpark
 | [0007](./v1-wire-cutover) | Phased A2A v1 wire cutover (polish → compat layer → wire flip, with additive v1 features alongside) | Accepted (in flight) |
 | [0008](./in-browser-playground) | Run the real SDK in the browser for the playground | Accepted |
 | [0009](./extension-uri-naming) | Construction extension URI naming convention | Accepted |
-| [0010](./negotiate-v1-wire-format) | Negotiate the A2A v1 wire format: advertise both versions, keep the Python API (refines 0007, Phase 3) | Proposed |
+| [0010](./negotiate-v1-wire-format) | Negotiate the A2A v1 wire format: advertise both versions, keep the Python API (refines 0007, Phase 3) | Accepted (in flight) |
 
 ## When to write a new ADR
 
