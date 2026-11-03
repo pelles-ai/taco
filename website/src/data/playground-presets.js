@@ -4,7 +4,10 @@
  * Every preset is executed in Pyodide before it ships; keep them runnable.
  */
 
-const DEFINE = `from taco import ConstructionAgentCard, ConstructionSkill
+const DEFINE = `import json
+
+import httpx
+from taco import A2AServer, ConstructionAgentCard, ConstructionSkill
 
 card = ConstructionAgentCard(
     name="Mechanical Estimator",
@@ -25,8 +28,15 @@ card = ConstructionAgentCard(
     ],
 ).to_a2a()
 
-# This is the JSON other agents fetch from /.well-known/agent-card.json
-print(card.model_dump_json(by_alias=True, exclude_none=True, indent=2))
+# Serve it and fetch /.well-known/agent-card.json the way another agent
+# would. A2AServer adds the A2A v1 fields: supportedInterfaces (v1 and v0.3,
+# both answered on one endpoint) and the x-construction extension's params,
+# which is where v1 clients read the trade and task types.
+server = A2AServer(card)
+transport = httpx.ASGITransport(app=server.app)
+async with httpx.AsyncClient(transport=transport, base_url=card.url) as http:
+    served = (await http.get("/.well-known/agent-card.json")).json()
+print(json.dumps(served, indent=2))
 `;
 
 const SERVE = `# A real A2AServer and a real TacoClient, talking over an in-memory
@@ -95,8 +105,10 @@ bom = {
 
 transport = httpx.ASGITransport(app=server.app)
 async with httpx.AsyncClient(transport=transport, base_url="http://estimator") as http:
-    client = TacoClient(agent_url="http://estimator", http_client=http)
+    # "auto" reads the agent card and speaks A2A v1, which TACO agents list.
+    client = TacoClient(agent_url="http://estimator", http_client=http, protocol="auto")
     task = await client.send_message("estimate", bom)
+    print("Spoke A2A", await client.wire_protocol())
 
 print("Task state:", task.status.state.value)
 if task.status.state.value != "completed":
