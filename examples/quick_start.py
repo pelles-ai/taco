@@ -20,6 +20,18 @@ Then:
           "metadata": {"taskType": "echo"}
         }
       }'
+
+    # The same task in A2A v1, which the agent answers on the same endpoint
+    curl -X POST http://localhost:8080/ \\
+      -H "Content-Type: application/json" -H "A2A-Version: 1.0" \\
+      -d '{
+        "jsonrpc": "2.0", "id": "2", "method": "SendMessage",
+        "params": {
+          "message": {"role": "ROLE_USER", "messageId": "msg-2",
+                      "parts": [{"data": {"hello": "TACO"}}]},
+          "metadata": {"taskType": "echo"}
+        }
+      }'
 """
 
 from taco import (

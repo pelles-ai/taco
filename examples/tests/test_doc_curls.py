@@ -67,6 +67,8 @@ def test_documented_curl_works(source, command, demo, quick_start, peer_example)
     if isinstance(data, dict) and "error" in data:
         pytest.fail(f"{source}: JSON-RPC error {data['error']}")
     if isinstance(data, dict) and isinstance(data.get("result"), dict):
-        assert data["result"]["status"]["state"] == "completed", data
+        # An A2A v1 response wraps the task as {"task": ...}.
+        task = data["result"].get("task", data["result"])
+        assert task["status"]["state"] in ("completed", "TASK_STATE_COMPLETED"), data
     if isinstance(data, dict) and "pipeline" in data:
         assert [s["status"] for s in data["pipeline"]] == ["completed"] * 3
