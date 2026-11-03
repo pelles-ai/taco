@@ -14,7 +14,7 @@
 | 3. Pin `a2a-sdk<1` | Superseded by step 5 |
 | 4. `A2A-Version` / `A2A-Extensions` headers | `A2A-Version` shipped in 0.3.6; `A2A-Extensions` (and the v0.3 `X-A2A-Extensions`) in 0.6.3 |
 | 5. `a2a-sdk` 1.0 compat-layer port | Shipped in 0.3.7; floor raised to 1.1.1 in 0.6.2 so protobuf 6 and 7 work |
-| 6–10. v1 wire format | In progress. [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format) (proposed) replaces steps 6–10 with version negotiation. The server answers both versions (since 0.3.7), a parity suite runs every scenario on both, and the card advertises both, with `x-construction` in the extension's `params` (0.7.0). `TacoClient(protocol="0.3" \| "1.0" \| "auto")` speaks either (0.7.1). The docs and spec show v1 requests next to v0.3, and the conformance check covers the v1 card fields. Next: ADR-0010 proposes `"auto"` as the default in 0.8 |
+| 6–10. v1 wire format | In progress. [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format) (accepted) replaces steps 6–10 with version negotiation. The server answers both versions (since 0.3.7), a parity suite runs every scenario on both, and the card advertises both, with `x-construction` in the extension's `params` (0.7.0). `TacoClient(protocol="0.3" \| "1.0" \| "auto")` speaks either (0.7.1). The docs and spec show v1 requests next to v0.3, and the conformance check covers the v1 card fields. Next: ADR-0010 proposes `"auto"` as the default in 0.8 |
 | 11. `ListTasks` | Shipped in 0.3.8 |
 | 12. JWS-signed Agent Cards | Not started |
 | 13. `x-construction` extension URI | Shipped in 0.3.9 |
@@ -131,16 +131,17 @@ has shipped.
    - Verify: `make check-all` green; on-the-wire JSON for agent card,
      `message/send`, `message/stream` byte-identical to current.
 
-### Phase 3 — Native v1.0 adoption (not started)
+### Phase 3 — Native v1.0 adoption (replaced by ADR-0010)
 
 Each of these flips one wire-level concern from v0.3 to v1. Phase 2 has
 landed, so nothing blocks them.
 
-> **Proposed replacement:** [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format)
-> found that a TACO server already answers every v1 method, so it proposes
-> negotiating the wire version instead of flipping TACO's own types: servers
-> advertise both versions in the card, `TacoClient` picks one per agent, and
-> the Python API stays as it is.
+> **Replaced by** [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format)
+> (accepted). A TACO server already answered every v1 method, so the wire
+> version is negotiated instead of flipping TACO's own types: servers
+> advertise both versions in the card (0.7.0), `TacoClient` picks one per
+> agent (0.7.1), and the Python API stays as it is. The steps below are kept
+> for the record and will not be done.
 
 6. **`feat/v1-native-part-constructors`** — Flatten `Part(root=TextPart(...))`
    to `Part(text=...)` in `_compat.py`; update `extract_*` accessors.

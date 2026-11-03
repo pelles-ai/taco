@@ -333,7 +333,7 @@ async with TacoClient(agent_url="http://localhost:8001", protocol="auto") as cli
 
 The results are the same in every mode: methods return the same `taco.types` models (`TaskState.completed`, not `TASK_STATE_COMPLETED`), `run_task()` returns the v0.3-shaped dict, and `stream_message()` yields v0.3-shaped events. `list_tasks()` always speaks v1, because `ListTasks` only exists there. An agent that does not answer the version used raises [`ProtocolVersionError`](#client-errors).
 
-[ADR-0010](./decisions/negotiate-v1-wire-format) proposes making `"auto"` the default in 0.8.
+[ADR-0010](./decisions/negotiate-v1-wire-format) plans to make `"auto"` the default in 0.8.
 
 ### Methods
 

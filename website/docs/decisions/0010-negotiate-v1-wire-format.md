@@ -6,8 +6,8 @@ sidebar_position: 10
 
 # ADR-0010 — Negotiate the A2A v1 wire format
 
-**Status:** Proposed
-**Date:** 2026-11-02
+**Status:** Accepted
+**Date:** 2026-11-02 (proposed), 2026-11-03 (accepted)
 **Refines:** [ADR-0007](./v1-wire-cutover), Phase 3
 
 ## Context
@@ -35,7 +35,7 @@ Before planning that work we probed a TACO server (`taco-agent` 0.6.3, `a2a-sdk`
 - **`TacoClient` only speaks v0.3**, apart from `list_tasks`, which already sends `ListTasks` and converts the v1 result back with `a2a.compat.v0_3.conversions`.
 - **The docs and spec show v0.3 JSON only.** 14 files in the docs, spec and website use `message/send` and 6 use `"kind": "data"`, including the website's conformance check. The sandbox demo has 4 more of each.
 
-## Decision (proposed)
+## Decision
 
 ### 1. The wire version is negotiated; the Python API stays
 
@@ -133,7 +133,7 @@ Simpler code, but v0.3 clients, including every `taco-agent` up to 0.6, would st
 
 ### Keep the card v0.3-only until 1.0
 
-The lowest-risk option for 0.7: stock v1 clients keep speaking v0.3, and `TacoClient` can still be forced to v1 for testing. The cost is that the v1 path gets no real traffic before 1.0. This is open question 1 below.
+The lowest-risk option for 0.7: stock v1 clients keep speaking v0.3, and `TacoClient` can still be forced to v1 for testing. The cost is that the v1 path gets no real traffic before 1.0. Rejected (open question 1): servers advertise v1 from 0.7.0.
 
 ## Consequences
 
@@ -151,7 +151,7 @@ The lowest-risk option for 0.7: stock v1 clients keep speaking v0.3, and `TacoCl
 
 ## Open questions
 
-1. Should servers advertise v1 in 0.7, or only from 1.0?
+1. Should servers advertise v1 in 0.7, or only from 1.0? **Resolved:** from 0.7. Servers have advertised v1 since 0.7.0.
 2. Is the default schedule right: `TacoClient` `"auto"` in 0.8, v1 documented as the default in 1.0?
 3. How long after 1.0 do servers keep accepting v0.3? Six months, or until 2.0?
 4. Should TACO own its Python wire models (`Task`, `Message`, `Artifact`, `Part`) before 1.0 freezes the API, instead of re-exporting `a2a.compat.v0_3.types`?
@@ -161,8 +161,8 @@ The lowest-risk option for 0.7: stock v1 clients keep speaking v0.3, and `TacoCl
 
 Each line is one pull request.
 
-1. A parity test harness that runs the end-to-end suite on both wire versions. No behaviour change.
-2. Card: `supportedInterfaces`, `protocolVersion` and extension `params`; TACO readers accept `params`; spec update.
-3. `TacoClient(protocol=...)` with conversion of responses and stream events; `TacoAgent` passthrough; CLI `--protocol`.
-4. Docs, spec and website: v1 examples, the conformance check and the playground.
-5. 0.8: default `"auto"`. 1.0: deprecation notice for v0.3 and the release.
+1. A parity test harness that runs the end-to-end suite on both wire versions. No behaviour change. **Done** (#72).
+2. Card: `supportedInterfaces`, `protocolVersion` and extension `params`; TACO readers accept `params`; spec update. **Shipped in 0.7.0** (#73).
+3. `TacoClient(protocol=...)` with conversion of responses and stream events; `TacoAgent` passthrough; CLI `--protocol`. **Shipped in 0.7.1** (#74).
+4. Docs, spec and website: v1 examples, the conformance check and the playground. **Done** (#75).
+5. 0.8: default `"auto"`. 1.0: deprecation notice for v0.3 and the release. Not started.
