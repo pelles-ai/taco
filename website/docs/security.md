@@ -219,7 +219,7 @@ For production deployments:
 1. Choose the auth scheme for your deployment scenario
 2. Declare `securitySchemes` and `security` in the Agent Card
 3. Define TACO scopes for each task type and trade; list them in `x-construction.security.scopesOffered`
-4. Validate incoming bearer tokens on every `message/send` request: HTTP 401 if there is no valid token, HTTP 403 if it lacks a required scope
+4. Validate incoming bearer tokens on every task request (`message/send`, or `SendMessage` in A2A v1): HTTP 401 if there is no valid token, HTTP 403 if it lacks a required scope
 5. Do not pass received tokens downstream — use Token Exchange
 6. If project-scoped, verify the token carries a `taco:project:{id}` scope matching the payload's `projectId`
 7. Submit to the registry for trust tier elevation after certification
@@ -338,9 +338,9 @@ server = A2AServer(card, token_verifier=verify)
 With a verifier in place, the server:
 
 - answers HTTP 401 when the `Authorization: Bearer` header is missing, when `verify` returns `None`, or when it raises (the exception is logged, not sent);
-- answers HTTP 403 when a `message/send` or `message/stream` token lacks `taco:task:<taskType>` for the requested task type (`taco.task_scope("estimate")` builds the string). Pass `require_task_scope=False` to do your own scope checks instead;
+- answers HTTP 403 when a token sent with a message (`message/send` or `message/stream`, or their A2A v1 names) lacks `taco:task:<taskType>` for the requested task type (`taco.task_scope("estimate")` builds the string). Pass `require_task_scope=False` to do your own scope checks instead;
 - keeps the Agent Card and `/health` public, as discovery needs them, and leaves the monitor to its own token;
-- records each caller's `subject` as the owner of the tasks it creates, so `tasks/get`, `tasks/cancel` and `ListTasks` only show callers their own tasks (in memory, in `JsonFileTaskStore` and in the a2a-sdk's `DatabaseTaskStore`).
+- records each caller's `subject` as the owner of the tasks it creates, so `tasks/get`, `tasks/cancel` and `ListTasks` (and v1's `GetTask` and `CancelTask`) only show callers their own tasks (in memory, in `JsonFileTaskStore` and in the a2a-sdk's `DatabaseTaskStore`).
 
 `TacoAgent` takes the same `token_verifier`, `require_task_scope` and `require_project_scope` arguments for its inbound requests. Its outbound peer calls carry their own credentials (`send_to_peer(..., headers=...)`); never forward the caller's token to a peer.
 

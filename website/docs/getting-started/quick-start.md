@@ -4,6 +4,9 @@ title: Quick Start
 description: Run a TACO agent in under two minutes with `pip install "taco-agent[all]"`. No API keys, no configuration.
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Quick Start
 
 Get a TACO agent running in under 2 minutes. No API keys, no configuration.
@@ -117,6 +120,9 @@ Or leave `enable_monitor` off outside development.
 
 **Send a task** via JSON-RPC:
 
+<Tabs groupId="a2a-version" queryString>
+<TabItem value="0.3" label="A2A v0.3" default>
+
 ```bash
 curl -X POST http://localhost:8080/ \
   -H "Content-Type: application/json" \
@@ -135,7 +141,32 @@ curl -X POST http://localhost:8080/ \
   }'
 ```
 
-Every A2A message needs a `messageId`; without one the agent answers with JSON-RPC error `-32600` (Invalid Request). Use a fresh id for each message you send.
+</TabItem>
+<TabItem value="1.0" label="A2A v1">
+
+```bash
+curl -X POST http://localhost:8080/ \
+  -H "Content-Type: application/json" \
+  -H "A2A-Version: 1.0" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": "1",
+    "method": "SendMessage",
+    "params": {
+      "message": {
+        "role": "ROLE_USER",
+        "messageId": "msg-1",
+        "parts": [{"data": {"hello": "world"}}]
+      },
+      "metadata": {"taskType": "echo"}
+    }
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+TACO agents answer both versions on the same endpoint. An A2A v1 request names the version in an `A2A-Version: 1.0` header, and its response puts the task under `result.task`, with states such as `TASK_STATE_COMPLETED`. Every A2A message needs a `messageId`; without one the agent answers with JSON-RPC error `-32600` (Invalid Request). Use a fresh id for each message you send.
 
 You should see a task in the `completed` state whose artifact holds your echoed data and a `"Hello from TACO!"` message. The monitor UI will show the request in real time.
 
@@ -148,7 +179,7 @@ You should see a task in the `completed` state whose artifact holds your echoed 
 In ~30 lines of code, you created a fully A2A-compatible agent that:
 
 1. **Advertises its capabilities** via a standard Agent Card at `/.well-known/agent-card.json`
-2. **Accepts tasks** over JSON-RPC (`message/send`, `message/stream`)
+2. **Accepts tasks** over JSON-RPC (`message/send` and `message/stream`, or `SendMessage` and `SendStreamingMessage` in A2A v1)
 3. **Returns typed artifacts** with structured data
 4. **Traces all traffic** through a live monitor UI
 

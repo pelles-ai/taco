@@ -157,6 +157,10 @@ async function sendMessage(
   taskType: string,
   payload: unknown,
 ): Promise<Task> {
+  // A2A v0.3, which every TACO agent answers. In A2A v1 the request sends
+  // method 'SendMessage' with an 'A2A-Version': '1.0' header, role 'ROLE_USER'
+  // and parts without kind ([{data: payload}]); the task comes back under
+  // result.task, with states such as 'TASK_STATE_COMPLETED'.
   const res = await fetch(agentUrl.replace(/\/$/, '') + '/', {
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'A2A-Version': '0.3'},

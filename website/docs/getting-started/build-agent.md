@@ -4,6 +4,9 @@ title: Build a Custom Agent
 description: Build a mechanical takeoff agent with a trade, CSI divisions, typed schemas, and a live monitor UI.
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Build a Custom Agent
 
 In the [Quick Start](/docs/getting-started/quick-start) you ran a minimal echo agent. Now let's build something real — a construction agent with a specific trade, typed schemas, and a live monitor.
@@ -159,6 +162,9 @@ Navigate to [http://localhost:8080/monitor](http://localhost:8080/monitor) to se
 
 **Send a task:**
 
+<Tabs groupId="a2a-version" queryString>
+<TabItem value="0.3" label="A2A v0.3" default>
+
 ```bash
 curl -X POST http://localhost:8080/ \
   -H "Content-Type: application/json" \
@@ -177,7 +183,32 @@ curl -X POST http://localhost:8080/ \
   }'
 ```
 
-The response is a `completed` task whose artifact holds the `bom-v1`. Watch the request flow through in the monitor UI in real time. `taco send http://localhost:8080 takeoff` does the same from the [CLI](/docs/cli).
+</TabItem>
+<TabItem value="1.0" label="A2A v1">
+
+```bash
+curl -X POST http://localhost:8080/ \
+  -H "Content-Type: application/json" \
+  -H "A2A-Version: 1.0" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": "1",
+    "method": "SendMessage",
+    "params": {
+      "message": {
+        "role": "ROLE_USER",
+        "messageId": "msg-1",
+        "parts": [{"data": {"projectId": "PRJ-001"}}]
+      },
+      "metadata": {"taskType": "takeoff"}
+    }
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+The response is a `completed` task (`TASK_STATE_COMPLETED` under `result.task` in A2A v1) whose artifact holds the `bom-v1`. Watch the request flow through in the monitor UI in real time. `taco send http://localhost:8080 takeoff` does the same from the [CLI](/docs/cli).
 
 ## Streaming responses
 
@@ -199,7 +230,7 @@ async def stream_takeoff(task: Task, input_data: dict) -> AsyncIterator[Part]:
 server.register_streaming_handler("takeoff", stream_takeoff)
 ```
 
-Clients receive each part as it is yielded via `message/stream` (`TacoClient.stream_message()` in Python). Registering a streaming handler also sets `capabilities.streaming` on the served card. With both handlers registered for `takeoff`, `message/stream` requests use `stream_takeoff` and `message/send` requests use `handle_takeoff`.
+Clients receive each part as it is yielded via `message/stream`, or `SendStreamingMessage` in A2A v1 (`TacoClient.stream_message()` in Python). Registering a streaming handler also sets `capabilities.streaming` on the served card. With both handlers registered for `takeoff`, `message/stream` requests use `stream_takeoff` and `message/send` requests use `handle_takeoff`.
 
 ## Full example
 

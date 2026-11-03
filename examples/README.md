@@ -239,6 +239,31 @@ curl -X POST http://localhost:8001/ \
   }'
 ```
 
+The agents answer A2A v1 on the same endpoint. The same task in v1 sends the `A2A-Version: 1.0` header and the v1 names (`SendMessage`, `ROLE_USER`, parts without `kind`); the task comes back under `result.task` with states such as `TASK_STATE_COMPLETED`:
+
+```bash
+curl -X POST http://localhost:8001/ \
+  -H "Content-Type: application/json" \
+  -H "A2A-Version: 1.0" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": "test-2",
+    "method": "SendMessage",
+    "params": {
+      "message": {
+        "role": "ROLE_USER",
+        "messageId": "msg-test-2",
+        "parts": [{"data": {
+          "projectId": "test", "trade": "mechanical", "csiDivision": "23",
+          "lineItems": [{"id": "LI-001", "description": "Exhaust fan, centrifugal inline, 2000 CFM", "quantity": 6, "unit": "EA"}],
+          "metadata": {"generatedBy": "test", "generatedAt": "2026-01-01T00:00:00Z"}
+        }}]
+      },
+      "metadata": {"taskType": "estimate"}
+    }
+  }'
+```
+
 ### Automated smoke tests
 
 `make demo-test` (or `pytest examples/tests`) runs all of the above offline. A fake Claude API (`examples/tests/fake_anthropic.py`) stands in for the real one, so no key is needed. The tests start the sandbox, the quick start and the peer example, then check discovery, the pipeline, supplier pricing, failure handling and the admin token, and run every curl command in this README and the example docstrings. CI runs them on every pull request, along with a Docker image build.

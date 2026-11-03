@@ -4,6 +4,9 @@ title: Core Concepts
 description: The key abstractions in TACO — Agent Cards, Skills, Tasks, Messages, Parts, and Artifacts — and how they fit together.
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Core Concepts
 
 This page explains the key abstractions in TACO and how they fit together. Understanding these concepts makes the rest of the documentation easier to follow.
@@ -117,13 +120,15 @@ submitted → working → completed
                     → canceled
 ```
 
-| State | Meaning |
-|-------|---------|
-| `submitted` | Task received, not yet started |
-| `working` | Handler is processing the task |
-| `completed` | Handler finished successfully — artifacts are available |
-| `failed` | Handler threw an exception or returned an error |
-| `canceled` | Task was canceled by the client |
+| State | On the wire in A2A v1 | Meaning |
+|-------|-----------------------|---------|
+| `submitted` | `TASK_STATE_SUBMITTED` | Task received, not yet started |
+| `working` | `TASK_STATE_WORKING` | Handler is processing the task |
+| `completed` | `TASK_STATE_COMPLETED` | Handler finished successfully — artifacts are available |
+| `failed` | `TASK_STATE_FAILED` | Handler threw an exception or returned an error |
+| `canceled` | `TASK_STATE_CANCELED` | Task was canceled by the client |
+
+The Python SDK uses the first column (`TaskState.completed`) whichever version is on the wire.
 
 You don't manage task states directly — the server handles transitions automatically. Your handler just returns an `Artifact` (success) or raises an exception (failure). Raise `taco.TacoTaskError("...")` when the caller should see why; any other exception reaches the caller only as a generic message with an error id, and the details stay in your logs.
 
@@ -158,7 +163,10 @@ A **Message** is the envelope for communication. It has a `role` (who sent it) a
 | `DataPart` | `"data"` | JSON object | Structured data (BOMs, estimates, queries) |
 | `FilePart` | `"file"` | File reference | Documents, drawings, attachments |
 
-In a JSON-RPC request, parts look like this:
+In a JSON-RPC request, parts look like this. A2A v1 drops `kind`: the field a part carries (`text`, `data`, or `url` / `raw` for a file) says what it is, and roles read `ROLE_USER` and `ROLE_AGENT`.
+
+<Tabs groupId="a2a-version" queryString>
+<TabItem value="0.3" label="A2A v0.3" default>
 
 ```json
 {
@@ -168,6 +176,21 @@ In a JSON-RPC request, parts look like this:
   ]
 }
 ```
+
+</TabItem>
+<TabItem value="1.0" label="A2A v1">
+
+```json
+{
+  "parts": [
+    {"text": "Generate an estimate for this BOM"},
+    {"data": {"projectId": "PRJ-001", "lineItems": [...]}}
+  ]
+}
+```
+
+</TabItem>
+</Tabs>
 
 In Python, use the helper functions:
 
@@ -233,12 +256,12 @@ Caller                                    Agent
 ```
 
 1. **Discovery** — Caller fetches the Agent Card to learn what the agent can do
-2. **Request** — Caller sends a JSON-RPC `message/send` with input data and a `taskType`
+2. **Request** — Caller sends a JSON-RPC `message/send` (`SendMessage` in A2A v1) with input data and a `taskType`
 3. **Task creation** — Server creates a Task and transitions it to `working`
 4. **Handler** — Your handler processes the input and returns an Artifact
 5. **Response** — Server transitions the task to `completed` and returns it with the Artifact
 
-For streaming responses, use `message/stream` instead of `message/send` — the server sends incremental SSE events as the handler yields Parts.
+For streaming responses, use `message/stream` (`SendStreamingMessage` in A2A v1) instead — the server sends incremental SSE events as the handler yields Parts.
 
 ## Python SDK classes
 
