@@ -17,7 +17,7 @@ Call another TACO agent over A2A. Async HTTP, JSON-RPC and streaming, push notif
 ## `TacoClient`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L102)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L262)
 
 Async client for sending tasks to a TACO-compatible agent.
 
@@ -25,10 +25,26 @@ Async client for sending tasks to a TACO-compatible agent.
 ``Authorization`` header for an agent that requires a token);
 per-call ``headers`` arguments are merged on top of them.
 
+``protocol`` picks the A2A wire version (ADR-0010):
+
+- ``"0.3"`` (the default) sends ``message/send``, ``tasks/get`` and the
+  other v0.3 methods, as every TACO release has.
+- ``"1.0"`` sends the v1 methods (``SendMessage``, ``GetTask``, ...) with
+  ``A2A-Version: 1.0``.
+- ``"auto"`` reads the agent card (fetched once, on the first call, and
+  cached) and uses ``"1.0"`` when the card lists an A2A v1 JSON-RPC
+  interface at the agent's endpoint, as TACO agents from 0.7 do, and
+  ``"0.3"`` otherwise or when the card cannot be read.
+
+Every method returns the same ``taco.types`` models, and
+:meth:`stream_message` yields the same event dicts, whichever version is
+on the wire. An agent that does not answer the version used raises
+:class:`ProtocolVersionError`.
+
 #### Constructor
 
 ```python
-TacoClient(*, agent_url: 'str', http_client: 'httpx.AsyncClient | None' = None, timeout: 'float' = 120.0, headers: 'dict[str, str] | None' = None) -> 'None'
+TacoClient(*, agent_url: 'str', http_client: 'httpx.AsyncClient | None' = None, timeout: 'float' = 120.0, headers: 'dict[str, str] | None' = None, protocol: 'str' = '0.3') -> 'None'
 ```
 
 #### Methods
@@ -118,9 +134,9 @@ Returns ``(tasks, next_cursor)``. Pass ``next_cursor`` back as
 ``None`` cursor means there are no more results. ``ListTasks``
 leaves artifacts out unless ``include_artifacts`` is ``True``.
 
-``ListTasks`` was added in A2A v1.0, so this method overrides
-the default ``A2A-Version: 0.3`` header with ``1.0`` for the
-request — v0.3-only peers will reject it.
+``ListTasks`` was added in A2A v1.0, so this method always speaks
+v1, whatever ``protocol`` is: v0.3-only peers reject it with
+:class:`ProtocolVersionError`.
 
 ### `run_task()`
 
@@ -129,6 +145,9 @@ async def run_task(self, *, task_type: 'str', input_data: 'dict[str, Any]', refe
 ```
 
 Legacy convenience — send a message and return raw result dict.
+
+The dict is in the v0.3 shape in either protocol: a v1 result is
+converted, so callers see ``"state": "completed"`` either way.
 
 ### `send_message()`
 
@@ -160,12 +179,30 @@ Send a streaming message and yield SSE event dicts.
 
 Each yielded dict has ``event`` (str) and ``data`` (parsed JSON).
 ``reference_task_ids`` (A2A v1) links this message to prior tasks.
+``data`` is the JSON-RPC response for one event, its ``result`` in
+the v0.3 shape (``"kind": "status-update"``, ``"state": "working"``)
+in either protocol.
+
+### `wire_protocol()`
+
+```python
+async def wire_protocol(self) -> 'str'
+```
+
+The A2A version this client speaks to the agent: ``"1.0"`` or ``"0.3"``.
+
+With ``protocol="auto"`` the first call reads the agent card (see
+:meth:`discover`). An agent without a readable card (an HTTP error
+status, or a body that is not a valid card) is spoken to in
+``"0.3"``, which every TACO agent answers, and its card is not asked
+for again. A connection error propagates, and the card is fetched
+again on the next call.
 
 
 ## `TacoClientError`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L65)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L127)
 
 Base exception for TACO client errors.
 
@@ -179,7 +216,7 @@ TacoClientError(*args)
 ## `RpcError`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L69)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L131)
 
 *Extends:* `TacoClientError`
 
@@ -192,10 +229,31 @@ RpcError(code: 'int', message: 'str', data: 'Any' = None) -> 'None'
 ```
 
 
+## `ProtocolVersionError`
+
+
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L141)
+
+*Extends:* `RpcError`
+
+The agent does not answer the A2A version or method the client used.
+
+Raised for JSON-RPC ``-32601`` (method not found) and ``-32009`` (A2A
+v1's version not supported). :attr:`protocol` is the version the client
+spoke and :attr:`method` the method it sent. With ``protocol="auto"`` it
+means the agent's card lists a version the agent does not serve.
+
+#### Constructor
+
+```python
+ProtocolVersionError(code: 'int', message: 'str', data: 'Any' = None, *, protocol: 'str', method: 'str') -> 'None'
+```
+
+
 ## `MessageReplyError`
 
 
-[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L79)
+[Source on GitHub](https://github.com/pelles-ai/taco/blob/main/sdk/taco/client.py#L167)
 
 *Extends:* `TacoClientError`
 

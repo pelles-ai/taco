@@ -429,3 +429,86 @@ class TestInspectSecurity:
         out = capsys.readouterr().out
         assert "Scheme bearer: http" in out
         assert "Requires bearer: taco:task:estimate" in out
+
+
+class TestSendProtocol:
+    """``taco send --protocol`` picks the A2A version of the request."""
+
+    def _httpx(self, result: dict, card: dict | None = None) -> MagicMock:
+        mock_httpx = MagicMock()
+        mock_httpx.post.return_value.json.return_value = {"jsonrpc": "2.0", "id": "1", **result}
+        if card is not None:
+            mock_httpx.get.return_value.status_code = 200
+            mock_httpx.get.return_value.json.return_value = card
+        return mock_httpx
+
+    def _send(self, mock_httpx: MagicMock, *flags: str) -> None:
+        stdin = StringIO(json.dumps({"qty": 3}))
+        stdin.isatty = lambda: False
+        with (
+            patch("taco.cli._get_http_client", return_value=mock_httpx),
+            patch.object(sys, "stdin", stdin),
+        ):
+            main(["send", *flags, "http://localhost:8001", "estimate"])
+
+    def test_v1_request_shape(self, capsys):
+        completed = {"task": {"status": {"state": "TASK_STATE_COMPLETED"}}}
+        mock_httpx = self._httpx({"result": completed})
+        self._send(mock_httpx, "--protocol", "1.0")
+        call = mock_httpx.post.call_args
+        payload, headers = call[1]["json"], call[1]["headers"]
+        assert payload["method"] == "SendMessage"
+        message = payload["params"]["message"]
+        assert message["role"] == "ROLE_USER"
+        assert message["parts"] == [{"data": {"qty": 3}}]
+        assert "kind" not in message
+        assert payload["params"]["metadata"] == {"taskType": "estimate"}
+        assert headers["A2A-Version"] == "1.0"
+        assert "TASK_STATE_COMPLETED" in capsys.readouterr().out
+
+    def test_default_is_v03(self):
+        mock_httpx = self._httpx({"result": {"status": {"state": "completed"}}})
+        self._send(mock_httpx)
+        call = mock_httpx.post.call_args
+        assert call[1]["json"]["method"] == "message/send"
+        assert call[1]["headers"]["A2A-Version"] == "0.3"
+        mock_httpx.get.assert_not_called()
+
+    def test_v1_failed_task_exits_non_zero(self):
+        mock_httpx = self._httpx({"result": {"task": {"status": {"state": "TASK_STATE_FAILED"}}}})
+        with pytest.raises(SystemExit) as exc_info:
+            self._send(mock_httpx, "--protocol", "1.0")
+        assert exc_info.value.code == 1
+
+    @pytest.mark.parametrize(
+        ("interfaces", "method"),
+        [
+            (
+                [
+                    {
+                        "url": "http://localhost:8001",
+                        "protocolBinding": "JSONRPC",
+                        "protocolVersion": "1.0",
+                    }
+                ],
+                "SendMessage",
+            ),
+            (None, "message/send"),
+        ],
+    )
+    def test_auto_reads_the_card(self, interfaces, method):
+        card = {"name": "A", "description": "d", "url": "http://localhost:8001"}
+        if interfaces:
+            card["supportedInterfaces"] = interfaces
+        mock_httpx = self._httpx({"result": {"status": {"state": "completed"}}}, card)
+        if method == "SendMessage":
+            mock_httpx.post.return_value.json.return_value = {
+                "result": {"task": {"status": {"state": "TASK_STATE_COMPLETED"}}}
+            }
+        self._send(mock_httpx, "--protocol", "auto")
+        assert mock_httpx.post.call_args[1]["json"]["method"] == method
+
+    def test_unknown_protocol_is_a_usage_error(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            main(["send", "--protocol", "2.0", "http://localhost:8001", "estimate"])
+        assert exc_info.value.code == 2

@@ -5,7 +5,7 @@ Usage::
     taco --version
     taco discover <url>
     taco inspect <url>
-    taco send <url> <task_type> [json_file]
+    taco send [--protocol 0.3|1.0|auto] <url> <task_type> [json_file]
     taco health <url>
 """
 
@@ -17,10 +17,28 @@ import sys
 import uuid
 
 from . import __version__
-from .client import A2A_PROTOCOL_VERSION, _merge_protocol_headers
+from .client import (
+    A2A_PROTOCOL_VERSION,
+    PROTOCOLS,
+    _merge_protocol_headers,
+    _protocol_for_card,
+    _to_v1_message,
+)
 from .types import with_v03_card_fields
 
 _PROTOCOL_HEADERS = {"A2A-Version": A2A_PROTOCOL_VERSION}
+
+# Task states that make ``taco send`` exit non-zero, in v0.3 and v1 spelling.
+_UNSUCCESSFUL_STATES = frozenset(
+    {
+        "failed",
+        "rejected",
+        "canceled",
+        "TASK_STATE_FAILED",
+        "TASK_STATE_REJECTED",
+        "TASK_STATE_CANCELED",
+    }
+)
 
 
 def _auth_headers(args: argparse.Namespace, version: str = A2A_PROTOCOL_VERSION) -> dict:
@@ -146,32 +164,40 @@ def _cmd_send(args: argparse.Namespace) -> None:
     else:
         input_data = {}
 
+    protocol = getattr(args, "protocol", "0.3")
+    if protocol == "auto":
+        protocol = _protocol_for_card(_fetch_agent_card(httpx, url, args.timeout).json(), url)
+
+    message: dict = {
+        "role": "user",
+        "parts": [{"kind": "data", "data": input_data}],
+        "messageId": str(uuid.uuid4()),
+    }
+    method = "message/send"
+    if protocol == "1.0":
+        message, method = _to_v1_message(message), "SendMessage"
     payload = {
         "jsonrpc": "2.0",
         "id": str(uuid.uuid4()),
-        "method": "message/send",
-        "params": {
-            "message": {
-                "role": "user",
-                "parts": [{"kind": "data", "data": input_data}],
-                "messageId": str(uuid.uuid4()),
-            },
-            "metadata": {"taskType": args.task_type},
-        },
+        "method": method,
+        "params": {"message": message, "metadata": {"taskType": args.task_type}},
     }
     resp = httpx.post(
         f"{url}/",
         json=payload,
         timeout=args.timeout,
-        headers=_auth_headers(args),
+        headers=_auth_headers(args, protocol),
     )
     resp.raise_for_status()
     body = resp.json()
+    # The response is printed as the agent sent it, in the version used.
     print(json.dumps(body, indent=2))
     # Exit non-zero when the agent reports an error or a failed task, so
     # scripts can rely on the exit code.
-    state = (body.get("result") or {}).get("status", {}).get("state")
-    if body.get("error") or state in ("failed", "rejected", "canceled"):
+    result = body.get("result") or {}
+    task = result.get("task", result) if protocol == "1.0" else result
+    state = (task.get("status") or {}).get("state")
+    if body.get("error") or state in _UNSUCCESSFUL_STATES:
         sys.exit(1)
 
 
@@ -269,6 +295,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_send.add_argument("url", help="Agent base URL")
     p_send.add_argument("task_type", help="Task type to send")
     p_send.add_argument("json_file", nargs="?", default=None, help="JSON input file (or stdin)")
+    p_send.add_argument(
+        "--protocol",
+        choices=PROTOCOLS,
+        default="0.3",
+        help="A2A version to send: 0.3 (default), 1.0, or auto (1.0 if the agent card lists it)",
+    )
 
     p_health = sub.add_parser("health", help="Check agent /health endpoint")
     p_health.add_argument("url", help="Agent base URL")

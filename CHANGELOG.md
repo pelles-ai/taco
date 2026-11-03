@@ -11,6 +11,17 @@ been dated yet) as that version's GitHub release notes.
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-11-03
+
+### Added
+- **`TacoClient(protocol=...)`** picks the A2A wire version: `"0.3"` (the default, as before), `"1.0"`, or `"auto"`, which reads the agent card once and uses v1 when the card lists an A2A v1 JSON-RPC interface at the agent's endpoint, as TACO agents from 0.7 do. In v1 the client sends `SendMessage`, `GetTask`, `CancelTask`, `SendStreamingMessage` and the v1 push-config methods with `A2A-Version: 1.0`, and converts every result back: methods return the same `taco.types` models, `run_task` the same v0.3-shaped dict, and `stream_message` the same v0.3-shaped events in either version. `await client.wire_protocol()` says which version is in use. This is step 3 of [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format).
+- **`ProtocolVersionError`**, a subclass of `RpcError`, is raised when an agent does not answer the version or method used (JSON-RPC `-32601` or `-32009`). It names the version and method tried.
+- **`TacoAgent(peer_protocol=...)`** sets the version for calls to peers, and **`taco send --protocol 0.3|1.0|auto`** the version of the request it sends.
+
+### Changed
+- `stream_message` raises `RpcError` (or `ProtocolVersionError`) when the agent answers with a single JSON-RPC error instead of an event stream. It used to yield nothing.
+- A `TacoClient` call answered with JSON-RPC `-32601` (method not found) or `-32009` raises `ProtocolVersionError` rather than a plain `RpcError`, for example `list_tasks` against an agent without `ListTasks`. Code that catches `RpcError` is unaffected.
+
 ## [0.7.0] — 2026-11-02
 
 ### Added
@@ -23,6 +34,12 @@ been dated yet) as that version's GitHub release notes.
 ### CI
 - A wire-parity suite (`sdk/tests/test_wire_parity.py`) runs every end-to-end scenario over both A2A v0.3 and v1: send, stream, get, cancel, push configs and delivery, bearer auth with task and project scopes, monitor tracing, error messages and whole-number handling. It also checks that a2a-sdk's own client completes a TACO task in either version. This is the first step of [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format).
 - A release is cut only when the package itself changes (`sdk/taco/`, `sdk/pyproject.toml`, `sdk/README.md`), no longer on test- or docs-only changes under `sdk/`.
+
+## [0.6.4] — 2026-11-02
+
+No changes to the package. This release was cut when the ADR-0010 proposal edited `sdk/V1_MIGRATION.md`, which the release workflow's path filter still matched; 0.7.0 narrows the filter to the package itself.
+
+### CI
 - The release workflow can be run by hand as a dry run (`dry_run: true`), which reports the next version without tagging, releasing or publishing. A run from any branch other than `main` is always a dry run. The release and PyPI steps are skipped when no new version is calculated, and the release branch and default patch bump are set explicitly, ahead of the tag action's v7.
 
 ## [0.6.3] — 2026-11-02

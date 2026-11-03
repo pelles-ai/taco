@@ -44,6 +44,9 @@ Args:
         round before the agent starts serving (default 2.0). Discovery
         carries on in the background, so agents that list each other
         as peers find each other once both are up.
+    peer_protocol: A2A version for calls to peers: ``"0.3"`` (the
+        default), ``"1.0"``, or ``"auto"`` to use v1 with peers whose
+        card lists it. See :class:`TacoClient`.
     cors_origins: CORS origins for the server. ``None`` (the default)
         disables CORS middleware entirely.
     enable_monitor: Whether to enable the Agent Monitor UI at
@@ -65,7 +68,7 @@ Args:
 #### Constructor
 
 ```python
-TacoAgent(agent_card: 'ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, peers: 'list[str] | str | None' = None, peer_retry_attempts: 'int' = 5, peer_retry_delay: 'float' = 2.0, peer_startup_wait: 'float' = 2.0, cors_origins: 'list[str] | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None, token_verifier: 'TokenVerifier | None' = None, require_task_scope: 'bool' = True, require_project_scope: 'bool | None' = None) -> 'None'
+TacoAgent(agent_card: 'ConstructionAgentCard', *, task_store: 'TaskStore | None' = None, peers: 'list[str] | str | None' = None, peer_retry_attempts: 'int' = 5, peer_retry_delay: 'float' = 2.0, peer_startup_wait: 'float' = 2.0, peer_protocol: 'str' = '0.3', cors_origins: 'list[str] | None' = None, enable_monitor: 'bool' = False, monitor_auth_token: 'str | None' = None, token_verifier: 'TokenVerifier | None' = None, require_task_scope: 'bool' = True, require_project_scope: 'bool | None' = None) -> 'None'
 ```
 
 #### Methods

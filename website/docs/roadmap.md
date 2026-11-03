@@ -52,15 +52,16 @@ Dates come from the release tags in the repository. See the [CHANGELOG](https://
 - `a2a-sdk` 1.1.1 or later, so protobuf 6 and 7 can be installed alongside (0.6.2)
 - `A2A-Extensions` request header asking peers to activate the `x-construction` extension; Python 3.14 supported (0.6.3)
 
-### v0.7.0 — Agent cards advertise A2A v1 (November 2026)
+### v0.7.0–v0.7.1 — A2A v1 on the card and in the client (November 2026)
 - Agent cards list A2A `1.0` and `0.3` in `supportedInterfaces`, so stock v1 clients speak v1 to TACO agents; `x-construction` is repeated in the extension's `params` for v1 readers, and TACO reads cards written for v1 alone ([ADR-0010](/docs/decisions/negotiate-v1-wire-format), step 2)
+- `TacoClient(protocol="0.3" | "1.0" | "auto")`, `TacoAgent(peer_protocol=...)` and `taco send --protocol` speak either version and return the same results; `ProtocolVersionError` names a version an agent rejects (step 3, 0.7.1)
 
 ## In flight
 
 ### A2A v1 wire cutover (Phase 3 of the SDK migration)
 The TACO SDK is on `a2a-sdk>=1.1.1`, but the on-the-wire JSON is still v0.3. Phase 3 flips the wire format to v1 one concern at a time: flattened `Part` constructors, v1 enum literals, `supportedInterfaces[]` on the Agent Card, new JSON-RPC method names (`SendMessage`, `GetTask`, and so on), and the wrapper-keyed stream event shape.
 
-See [`sdk/V1_MIGRATION.md`](https://github.com/pelles-ai/taco/blob/main/sdk/V1_MIGRATION.md) for the full plan and [ADR-0007](/docs/decisions/v1-wire-cutover) for the reasoning. [ADR-0010](/docs/decisions/negotiate-v1-wire-format) (proposed) replaces the per-concern flip with negotiation: servers advertise both versions, clients pick one per agent, and the Python API does not change. A parity test suite runs every scenario on both versions, and servers now advertise both on their card, with `x-construction` in the extension's `params` for v1 readers (0.7.0). `TacoClient(protocol=...)` is next.
+See [`sdk/V1_MIGRATION.md`](https://github.com/pelles-ai/taco/blob/main/sdk/V1_MIGRATION.md) for the full plan and [ADR-0007](/docs/decisions/v1-wire-cutover) for the reasoning. [ADR-0010](/docs/decisions/negotiate-v1-wire-format) (proposed) replaces the per-concern flip with negotiation: servers advertise both versions, clients pick one per agent, and the Python API does not change. A parity test suite runs every scenario on both versions, and servers now advertise both on their card, with `x-construction` in the extension's `params` for v1 readers (0.7.0), and `TacoClient(protocol=...)` can speak either version, choosing from the card with `"auto"` (0.7.1). v1 examples in the docs, spec and website are next.
 
 ### Remaining v1 features
 Still open in the migration plan:

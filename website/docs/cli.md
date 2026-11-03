@@ -83,6 +83,10 @@ echo '{"projectId": "PRJ-001", "lineItems": []}' | taco send http://localhost:80
 
 # Send with no input data (empty object)
 taco send http://localhost:8080 echo
+
+# Send over A2A v1, or let the agent card decide
+taco send --protocol 1.0 http://localhost:8080 estimate bom.json
+taco send --protocol auto http://localhost:8080 estimate bom.json
 ```
 
 Arguments:
@@ -90,9 +94,12 @@ Arguments:
 - **task_type** — The task type to send (must match a registered handler)
 - **json_file** (optional) — Path to a JSON file with input data. If omitted, reads from stdin. If stdin is a terminal or empty (as in many scripts and CI jobs), sends an empty object `{}`.
 
-The input JSON is wrapped in a `DataPart` and sent as a `message/send` JSON-RPC call, with a fresh `messageId` and request id each time. The full response is printed as formatted JSON.
+Options:
+- **--protocol** — A2A version to send: `0.3` (the default), `1.0`, or `auto`, which reads the agent card and uses `1.0` when the card lists an A2A v1 JSON-RPC interface at the agent's URL.
 
-`taco send` exits with status 1 when the task ends `failed`, `rejected` or `canceled`, or when the agent returns a JSON-RPC error, so scripts can rely on the exit code. The response is still printed.
+The input JSON is wrapped in a `DataPart` and sent as a `message/send` JSON-RPC call (`SendMessage` with `--protocol 1.0`), with a fresh `messageId` and request id each time. The full response is printed as formatted JSON, as the agent sent it: in v1 the task is under `result.task` and states read `TASK_STATE_COMPLETED`.
+
+`taco send` exits with status 1 when the task ends `failed`, `rejected` or `canceled` (in either version's spelling), or when the agent returns a JSON-RPC error, so scripts can rely on the exit code. The response is still printed.
 
 ### `taco list-tasks`
 

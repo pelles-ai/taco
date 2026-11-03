@@ -309,10 +309,31 @@ async with TacoClient(agent_url="http://localhost:8001") as client:
 | `timeout` | `120.0` | HTTP timeout in seconds |
 | `http_client` | `None` | Optional shared `httpx.AsyncClient` |
 | `headers` | `None` | Headers sent on every request, for example `{"Authorization": "Bearer ..."}`. Per-call `headers=` are merged on top. |
+| `protocol` | `"0.3"` | A2A wire version: `"0.3"`, `"1.0"`, or `"auto"` to use v1 when the agent card lists it. See [Protocol versions](#protocol-versions). |
 
 The client is an async context manager. If you create it without `async with`, call `await client.close()` when done.
 
-Every request carries `A2A-Version: 0.3` and asks the agent to activate TACO's `x-construction` extension with `A2A-Extensions` (and its v0.3 name, `X-A2A-Extensions`). Extension URIs you list in `headers` are added to it rather than replacing it.
+Every request carries `A2A-Version` for the protocol in use and asks the agent to activate TACO's `x-construction` extension with `A2A-Extensions` (and its v0.3 name, `X-A2A-Extensions`). Extension URIs you list in `headers` are added to it rather than replacing it.
+
+### Protocol versions
+
+TACO agents answer A2A v0.3 and v1 on the same endpoint, and from 0.7 their card lists both. `protocol` picks the version the client speaks:
+
+| `protocol` | Requests |
+|------------|----------|
+| `"0.3"` (default) | `message/send`, `tasks/get` and the other v0.3 methods with `A2A-Version: 0.3`, as in every earlier release |
+| `"1.0"` | `SendMessage`, `GetTask` and the other v1 methods with `A2A-Version: 1.0` |
+| `"auto"` | Reads the agent card on the first call (once, then cached) and uses `"1.0"` when the card lists an A2A v1 JSON-RPC interface at the agent's endpoint; `"0.3"` otherwise, or when the card cannot be read |
+
+```python
+async with TacoClient(agent_url="http://localhost:8001", protocol="auto") as client:
+    task = await client.send_message("estimate", bom_data)
+    print(await client.wire_protocol())  # "1.0" for a TACO 0.7+ agent
+```
+
+The results are the same in every mode: methods return the same `taco.types` models (`TaskState.completed`, not `TASK_STATE_COMPLETED`), `run_task()` returns the v0.3-shaped dict, and `stream_message()` yields v0.3-shaped events. `list_tasks()` always speaks v1, because `ListTasks` only exists there. An agent that does not answer the version used raises [`ProtocolVersionError`](#client-errors).
+
+[ADR-0010](./decisions/negotiate-v1-wire-format) proposes making `"auto"` the default in 0.8.
 
 ### Methods
 
@@ -403,6 +424,7 @@ agent = TacoAgent(
     peer_retry_attempts=5,                   # Background discovery attempts per peer (default: 5)
     peer_retry_delay=2.0,                    # Seconds between attempts (default: 2.0)
     peer_startup_wait=2.0,                   # Max seconds startup waits for discovery (default: 2.0)
+    peer_protocol="0.3",                     # A2A version for peer calls: "0.3", "1.0" or "auto"
     cors_origins=None,                       # CORS allowed origins
     enable_monitor=True,                     # Enable /monitor UI
     monitor_auth_token=None,                 # Token the monitor requires
@@ -568,10 +590,14 @@ updated_card = await registry.refresh("http://localhost:8001")
 The `TacoClient` raises specific exceptions depending on the failure type:
 
 ```python
-from taco import MessageReplyError, RpcError, TacoClientError
+from taco import MessageReplyError, ProtocolVersionError, RpcError, TacoClientError
 
 try:
     task = await client.send_message("estimate", bom_data)
+except ProtocolVersionError as e:
+    # The agent does not answer this A2A version or method
+    # (JSON-RPC -32601 or -32009). A subclass of RpcError.
+    print(f"Agent rejected A2A {e.protocol} ({e.method})")
 except RpcError as e:
     # The agent answered with a JSON-RPC error: an invalid request,
     # an unknown method, or a task id it does not know.
