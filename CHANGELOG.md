@@ -11,6 +11,8 @@ been dated yet) as that version's GitHub release notes.
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-11-03
+
 ### Added
 - **`TacoClient(protocol=...)`** picks the A2A wire version: `"0.3"` (the default, as before), `"1.0"`, or `"auto"`, which reads the agent card once and uses v1 when the card lists an A2A v1 JSON-RPC interface at the agent's endpoint, as TACO agents from 0.7 do. In v1 the client sends `SendMessage`, `GetTask`, `CancelTask`, `SendStreamingMessage` and the v1 push-config methods with `A2A-Version: 1.0`, and converts every result back: methods return the same `taco.types` models, `run_task` the same v0.3-shaped dict, and `stream_message` the same v0.3-shaped events in either version. `await client.wire_protocol()` says which version is in use. This is step 3 of [ADR-0010](https://taco-protocol.com/docs/decisions/negotiate-v1-wire-format).
 - **`ProtocolVersionError`**, a subclass of `RpcError`, is raised when an agent does not answer the version or method used (JSON-RPC `-32601` or `-32009`). It names the version and method tried.
