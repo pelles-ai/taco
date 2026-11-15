@@ -1,6 +1,6 @@
 # Build context is the repository root (see docker-compose.yml); the
 # .dockerignore there keeps .git, secrets (examples/.env) and local junk out.
-FROM python:3.12-slim
+FROM python:3.15-slim
 WORKDIR /app
 
 # Install TACO SDK. The SDK takes its version from git tags (hatch-vcs), and
